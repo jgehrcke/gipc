@@ -29,18 +29,21 @@ def main():
     N = 999
     msg = "x"*100
     gpreader, gpwriter = gpipe.pipe()
-    gwrite = gevent.spawn(writer, gpwriter, N, msg)
-    gread = gevent.spawn(reader, gpreader, N, msg)
+    log.info("Pipe initialized.")
+    gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
+    gread = gevent.spawn(readgreenlet, gpreader, N, msg)
+    log.info("Read&write greenlets started.")
     t1 = time.time()
     gread.join()
-    gwrite.join()
     t2 = time.time()
     diff = t2-t1
     mpertime = N/diff
     log.info("Read duration: %s s" % diff)
     log.info("Message transmission rate: %s msgs/s" % mpertime)
+    gwrite.join()
 
-def reader(gpreader, N, msg):
+
+def readgreenlet(gpreader, N, msg):
     for i in xrange(1, N+1):
         m = gpreader.get()
         if m != msg:
@@ -48,7 +51,7 @@ def reader(gpreader, N, msg):
     gpreader.close()
 
 
-def writer(gpwriter, N, msg):
+def writegreenlet(gpwriter, N, msg):
     for i in xrange(N):
         gpwriter.put(msg)
     gpwriter.close()
