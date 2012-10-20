@@ -29,18 +29,26 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 100
-    msg = "x"*600000
+    N = 999
+    msg = "x"*100000
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     
     # Prepare file descriptor for transfer to subprocess on Windows.
     gpwriter.pre_windows_process_inheritance()
     
-    gread = gevent.spawn(readgreenlet, gpreader, N, msg)
     pwrite = Process(target=writeprocess, args=[gpwriter, N, msg])
     pwrite.start()
     log.info("Read greenlet and write process started.")
+
+    # The readgreenlet has to be started after the Process above.
+    # Otherwise, it runs in both, the main process and the
+    # subprocess and tries to read from the pipe read file 
+    # descriptor from both processes. Dirty. Is there a neat
+    # way to detect such a collision?
+    # Otherwise: important rule: run subprocess before spawning
+    # ANY greenlet.
+    gread = gevent.spawn(readgreenlet, gpreader, N, msg)
     t1 = time.time()
     gread.join()
     t2 = time.time()
@@ -55,6 +63,7 @@ def main():
 
     
 def writeprocess(gpwriter, N, msg):
+    log.debug("WRITE greenlet started from PID %s" % os.getpid())
     # Restore file descriptor after transfer to subprocess on Windows.
     gpwriter.post_windows_process_inheritance()
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
@@ -62,10 +71,11 @@ def writeprocess(gpwriter, N, msg):
 
 
 def readgreenlet(gpreader, N, msg):
+    log.debug("READ greenlet started from PID %s" % os.getpid())
     for i in xrange(1, N+1):
         m = gpreader.get()
         if m != msg:
-            raise Exception("Wrong message received: %r" %  m)
+            raise Exception("Wrong message received")
     gpreader.close()
 
 

@@ -120,6 +120,9 @@ class _GPipeReader(_GPipeHandler):
         
         Based on `gevent.os.read()`, a cooperative variant of `os.read()`.
         """
+        # Optimize parsing algorithm?
+        # For large messages (> 100 kB) splitlines becomes quite expensive.
+        # In _residual there is no newline, so it's stupid to include it.
         while not self._messages:
             lines = (self._residual +
                 gevent.os.read(self._fd, self._readbuffer)).splitlines(True)
@@ -156,8 +159,19 @@ class _GPipeWriter(_GPipeHandler):
         # Else: user must make sure `m` is bytestring and delimit messages
         # himself via newline char.
         while True:
-            # Occasionally, not all bytes are written at once (I've seen this in
-            # extreme test cases).
+            # http://linux.die.net/man/7/pipe:
+            #  - Since Linux 2.6.11, the pipe capacity is 65536 bytes
+            #  - Relevant for large messages:
+            #    case O_NONBLOCK enabled, n > PIPE_BUF (4096 Byte, usually):
+            #    """If the pipe is full, then write(2) fails, with errno set
+            #    to EAGAIN. Otherwise, from 1 to n bytes may be written (i.e.,
+            #    a "partial write" may occur; the caller should check the
+            #    return value from write(2) to see how many bytes were
+            #    actualy written), and these bytes may be interleaved with
+            #    writes by other processes. """
+            #
+            # EAGAIN is handled within gevent.os.posix_write; partial writes
+            # are be handled by this loop.
             diff = len(m) - gevent.os.write(self._fd, m)
             if not diff:
                 break

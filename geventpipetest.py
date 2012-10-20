@@ -26,8 +26,8 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 300
-    msg = "x"*300000
+    N = 1
+    msg = "x"*600000
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
