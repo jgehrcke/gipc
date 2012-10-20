@@ -45,7 +45,7 @@ def writer(gpwriter, N, msg):
     gpwriter.close()
 
 def main():
-    N = 999
+    N = 99999
     msg = "x"*100
     gpreader, gpwriter = gpipe.pipe(raw=False)
     gread = gevent.spawn(reader, gpreader, N, msg)

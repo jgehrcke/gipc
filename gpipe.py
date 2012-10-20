@@ -18,19 +18,12 @@ import os
 import logging
 import gevent.os
 from collections import deque
-
-# On my system the JSON processor imported by "import json" is
-# faster than the one imported by "import simplejson". The latter has been
-# installed via pip and compiled the C extension.
-#try:
-#    import simplejson as json
-#except ImportError:
-#    import json
-#from collections import deque
-import json
+try:
+    import simplejson as json
+except ImportError:
+    import json
 
 log = logging.getLogger()
-
 
 def pipe(raw=False):
     r, w = os.pipe()
