@@ -34,16 +34,8 @@ def main():
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     
-    # prepare writer for transfer to subprocess on win32
-    if sys.platform == "win32":
-        import msvcrt
-        import multiprocessing.forking
-        writehandle = msvcrt.get_osfhandle(gpwriter._fd)
-        inheritable_writehandle = multiprocessing.forking.duplicate(
-            handle=writehandle, inheritable=True)
-        os.close(gpwriter._fd)
-        gpwriter._fd = None
-        gpwriter._ihw = inheritable_writehandle
+    # Prepare file descriptor for transfer to subprocess on Windows.
+    gpwriter.pre_windows_process_inheritance()
     
     gread = gevent.spawn(readgreenlet, gpreader, N, msg)
     pwrite = Process(target=writeprocess, args=[gpwriter, N, msg])
@@ -58,15 +50,10 @@ def main():
     log.info("Message transmission rate: %s msgs/s" % mpertime)
     pwrite.join()
 
-
+    
 def writeprocess(gpwriter, N, msg):
-    # finalize writer transfer to subprocess on win32
-    if sys.platform == "win32":
-        import msvcrt
-        writefd = msvcrt.open_osfhandle(gpwriter._ihw, os.O_WRONLY)
-        gpwriter._fd = writefd
-        gpwriter._ihw = None
-        
+    # Restore file descriptor after transfer to subprocess on Windows.
+    gpwriter.post_windows_process_inheritance()
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
     gwrite.join()
 
