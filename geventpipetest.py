@@ -15,49 +15,44 @@
 #   limitations under the License.
 
 import time
-import os
 import logging
 import gevent
 import gpipe
+
 
 logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
-# on windows: messages per time:
-# - independent of read buffer size
+
+def main():
+    N = 999
+    msg = "x"*100
+    gpreader, gpwriter = gpipe.pipe()
+    gwrite = gevent.spawn(writer, gpwriter, N, msg)
+    gread = gevent.spawn(reader, gpreader, N, msg)
+    t1 = time.time()
+    gread.join()
+    gwrite.join()
+    t2 = time.time()
+    diff = t2-t1
+    mpertime = N/diff
+    log.info("duration: %s" % diff)
+    log.info("messages per second: %s" % mpertime)
 
 
 def reader(gpreader, N, msg):
-    counter = 0
-    while True:
+    for i in xrange(1, N+1):
         m = gpreader.get()
         if m != msg:
-            raise Exception("wrong message received: %r" %  m)
-        counter += 1
-        if counter == N:
-            break
+            raise Exception("Wrong message received: %r" %  m)
     gpreader.close()
+
 
 def writer(gpwriter, N, msg):
     for i in xrange(N):
         gpwriter.put(msg)
     gpwriter.close()
-
-def main():
-    N = 99999
-    msg = "x"*100
-    gpreader, gpwriter = gpipe.pipe(raw=False)
-    gread = gevent.spawn(reader, gpreader, N, msg)
-    gwrite = gevent.spawn(writer, gpwriter, N, msg)
-    t1 = time.time()
-    gwrite.join()
-    gread.join()
-    t2 = time.time()
-    diff = t2-t1
-    print "duration: %s" % diff
-    mpertime = N/diff
-    print "messages per second: %s" % mpertime
 
 
 if __name__ == "__main__":

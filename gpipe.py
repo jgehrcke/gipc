@@ -16,14 +16,16 @@
 
 import os
 import logging
-import gevent.os
 from collections import deque
 try:
     import simplejson as json
 except ImportError:
     import json
+import gevent.os
+
 
 log = logging.getLogger()
+
 
 def pipe(raw=False):
     r, w = os.pipe()
@@ -66,34 +68,12 @@ class _GPipeWriter(object):
 
     def put(self, m):
         if not self.raw:
-            # JSON-encode message. Among others: escapes newlines, returns
-            # bytestring
-            m = json.dumps(m)+'\n'
-        # else: user has to insert msg delimiter, i.e. newline character
+            m = json.dumps(m)+'\n' # Returns bytestring.
+        # Else: user must make sure `m` is bytestring and delimit messages
+        # himself via newline char.
         while True:
-            # Occasionally, not all bytes are written at once
+            # Occasionally, not all bytes are written at once.
             diff = len(m) - gevent.os.write(self._w, m)
             if not diff:
                 break
             m = m[-diff:]
-
-
-class GePipeReaderGenerator(object):
-    def __init__(self, pipe_read_end):
-        self._r = pipe_read_end
-
-    def get_message(self):
-        encoded_messages = None
-        rest = ''
-        while True:
-            while not encoded_messages:
-                lines = (rest + gevent.os.read(self._r, 99999)).splitlines(True)
-                rest = ''
-                if not lines[-1].endswith('\n'):
-                    rest = lines.pop()
-                encoded_messages = deque(lines)
-            yield json.loads(encoded_messages.popleft().decode("utf-8"))
-
-
-if __name__ == "__main__":
-    main()
