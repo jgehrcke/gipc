@@ -18,7 +18,7 @@ import time
 import os
 import logging
 import gevent
-from gpipe import GPipeMessenger, _GPipeReader, _GPipeWriter
+import gpipe
 
 logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
 log = logging.getLogger()
@@ -28,26 +28,28 @@ log.setLevel(logging.DEBUG)
 # - independent of read buffer size
 
 
-def reader(gpm, N, msg):
+def reader(gpreader, N, msg):
     counter = 0
     while True:
-        m = gpm.get()
+        m = gpreader.get()
         if m != msg:
             raise Exception("wrong message received: %r" %  m)
         counter += 1
         if counter == N:
             break
+    gpreader.close()
 
-def writer(gpm, N, msg):
+def writer(gpwriter, N, msg):
     for i in xrange(N):
-        gpm.put(msg)
+        gpwriter.put(msg)
+    gpwriter.close()
 
 def main():
     N = 999
-    msg = "x"*30
-    gpm = GPipeMessenger()
-    gread = gevent.spawn(reader, gpm, N, msg)
-    gwrite = gevent.spawn(writer, gpm, N, msg)
+    msg = "x"*100
+    gpreader, gpwriter = gpipe.pipe(raw=False)
+    gread = gevent.spawn(reader, gpreader, N, msg)
+    gwrite = gevent.spawn(writer, gpwriter, N, msg)
     t1 = time.time()
     gwrite.join()
     gread.join()
