@@ -29,8 +29,8 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 999
-    msg = "x"*100
+    N = 100
+    msg = "x"*600000
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     
@@ -44,10 +44,13 @@ def main():
     t1 = time.time()
     gread.join()
     t2 = time.time()
-    diff = t2-t1
-    mpertime = N/diff
-    log.info("Read duration: %s s" % diff)
-    log.info("Message transmission rate: %s msgs/s" % mpertime)
+    tdiff = t2-t1
+    mpertime = N/tdiff
+    datasize_mb = float(len(msg)*N)/1024/1024
+    datarate_mb = datasize_mb/tdiff
+    log.info("Read duration: %.3f s" % tdiff)
+    log.info("Message transmission rate: %.3f msgs/s" % mpertime)
+    log.info("Data transfer rate: %.3f MB/s" % datarate_mb)
     pwrite.join()
 
     
