@@ -19,7 +19,7 @@ import logging
 import gevent.os
 from collections import deque
 
-# Actually, on my system the JSON processor imported by "import json" is 
+# On my system the JSON processor imported by "import json" is
 # faster than the one imported by "import simplejson". The latter has been
 # installed via pip and compiled the C extension.
 #try:
@@ -32,51 +32,57 @@ import json
 log = logging.getLogger()
 
 
-class GPipeMessenger(object):
-    def __init__(self):
-        r, w = os.pipe()
-        self._reader = _GPipeReader(r)
-        self._writer = _GPipeWriter(w)
-        
-    def get(self):
-        return self._reader.get()
-        
-    def put(self, m):
-        self._writer.put(m)
+def pipe(raw=False):
+    r, w = os.pipe()
+    return _GPipeReader(r, raw), _GPipeWriter(w, raw)
 
 
 class _GPipeReader(object):
-    def __init__(self, pipe_read_end):
+    def __init__(self, pipe_read_end, raw=False):
         self._r = pipe_read_end
-        self.encoded_messages = deque()
-        self.rest = ''
-        self.read = gevent.os.read
+        self.messages = deque()
+        self.residual = ''
+        self.raw = raw
+
+    def close(self):
+        os.close(self._r)
 
     def get(self):
-        while not self.encoded_messages:
+        while not self.messages:
             # TODO: Research reasonable buffer size
-            lines = (self.rest + self.read(self._r, 99999)).splitlines(True)
-            self.rest = ''
+            lines = (self.residual +
+                gevent.os.read(self._r, 99999)).splitlines(True)
+            self.residual = ''
             if not lines[-1].endswith('\n'):
-                self.rest = lines.pop()
-            self.encoded_messages.extend(lines)
-        return json.loads(self.encoded_messages.popleft().decode("utf-8"))      
-        
-        
+                self.residual = lines.pop()
+            self.messages.extend(lines)
+        if self.raw:
+            return self.messages.popleft()
+        # Each encoded msg has trailing \n. Could be removed with rstrip().
+        # However, it looks like the JSON decoder ignores it.
+        return json.loads(self.messages.popleft())
+
+
 class _GPipeWriter(object):
-    def __init__(self, pipe_write_end):
+    def __init__(self, pipe_write_end, raw=False):
         self._w = pipe_write_end
-        self.write = gevent.os.write
+        self.raw = raw    
+
+    def close(self):
+        os.close(self._w)
 
     def put(self, m):
-        # JSON-encode message (among others escapes newlines)
-        s = json.dumps(m, ensure_ascii=False).encode("utf-8")+'\n'
+        if not self.raw:
+            # JSON-encode message. Among others: escapes newlines, returns
+            # bytestring
+            m = json.dumps(m)+'\n'
+        # else: user has to insert msg delimiter, i.e. newline character
         while True:
             # Occasionally, not all bytes are written at once
-            diff = len(s) - self.write(self._w, s)
+            diff = len(m) - gevent.os.write(self._w, m)
             if not diff:
                 break
-            s = s[-diff:]
+            m = m[-diff:]
 
 
 class GePipeReaderGenerator(object):
@@ -93,7 +99,7 @@ class GePipeReaderGenerator(object):
                 if not lines[-1].endswith('\n'):
                     rest = lines.pop()
                 encoded_messages = deque(lines)
-            yield json.loads(encoded_messages.popleft().decode("utf-8")) 
+            yield json.loads(encoded_messages.popleft().decode("utf-8"))
 
 
 if __name__ == "__main__":
