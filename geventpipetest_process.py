@@ -41,6 +41,7 @@ def reader(gpm, N, msg):
             break
 
 def writer(gpm, N, msg):
+    log.debug("HEY from writer.")
     for i in xrange(N):
         gpm.put(msg)
 
@@ -58,13 +59,14 @@ def main():
     gread = gevent.spawn(reader, gpm, N, msg)
     p = multiprocessing.Process(target=process, args=[gpm, N, msg])
     p.start()
-    p.join()
     gread.join()
     t2 = time.time()
     diff = t2-t1
     print "duration: %s" % diff
     mpertime = N/diff
     print "messages per second: %s" % mpertime
+    log.debug("Joining subprocess...")
+    p.join()
 
 
 if __name__ == "__main__":

@@ -54,6 +54,7 @@ class _GPipeReader(object):
 
     def get(self):
         while not self.encoded_messages:
+            # TODO: Research reasonable buffer size
             lines = (self.rest + self.read(self._r, 99999)).splitlines(True)
             self.rest = ''
             if not lines[-1].endswith('\n'):
