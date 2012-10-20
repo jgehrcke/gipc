@@ -29,13 +29,14 @@ WINDOWS = sys.platform == "win32"
 log = logging.getLogger()
 
 
-def pipe(raw=False):
+def pipe():
     r, w = os.pipe()
-    return _GPipeReader(r, raw), _GPipeWriter(w, raw)
+    return _GPipeReader(r), _GPipeWriter(w)
 
 
 class _GPipeHandler(object):
     def close(self):
+        """Close pipe file descriptor."""
         os.close(self._fd)
 
     def pre_windows_process_inheritance(self):
@@ -52,7 +53,7 @@ class _GPipeHandler(object):
                 created by the target process. If FALSE, the new handle cannot
                 be inherited.
         The Python `subprocess` and `multiprocessing` modules make use of this.
-        There is no API officially exposed. However, the function
+        There is no Python API officially exposed. However, the function
         `multiprocessing.forking.duplicate` is available since the introduction
         of the multiprocessing module in Python 2.6 up to the current develop-
         ment version of Python 3 (as of 2012-10-20).
@@ -74,7 +75,8 @@ class _GPipeHandler(object):
 
     def post_windows_process_inheritance(self):
         """Restore file descriptor after transfer to subprocess on Windows. Call
-        right after passing the reader/writer to a `multiprocessing.Process`.
+        in the newliy spawned process right after passing the reader/writer to
+        a `multiprocessing.Process`.
         """
         if not WINDOWS:
             return
@@ -87,42 +89,75 @@ class _GPipeHandler(object):
 
 
 class _GPipeReader(_GPipeHandler):
-    def __init__(self, pipe_read_fd, raw=False):
-        self._fd = pipe_read_fd
-        self._raw = raw        
+    def __init__(self, pipe_read_fd):
+        self._fd = pipe_read_fd   
         self._messages = deque()
         self._residual = ''
         self._descr_flag = os.O_RDONLY
+        # TODO: Research reasonable buffer size. In preliminary benchmarks,
+        # I've seen that a large buffer size (around 1M) greatly improves
+        # performance for large messages and does not hurt for small 
+        # messages.        
+        self._readbuffer = 1100000
 
-    def get(self):
+    def set_buffer(self, bufsize):
+        """Set read buffer size of `os.read()` to `bufsize`.
+        """
+        self._readbuffer = bufsize
+        
+    def get(self, raw=False):
+        """Get next message. If not available, wait in a gevent-cooperative
+        manner.
+
+        By default, the message is JSON-decoded before returned.
+        
+        Args:
+            `raw` (default: `False`): If `True`, do not JSON-decode message. 
+        
+        Returns:
+            - case `raw==False`: JSON-decoded message 
+            - case `raw==False`: message as bytestring
+        
+        Based on `gevent.os.read()`, a cooperative variant of `os.read()`.
+        """
         while not self._messages:
-            # TODO: Research reasonable buffer size
             lines = (self._residual +
-                gevent.os.read(self._fd, 99999)).splitlines(True)
+                gevent.os.read(self._fd, self._readbuffer)).splitlines(True)
             self._residual = ''
             if not lines[-1].endswith('\n'):
                 self._residual = lines.pop()
             self._messages.extend(lines)
-        if self._raw:
+        if raw:
             return self._messages.popleft()
-        # Each encoded msg has trailing \n. Could be removed with rstrip().
-        # However, it looks like the JSON decoder does it.
+        # Encoded messages are still terminated with a newline character. The 
+        # JSON decoder seems to ignore (remove) it.
         return json.loads(self._messages.popleft())
 
 
 class _GPipeWriter(_GPipeHandler):
-    def __init__(self, pipe_write_fd, raw=False):
+    def __init__(self, pipe_write_fd):
         self._fd = pipe_write_fd
-        self._raw = raw
         self._descr_flag = os.O_WRONLY
 
-    def put(self, m):
-        if not self._raw:
+    def put(self, m, raw=False):
+        """Put message into the pipe in a gevent-cooperative manner.
+
+        By default, the message is JSON-encoded before written to the pipe.
+        
+        Args:
+            `m`: JSON-encodable object
+            `raw` (default: `False`): If `True`, do not JSON-encode message (Re-
+                quires `m` to be a bytestring).
+                
+        Based on `gevent.os.write()`, a cooperative variant of `os.write()`.
+        """    
+        if not raw:
             m = json.dumps(m)+'\n' # Returns bytestring.
         # Else: user must make sure `m` is bytestring and delimit messages
         # himself via newline char.
         while True:
-            # Occasionally, not all bytes are written at once.
+            # Occasionally, not all bytes are written at once (I've seen this in
+            # extreme test cases).
             diff = len(m) - gevent.os.write(self._fd, m)
             if not diff:
                 break
