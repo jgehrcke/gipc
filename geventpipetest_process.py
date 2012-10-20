@@ -18,56 +18,53 @@ import time
 import os
 import logging
 import gevent
-from gpipe import GPipeMessenger, _GPipeReader, _GPipeWriter
+import gpipe
+from multiprocessing import Process
 
-import multiprocessing
 
 logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
-# on windows: messages per time:
-# - independent of read buffer size
 
-
-def reader(gpm, N, msg):
-    counter = 0
-    while True:
-        m = gpm.get()
-        if m != msg:
-            raise Exception("wrong message received: %r" %  m)
-        counter += 1
-        if counter == N:
-            break
-
-def writer(gpm, N, msg):
-    log.debug("HEY from writer.")
-    for i in xrange(N):
-        gpm.put(msg)
-
-        
-def process(gpm, N, msg):
-    gwrite = gevent.spawn(writer, gpm, N, msg)
-    gwrite.join()
-        
-        
 def main():
-    N = 9999
-    msg = "x"*30
-    gpm = GPipeMessenger()
+    N = 99999
+    msg = "x"*100
+    gpreader, gpwriter = gpipe.pipe()
+    log.info("Pipe initialized.")
+    gread = gevent.spawn(readgreenlet, gpreader, N, msg)
+    pwrite = Process(target=writeprocess, args=[gpwriter, N, msg])
+    pwrite.start()
+    log.info("Read greenlet and write process started.")
     t1 = time.time()
-    gread = gevent.spawn(reader, gpm, N, msg)
-    p = multiprocessing.Process(target=process, args=[gpm, N, msg])
-    p.start()
     gread.join()
     t2 = time.time()
     diff = t2-t1
-    print "duration: %s" % diff
     mpertime = N/diff
-    print "messages per second: %s" % mpertime
-    log.debug("Joining subprocess...")
-    p.join()
+    log.info("Read duration: %s s" % diff)
+    log.info("Message transmission rate: %s msgs/s" % mpertime)
+    pwrite.join()
+
+
+def writeprocess(gpwriter, N, msg):
+    gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
+    gwrite.join()
+
+
+def readgreenlet(gpreader, N, msg):
+    for i in xrange(1, N+1):
+        m = gpreader.get()
+        if m != msg:
+            raise Exception("Wrong message received: %r" %  m)
+    gpreader.close()
+
+
+def writegreenlet(gpwriter, N, msg):
+    for i in xrange(N):
+        gpwriter.put(msg)
+    gpwriter.close()
 
 
 if __name__ == "__main__":
     main()
+

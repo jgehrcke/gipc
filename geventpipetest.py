@@ -37,9 +37,8 @@ def main():
     t2 = time.time()
     diff = t2-t1
     mpertime = N/diff
-    log.info("duration: %s" % diff)
-    log.info("messages per second: %s" % mpertime)
-
+    log.info("Read duration: %s s" % diff)
+    log.info("Message transmission rate: %s msgs/s" % mpertime)
 
 def reader(gpreader, N, msg):
     for i in xrange(1, N+1):
