@@ -34,19 +34,19 @@ def pipe(raw=False):
 
 class _GPipeReader(object):
     def __init__(self, pipe_read_end, raw=False):
-        self._r = pipe_read_end
+        self._fd = pipe_read_end
         self.messages = deque()
         self.residual = ''
         self.raw = raw
 
     def close(self):
-        os.close(self._r)
+        os.close(self._fd)
 
     def get(self):
         while not self.messages:
             # TODO: Research reasonable buffer size
             lines = (self.residual +
-                gevent.os.read(self._r, 99999)).splitlines(True)
+                gevent.os.read(self._fd, 99999)).splitlines(True)
             self.residual = ''
             if not lines[-1].endswith('\n'):
                 self.residual = lines.pop()
@@ -60,11 +60,11 @@ class _GPipeReader(object):
 
 class _GPipeWriter(object):
     def __init__(self, pipe_write_end, raw=False):
-        self._w = pipe_write_end
+        self._fd = pipe_write_end
         self.raw = raw    
 
     def close(self):
-        os.close(self._w)
+        os.close(self._fd)
 
     def put(self, m):
         if not self.raw:
@@ -73,7 +73,7 @@ class _GPipeWriter(object):
         # himself via newline char.
         while True:
             # Occasionally, not all bytes are written at once.
-            diff = len(m) - gevent.os.write(self._w, m)
+            diff = len(m) - gevent.os.write(self._fd, m)
             if not diff:
                 break
             m = m[-diff:]
