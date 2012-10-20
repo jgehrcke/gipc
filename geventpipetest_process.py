@@ -16,6 +16,7 @@
 
 import time
 import os
+import sys
 import logging
 import gevent
 import gpipe
@@ -28,10 +29,22 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 99999
+    N = 999
     msg = "x"*100
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
+    
+    # prepare writer for transfer to subprocess on win32
+    if sys.platform == "win32":
+        import msvcrt
+        import multiprocessing.forking
+        writehandle = msvcrt.get_osfhandle(gpwriter._fd)
+        inheritable_writehandle = multiprocessing.forking.duplicate(
+            handle=writehandle, inheritable=True)
+        os.close(gpwriter._fd)
+        gpwriter._fd = None
+        gpwriter._ihw = inheritable_writehandle
+    
     gread = gevent.spawn(readgreenlet, gpreader, N, msg)
     pwrite = Process(target=writeprocess, args=[gpwriter, N, msg])
     pwrite.start()
@@ -47,6 +60,13 @@ def main():
 
 
 def writeprocess(gpwriter, N, msg):
+    # finalize writer transfer to subprocess on win32
+    if sys.platform == "win32":
+        import msvcrt
+        writefd = msvcrt.open_osfhandle(gpwriter._ihw, os.O_WRONLY)
+        gpwriter._fd = writefd
+        gpwriter._ihw = None
+        
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
     gwrite.join()
 
