@@ -14,6 +14,23 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""
+Example output for raw message transmission on Python 2.7.3
+on Ubuntu 10.04 on a Xeon E5630 for
+    N = 99999
+    msg = "x"*21000+'\n'
+
+19:12:01 $ python geventpipetest_process.py
+2012-10-21 19:12:04,199 main# Pipe initialized.
+2012-10-21 19:12:04,204 main# Read greenlet and write process started.
+2012-10-21 19:12:04,204 writeprocess# WRITE greenlet started from PID 28255
+2012-10-21 19:12:04,209 readgreenlet# READ greenlet started from PID 28254
+2012-10-21 19:12:09,667 main# Read duration: 5.459 s
+2012-10-21 19:12:09,668 main# Message transmission rate: 18319.271 msgs/s
+2012-10-21 19:12:09,668 main# Data transfer rate: 366.900 MB/s
+"""
+
+
 import time
 import os
 import sys
@@ -29,8 +46,8 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 999
-    msg = "x"*120000
+    N = 99999
+    msg = "x"*21000+'\n'
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     
@@ -43,11 +60,11 @@ def main():
 
     # The readgreenlet has to be started after the Process above.
     # Otherwise, it runs in both, the main process and the
-    # subprocess and tries to read from the pipe read file 
-    # descriptor from both processes. Dirty. Is there a neat
-    # way to detect such a collision?
-    # Otherwise: important rule: run subprocess before spawning
-    # ANY greenlet.
+    # subprocess and tries to read from the pipe read end in
+    # both processes. Dirty. Is there a neat way to detect such
+    # condition?
+    # Anyway, important rule: run subprocess before spawning
+    # any greenlet.
     gread = gevent.spawn(readgreenlet, gpreader, N, msg)
     t1 = time.time()
     gread.join()
@@ -73,7 +90,7 @@ def writeprocess(gpwriter, N, msg):
 def readgreenlet(gpreader, N, msg):
     log.debug("READ greenlet started from PID %s" % os.getpid())
     for i in xrange(1, N+1):
-        m = gpreader.get()
+        m = gpreader.get(raw=True)
         if m != msg:
             raise Exception("Wrong message received")
     gpreader.close()
@@ -81,7 +98,7 @@ def readgreenlet(gpreader, N, msg):
 
 def writegreenlet(gpwriter, N, msg):
     for i in xrange(N):
-        gpwriter.put(msg)
+        gpwriter.put(msg, raw=True)
     gpwriter.close()
 
 
