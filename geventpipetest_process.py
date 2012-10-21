@@ -52,7 +52,7 @@ def main():
     log.info("Pipe initialized.")
     
     # Prepare file descriptor for transfer to subprocess on Windows.
-    gpwriter.pre_windows_process_inheritance()
+    #gpwriter.pre_windows_process_inheritance()
     
     pwrite = Process(target=writeprocess, args=[gpwriter, N, msg])
     pwrite.start()
@@ -82,7 +82,7 @@ def main():
 def writeprocess(gpwriter, N, msg):
     log.debug("WRITE greenlet started from PID %s" % os.getpid())
     # Restore file descriptor after transfer to subprocess on Windows.
-    gpwriter.post_windows_process_inheritance()
+    #gpwriter.post_windows_process_inheritance()
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
     gwrite.join()
 
