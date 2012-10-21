@@ -124,6 +124,8 @@ class _GPipeReader(_GPipeHandler):
         # For large messages (> 100 kB) splitlines becomes quite expensive.
         # In _residual there is no newline, so it's stupid to include it.
         while not self._messages:
+#            lines = (self._residual +
+#                gevent.os.read(self._fd, self._readbuffer)).splitlines(True)
             lines = gevent.os.read(self._fd, self._readbuffer).splitlines(True)
             lines[0] = self._residual + lines[0]
             self._residual = ''
