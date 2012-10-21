@@ -36,7 +36,7 @@ def main():
     print("N: %s\nMINL: %s\nMAXL: %s\nBUFFER: %s" % (N, MINL, MAXL, CSIZE))
     print("Messages blob set up. Start reassembling.")
     t1 = time.time()
-    rebuilt = reassemble2()
+    rebuilt = reassemble1()
     t2 = time.time()
     if rebuilt == MESSAGES:
         print("messages rebuilt.")
@@ -79,6 +79,8 @@ Sun Oct 21 17:36:29 2012    profile
      6154    0.014    0.000    0.014    0.000 {method 'pop' of 'list' objects}
      6155    0.007    0.000    0.007    0.000 {method 'extend' of 'list' objects}
         6    0.005    0.001    0.005    0.001 {print}
+
+Compares equally to method 2 on Windows/Python3 and on Linux test system.
     """
     messages = []
     res = ""

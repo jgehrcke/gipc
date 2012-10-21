@@ -18,6 +18,7 @@ import os
 import sys
 import logging
 from collections import deque
+import itertools
 try:
     import simplejson as json
 except ImportError:
@@ -92,49 +93,49 @@ class _GPipeReader(_GPipeHandler):
     def __init__(self, pipe_read_fd):
         self._fd = pipe_read_fd   
         self._messages = deque()
-        self._residual = ''
+        self._residual = []
         self._descr_flag = os.O_RDONLY
-        # TODO: Research reasonable buffer size. In preliminary benchmarks,
-        # I've seen that a large buffer size (around 1M) greatly improves
-        # performance for large messages and does not hurt for small 
-        # messages.        
-        self._readbuffer = 1000000
+        # TODO: Research reasonable buffer size. POSIX pipes have a
+        # capacity of 65536 bytes. Make buffer OS-dependent? Measure
+        # it!
+        self._readbuffer = 65536
+        #self._readbuffer = 1000000
 
     def set_buffer(self, bufsize):
         """Set read buffer size of `os.read()` to `bufsize`.
         """
         self._readbuffer = bufsize
-        
+
+
     def get(self, raw=False):
         """Get next message. If not available, wait in a gevent-cooperative
         manner.
 
         By default, the message is JSON-decoded before returned.
-        
+
         Args:
-            `raw` (default: `False`): If `True`, do not JSON-decode message. 
-        
+            `raw` (default: `False`): If `True`, do not JSON-decode message.
+
         Returns:
-            - case `raw==False`: JSON-decoded message 
+            - case `raw==False`: JSON-decoded message
             - case `raw==False`: message as bytestring
-        
+
         Based on `gevent.os.read()`, a cooperative variant of `os.read()`.
+        Message re-assembly method is profiled, optimized, and works well
+        also for small buffer sizes.
         """
-        # Optimize parsing algorithm?
-        # For large messages (> 100 kB) splitlines becomes quite expensive.
-        # In _residual there is no newline, so it's stupid to include it.
         while not self._messages:
-#            lines = (self._residual +
-#                gevent.os.read(self._fd, self._readbuffer)).splitlines(True)
-            lines = gevent.os.read(self._fd, self._readbuffer).splitlines(True)
-            lines[0] = self._residual + lines[0]
-            self._residual = ''
-            if not lines[-1].endswith('\n'):
-                self._residual = lines.pop()
-            self._messages.extend(lines)
+            data = gevent.os.read(self._fd, self._readbuffer).splitlines(True)
+            nlend = data[-1].endswith('\n')
+            if self._residual and (nlend or len(data) > 1):
+                data[0] = ''.join(itertools.chain(self._residual, [data[0]]))
+                self._residual = []
+            if not nlend:
+                self._residual.append(data.pop())
+            self._messages.extend(data)
         if raw:
             return self._messages.popleft()
-        # Encoded messages are still terminated with a newline character. The 
+        # Encoded messages are still terminated with a newline character. The
         # JSON decoder seems to ignore (remove) it.
         return json.loads(self._messages.popleft())
 
@@ -173,7 +174,7 @@ class _GPipeWriter(_GPipeHandler):
             #    writes by other processes. """
             #
             # EAGAIN is handled within gevent.os.posix_write; partial writes
-            # are be handled by this loop.
+            # are handled by this loop.
             diff = len(m) - gevent.os.write(self._fd, m)
             if not diff:
                 break

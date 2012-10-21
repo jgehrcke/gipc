@@ -14,6 +14,21 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""
+Example output for raw message transmission on Python 2.7.3
+on Ubuntu 10.04 on a Xeon E5630 for
+    N = 99999
+    msg = "x"*10000+'\n'
+
+18:24:19 $ python geventpipetest.py
+2012-10-21 18:24:20,325 main# Pipe initialized.
+2012-10-21 18:24:20,328 main# Read&write greenlets started.
+2012-10-21 18:24:24,979 main# Read duration: 4.651 s
+2012-10-21 18:24:24,979 main# Message transmission rate: 21501.776 msgs/s
+2012-10-21 18:24:24,979 main# Data transfer rate: 205.077 MB/s
+"""
+
+
 import time
 import logging
 import gevent
@@ -26,8 +41,8 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 100
-    msg = "x"*3000000
+    N = 99999
+    msg = "x"*10000+'\n'
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
@@ -48,7 +63,7 @@ def main():
 
 def readgreenlet(gpreader, N, msg):
     for i in xrange(1, N+1):
-        m = gpreader.get()
+        m = gpreader.get(True)
         if m != msg:
             raise Exception("Wrong message received: %r" %  m)
     gpreader.close()
@@ -56,9 +71,10 @@ def readgreenlet(gpreader, N, msg):
 
 def writegreenlet(gpwriter, N, msg):
     for i in xrange(N):
-        gpwriter.put(msg)
+        gpwriter.put(msg, True)
     gpwriter.close()
 
 
 if __name__ == "__main__":
     main()
+
