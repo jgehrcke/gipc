@@ -98,7 +98,7 @@ class _GPipeReader(_GPipeHandler):
         # I've seen that a large buffer size (around 1M) greatly improves
         # performance for large messages and does not hurt for small 
         # messages.        
-        self._readbuffer = 1100000
+        self._readbuffer = 1000000
 
     def set_buffer(self, bufsize):
         """Set read buffer size of `os.read()` to `bufsize`.
@@ -124,8 +124,8 @@ class _GPipeReader(_GPipeHandler):
         # For large messages (> 100 kB) splitlines becomes quite expensive.
         # In _residual there is no newline, so it's stupid to include it.
         while not self._messages:
-            lines = (self._residual +
-                gevent.os.read(self._fd, self._readbuffer)).splitlines(True)
+            lines = gevent.os.read(self._fd, self._readbuffer).splitlines(True)
+            lines[0] = self._residual + lines[0]
             self._residual = ''
             if not lines[-1].endswith('\n'):
                 self._residual = lines.pop()
