@@ -18,7 +18,6 @@ import os
 import sys
 import logging
 from collections import deque
-import itertools
 try:
     import simplejson as json
 except ImportError:
@@ -128,7 +127,8 @@ class _GPipeReader(_GPipeHandler):
             data = gevent.os.read(self._fd, self._readbuffer).splitlines(True)
             nlend = data[-1].endswith('\n')
             if self._residual and (nlend or len(data) > 1):
-                data[0] = ''.join(itertools.chain(self._residual, [data[0]]))
+                #data[0] = ''.join(itertools.chain(self._residual, [data[0]]))
+                data[0] = ''.join(self._residual+[data[0]])
                 self._residual = []
             if not nlend:
                 self._residual.append(data.pop())
