@@ -8,10 +8,18 @@ import time
 from random import randint
 import itertools
 
+
 try:
     xrange(3)
 except NameError:
     xrange = range
+
+
+def chunks(l, n):
+    """ Yield successive n-sized chunks from l.
+    """
+    for i in xrange(0, len(l), n):
+        yield l[i:i+n]
 
 
 N = 400
