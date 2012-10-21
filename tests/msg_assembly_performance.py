@@ -36,7 +36,7 @@ def main():
     print("N: %s\nMINL: %s\nMAXL: %s\nBUFFER: %s" % (N, MINL, MAXL, CSIZE))
     print("Messages blob set up. Start reassembling.")
     t1 = time.time()
-    rebuilt = reassemble1()
+    rebuilt = reassemble2()
     t2 = time.time()
     if rebuilt == MESSAGES:
         print("messages rebuilt.")
@@ -135,7 +135,8 @@ Sun Oct 21 17:36:53 2012    profile
             #res.append(data[0])
             #data[0] = ''.join(res)
             #data[0] = ''.join(itertools.chain.from_iterable([res, [data[0]]]))
-            data[0] = ''.join(itertools.chain(res, [data[0]]))
+            #data[0] = ''.join(itertools.chain(res, [data[0]]))
+            data[0] = ''.join(res + [data[0]])
             res = []
         if not nlend:
             res.append(data.pop())
