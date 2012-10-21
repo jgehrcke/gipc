@@ -35,11 +35,20 @@ def pipe():
 
 
 class _GPipeHandler(object):
+    def __init__(self):
+        self._legit_pid = os.getpid()
+
     def close(self):
         """Close pipe file descriptor."""
+        self._validate_process()
         os.close(self._fd)
 
-    def pre_windows_process_inheritance(self):
+    def _validate_process(self):     
+        if os.getpid() != self._legit_pid:
+            return
+            raise RuntimeError("GPipeHandler not registered for current process.")
+
+    def pre_fork(self):
         """Prepare file descriptor for transfer to subprocess on Windows. Call
         right before passing the reader/writer to a `multiprocessing.Process`.
 
@@ -60,36 +69,54 @@ class _GPipeHandler(object):
 
         The code below is strongly influenced by multiprocessing/forking.py.
         """
+        # Brutally force user to call `post_fork` after `pre_fork`.
+        log.debug("%s: safely store fd" % self)
+        self._tempfd = self._fd
+        self._fd = None
         if not WINDOWS:
             return
         import msvcrt
         from multiprocessing.forking import duplicate
         # Get Windows file handle from C file descriptor.
-        h = msvcrt.get_osfhandle(self._fd)
+        h = msvcrt.get_osfhandle(self._tempfd)
         # Duplicate file handle, rendering the duplicate inheritable by
         # processes created by the current process. Store duplicate.
         self._ih = duplicate(handle=h, inheritable=True)
         # Close and get rid of the "old" file descriptor.
-        os.close(self._fd)
-        self._fd = None
+        os.close(self._tempfd)
 
-    def post_windows_process_inheritance(self):
+    def post_fork(self, parent=False):
         """Restore file descriptor after transfer to subprocess on Windows. Call
         in the newliy spawned process right after passing the reader/writer to
         a `multiprocessing.Process`.
         """
-        if not WINDOWS:
-            return
-        import msvcrt            
         if self._fd is not None:
-            raise Exception("First, call `pre_windows_process_inheritance`.")
-        # Get C file descriptor from (iherited) Windows file handle, store it.    
-        self._fd = msvcrt.open_osfhandle(self._ih, self._descr_flag)
-        del self._ih
+            raise RuntimeError("First, call `pre_fork`.")
+        if WINDOWS:
+            import msvcrt
+            # Get C file descriptor from (iherited) Windows file handle, store it.
+            self._tempfd = msvcrt.open_osfhandle(self._ih, self._descr_flag)
+            del self._ih
+        pid = os.getpid()
+        if pid != self._legit_pid:
+            # Child: keep file descriptor open (restore it)
+            log.debug("postfork %s in child: restore fd." % self)
+            self._fd = self._tempfd
+            del self._tempfd
+            self._legit_pid = pid
+        else:
+            # Parent: close file descriptor if explicitly stated otherwise
+            if not parent:
+                log.debug("postfork %s in parent: close fd." % self)
+                os.close(self._tempfd)
+            else:
+                log.debug("postform %s in parent: restore fd")
+                self._fd = self._tempfd
 
 
 class _GPipeReader(_GPipeHandler):
     def __init__(self, pipe_read_fd):
+        _GPipeHandler.__init__(self)
         self._fd = pipe_read_fd   
         self._messages = deque()
         self._residual = []
@@ -123,6 +150,7 @@ class _GPipeReader(_GPipeHandler):
         Message re-assembly method is profiled, optimized, and works well
         also for small buffer sizes.
         """
+        #self._validate_process()
         while not self._messages:
             data = gevent.os.read(self._fd, self._readbuffer).splitlines(True)
             nlend = data[-1].endswith('\n')
@@ -139,9 +167,13 @@ class _GPipeReader(_GPipeHandler):
         # JSON decoder seems to ignore (remove) it.
         return json.loads(self._messages.popleft())
 
+    def __str__(self):
+        return "_GPipeReader"
+
 
 class _GPipeWriter(_GPipeHandler):
     def __init__(self, pipe_write_fd):
+        _GPipeHandler.__init__(self)
         self._fd = pipe_write_fd
         self._descr_flag = os.O_WRONLY
 
@@ -157,6 +189,7 @@ class _GPipeWriter(_GPipeHandler):
                 
         Based on `gevent.os.write()`, a cooperative variant of `os.write()`.
         """    
+        #self._validate_process()
         if not raw:
             m = json.dumps(m)+'\n' # Returns bytestring.
         # Else: user must make sure `m` is bytestring and delimit messages
@@ -179,3 +212,6 @@ class _GPipeWriter(_GPipeHandler):
             if not diff:
                 break
             m = m[-diff:]
+
+    def __str__(self):
+        return "_GPipeWriter"
