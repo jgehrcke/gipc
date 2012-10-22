@@ -150,16 +150,14 @@ class _GPipeReader(_GPipeHandler):
         self._residual = []
         self._descr_flag = os.O_RDONLY
         # TODO: Research reasonable buffer size. POSIX pipes have a
-        # capacity of 65536 bytes. Make buffer OS-dependent? Measure
-        # it!
+        # capacity of 65536 bytes. Make buffer OS-dependent? On Windows,
+        # for IPC, 65536 yields 2x performance as with 1000000.
         self._readbuffer = 65536
-        #self._readbuffer = 1000000
 
     def set_buffer(self, bufsize):
         """Set read buffer size of `os.read()` to `bufsize`.
         """
         self._readbuffer = bufsize
-
 
     def get(self, raw=False):
         """Get next message. If not available, wait in a gevent-cooperative
@@ -183,7 +181,6 @@ class _GPipeReader(_GPipeHandler):
             data = gevent.os.read(self._fd, self._readbuffer).splitlines(True)
             nlend = data[-1].endswith('\n')
             if self._residual and (nlend or len(data) > 1):
-                #data[0] = ''.join(itertools.chain(self._residual, [data[0]]))
                 data[0] = ''.join(self._residual+[data[0]])
                 self._residual = []
             if not nlend:
