@@ -14,6 +14,13 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+# TODO:- handler encode/decode methods that are called by writer/
+#        reader. Facilitates implementation of other codecs in the
+#        future (e.g. pickle).
+#      - split pre/post fork methods and windows-specific modifications
+#      - properly deal with _validate_process (profile it and make it
+#        deactivatable
+
 import os
 import sys
 import logging
