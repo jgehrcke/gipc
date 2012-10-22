@@ -47,7 +47,7 @@ log.setLevel(logging.DEBUG)
 
 def main():
     N = 99999
-    msg = "x"*21000+'\n'
+    msg = "a"*256+'\n'
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     
