@@ -14,12 +14,33 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-# TODO:- handler encode/decode methods that are called by writer/
-#        reader. Facilitates implementation of other codecs in the
-#        future (e.g. pickle).
-#      - split pre/post fork methods and windows-specific modifications
-#      - properly deal with _validate_process (profile it and make it
-#        deactivatable
+"""
+ TODO:- handler encode/decode methods that are called by writer/
+        reader. Facilitates implementation of other codecs in the
+        future (e.g. pickle).
+      - split pre/post fork methods and windows-specific modifications
+      - properly deal with _validate_process (profile it and make it
+        deactivatable
+
+possibly in contradiction with the above:
+
+      - yet better: add spawn_process_with_me method that wraps a call
+        to Process(target, args, kwargs), executes gevent reinit in
+        child and closes 2 unnecessary file handlers after forking
+      - increase communication performance (increase bandwidth, decrease
+        latency): implement binary communication protocol (look at
+        multiprocessing Connections, make use of pickle, 
+        UNIX domain sockets, ...
+
+Where we currently manage about 400 MB/s, lmbench on the same machine does:
+
+[jang@pi:/usr/lib/lmbench/bin/x86_64-linux-gnu]
+22:02:00 $ ./bw_unix
+AF_UNIX sock stream bandwidth: 8343.00 MB/sec
+[jang@pi:/usr/lib/lmbench/bin/x86_64-linux-gnu]
+22:02:42 $ ./bw_pipe
+Pipe bandwidth: 1523.87 MB/sec
+"""
 
 import os
 import sys
