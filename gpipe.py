@@ -58,6 +58,7 @@ try:
 except ImportError:
     import json
 import gevent.os
+import gevent
 
 
 WINDOWS = sys.platform == "win32"
@@ -90,10 +91,11 @@ class _GPipeHandler(object):
     def _validate_process(self):
         if os.getpid() != self._legit_pid:
             return
-            raise RuntimeError("GPipeHandler not registered for current process.")
+            raise RuntimeError(
+                "GPipeHandler not registered for current process.")
 
     def pre_fork(self):
-        """Prepare file descriptor for transfer to subprocess on Windows. Call
+        """Prepare file descriptor for transfer to subprocess. Call
         right before passing the reader/writer to a `multiprocessing.Process`.
 
         By default, file descriptors are not inherited by subprocesses on
@@ -108,13 +110,11 @@ class _GPipeHandler(object):
         The Python `subprocess` and `multiprocessing` modules make use of this.
         There is no Python API officially exposed. However, the function
         `multiprocessing.forking.duplicate` is available since the introduction
-        of the multiprocessing module in Python 2.6 up to the current develop-
-        ment version of Python 3 (as of 2012-10-20).
-
-        The code below is strongly influenced by multiprocessing/forking.py.
+        of the multiprocessing module in Python 2.6 up to the development
+        version of Python 3 as of 2012-10-20. The code below is influenced by
+        multiprocessing's forking.py.
         """
-        # Brutally force user to call `post_fork` after `pre_fork`.
-        log.debug("%s: safely store fd" % self)
+        # Force user to call `post_fork` after `pre_fork`: hide fd
         self._tempfd = self._fd
         self._fd = None
         if not WINDOWS:
@@ -126,17 +126,15 @@ class _GPipeHandler(object):
         # Duplicate file handle, rendering the duplicate inheritable by
         # processes created by the current process. Store duplicate.
         self._ihfd = duplicate(handle=h, inheritable=True)
-        # Close and get rid of the "old" file descriptor.
+        # Close "old" (in-inheritable) file descriptor.
         os.close(self._tempfd)
 
-    def post_fork(self, parent=False):
-        """Restore file descriptor after transfer to subprocess on Windows. Call
-        in the newliy spawned process right after passing the reader/writer to
-        a `multiprocessing.Process`.
+    def post_fork(self):
+        """
         """
         if self._fd is not None:
             raise RuntimeError(
-                "Call to `post_fork` without prior call to `pre_fork`.")
+                "`post_fork` called without prior call to `pre_fork`.")
         if WINDOWS:
             import msvcrt
             # Get C file descriptor from Windows file handle.
@@ -144,19 +142,18 @@ class _GPipeHandler(object):
             del self._ihfd
         pid = os.getpid()
         if pid != self._legit_pid:
-            # Child: keep file descriptor open (restore it)
-            log.debug("postfork %s in child: restore fd." % self)
+            # Child:
+            # Restore file descriptor
             self._fd = self._tempfd
             del self._tempfd
+            # Make child's PID the legit PID
             self._legit_pid = pid
+            # Re-init the gevent event loop (get rid of events and greenlets
+            # and events that have been registered/spawned before forking)
+            gevent.reinit()
         else:
-            # Parent: close file descriptor if explicitly stated otherwise
-            if not parent:
-                log.debug("postfork %s in parent: close fd." % self)
-                os.close(self._tempfd)
-            else:
-                log.debug("postform %s in parent: restore fd")
-                self._fd = self._tempfd
+            # Parent: close file descriptor
+            os.close(self._tempfd)
 
 
 class _GPipeReader(_GPipeHandler):
