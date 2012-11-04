@@ -20,14 +20,20 @@ on Ubuntu 10.04 on a Xeon E5630 for
     N = 99999
     msg = "x"*21000+'\n'
 
-19:12:01 $ python geventpipetest_process.py
-2012-10-21 19:12:04,199 main# Pipe initialized.
-2012-10-21 19:12:04,204 main# Read greenlet and write process started.
-2012-10-21 19:12:04,204 writeprocess# WRITE greenlet started from PID 28255
-2012-10-21 19:12:04,209 readgreenlet# READ greenlet started from PID 28254
 2012-10-21 19:12:09,667 main# Read duration: 5.459 s
 2012-10-21 19:12:09,668 main# Message transmission rate: 18319.271 msgs/s
 2012-10-21 19:12:09,668 main# Data transfer rate: 366.900 MB/s
+
+New binary protocol:
+message size that optimizes data transfer rage:
+2012-11-04 21:41:35,680 test_pipespeed# Read duration: 1.836 s
+2012-11-04 21:41:35,680 test_pipespeed# Message transmission rate: 17851.744 msgs/s
+2012-11-04 21:41:35,680 test_pipespeed# Data transfer rate: 1021.468 MB/s
+
+Small messages:
+2012-11-04 21:42:05,011 test_pipespeed# Read duration: 1.160 s
+2012-11-04 21:42:05,011 test_pipespeed# Message transmission rate: 56520.141 msgs/s
+2012-11-04 21:42:05,011 test_pipespeed# Data transfer rate: 0.054 MB/s
 """
 
 
@@ -35,130 +41,75 @@ import os
 import sys
 import logging
 import time
-if sys.platform == 'win32':
-    TIMER = time.clock
-else:
-    TIMER = time.time
 from multiprocessing import Process, Condition
-
 import gevent
 import gpipe
+
 
 logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
+if sys.platform == 'win32':
+    TIMER = time.clock
+else:
+    TIMER = time.time
+
 
 MSG = 'A' * 59999
 
 
+def main():
+    # Init GPipe.
+    
+    # Spawn a greenlet that does something on the side.
+    useless = gevent.spawn(do_something_useless_on_the_side)
+
+    condition = Condition()
+    elapsed = 0
+    N = 1
+    DELTA = 1
+
+    while elapsed < DELTA:
+        reader, writer = gpipe.pipe()
+        writer.pre_fork()
+        p = Process(target=writer_process, args=(writer, condition, N))
+        condition.acquire()
+        p.start()
+        writer.post_fork()
+        condition.wait()
+        condition.release()
+        result = None
+        t = TIMER()
+        while result != 'stop':
+            result = reader.pickleget()
+        elapsed = TIMER() - t
+        p.join()
+        N *= 3
+
+    mpertime = N/elapsed
+    datasize_mb = float(len(MSG)*N)/1024/1024
+    datarate_mb = datasize_mb/elapsed
+    log.info("Read duration: %.3f s" % elapsed)
+    log.info("Average message transmission rate: %.3f msgs/s" % mpertime)
+    log.info("Data transfer rate: %.3f MB/s" % datarate_mb)
+    useless.join()
+
+
 def writer_process(writer, condition, N):
-    log.debug("write PID: %s" % os.getpid())    
     writer.post_fork()
-    m = MSG
     condition.acquire()
     condition.notify()
     condition.release()
     for i in xrange(N):
-        writer.pickleput(m)
-    writer.pickleput('stop')  
+        writer.pickleput(MSG)
+    writer.pickleput('stop')
 
 
-def main():
-    DELTA = 1      
-        
-    def test_pipespeed():
-        reader, writer = gpipe.pipe()
-        condition = Condition()
-        elapsed = 0
-        N = 1
-        writer.pre_fork()  
-        while elapsed < DELTA:
-            N *= 2
-            p = Process(target=writer_process, args=(writer, condition, N))        
-            condition.acquire()
-            p.start()
-            condition.wait()
-            condition.release()
-            
-            result = None
-            t = TIMER()
-            while result != 'stop':
-                result = reader.pickleget()
-            elapsed = TIMER() - t
-            p.join()
-        mpertime = N/elapsed
-        datasize_mb = float(len(MSG)*N)/1024/1024
-        datarate_mb = datasize_mb/elapsed
-        log.info("Read duration: %.3f s" % elapsed)
-        log.info("Message transmission rate: %.3f msgs/s" % mpertime)
-        log.info("Data transfer rate: %.3f MB/s" % datarate_mb)
-        print N, 'objects passed through connection in',elapsed,'seconds'
-        print 'average number/sec:', N/elapsed
-
-    test_pipespeed()
-    log.debug("should exit")
-    sys.exit()
-
-
-
-    N = 9999
-    msg = "a"*90000
-    gpreader, gpwriter = gpipe.pipe()
-    log.info("Pipe initialized.")
-    
-    # Prepare file descriptor for transfer to subprocess on Windows.
-    #gpwriter.pre_windows_process_inheritance()
-    
-    gpwriter.pre_fork()
-    pwrite = Process(target=writeprocess, args=[gpwriter, N, msg])
-    pwrite.start()
-    log.info("Read greenlet and write process started.")
-
-    # The readgreenlet has to be started after the Process above.
-    # Otherwise, it runs in both, the main process and the
-    # subprocess and tries to read from the pipe read end in
-    # both processes. Dirty. Is there a neat way to detect such
-    # condition?
-    # Anyway, important rule: run subprocess before spawning
-    # any greenlet.
-    gread = gevent.spawn(readgreenlet, gpreader, N, msg)
-    t1 = time.time()
-    gread.join()
-    t2 = time.time()
-    tdiff = t2-t1
-    mpertime = N/tdiff
-    datasize_mb = float(len(msg)*N)/1024/1024
-    datarate_mb = datasize_mb/tdiff
-    log.info("Read duration: %.3f s" % tdiff)
-    log.info("Message transmission rate: %.3f msgs/s" % mpertime)
-    log.info("Data transfer rate: %.3f MB/s" % datarate_mb)
-    pwrite.join()
-
-    
-def writeprocess(gpwriter, N, msg):
-    log.debug("WRITE greenlet started from PID %s" % os.getpid())
-    # Restore file descriptor after transfer to subprocess on Windows.
-    gpwriter.post_fork()
-    for i in xrange(N):
-        #gpwriter.put(msg, raw=True)
-        gpwriter.pickleput(msg)   
-
-
-def readgreenlet(gpreader, N, msg):
-    log.debug("READ greenlet started from PID %s" % os.getpid())
-    for i in xrange(1, N+1):
-        #m = gpreader.get(raw=True)
-        m = gpreader.pickleget()
-        if m != msg:
-            raise Exception("Wrong message received")
-    gpreader.close()
-
-
-def writegreenlet(gpwriter, N, msg):
-    for i in xrange(N):
-        #gpwriter.put(msg, raw=True)
-        gpwriter.pickleput(msg)        
-    gpwriter.close()
+def do_something_useless_on_the_side():
+    gevent.sleep(0.5)
+    log.info("I'm doing nothing.")
+    gevent.sleep(1)
+    log.info("Still nothing.")
 
 
 if __name__ == "__main__":
