@@ -55,7 +55,7 @@ else:
     TIMER = time.time
 
 
-MSG = 'A' * 59999
+MSG = 'A' * 9999
 
 
 def main():
@@ -70,6 +70,7 @@ def main():
     DELTA = 1
 
     while elapsed < DELTA:
+        N *= 3
         reader, writer = gpipe.pipe()
         writer.pre_fork()
         p = Process(target=writer_process, args=(writer, condition, N))
@@ -84,7 +85,6 @@ def main():
             result = reader.pickleget()
         elapsed = TIMER() - t
         p.join()
-        N *= 3
 
     mpertime = N/elapsed
     datasize_mb = float(len(MSG)*N)/1024/1024
