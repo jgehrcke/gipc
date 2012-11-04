@@ -44,16 +44,17 @@ from multiprocessing import Process, Condition
 import gevent
 import gpipe
 
-
-
 logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
+MSG = 'A' * 59999
+
+
 def writer_process(writer, condition, N):
     log.debug("write PID: %s" % os.getpid())    
     writer.post_fork()
-    m = '0' * 9999
+    m = MSG
     condition.acquire()
     condition.notify()
     condition.release()
@@ -85,7 +86,12 @@ def main():
                 result = reader.pickleget()
             elapsed = TIMER() - t
             p.join()
-
+        mpertime = N/elapsed
+        datasize_mb = float(len(MSG)*N)/1024/1024
+        datarate_mb = datasize_mb/elapsed
+        log.info("Read duration: %.3f s" % elapsed)
+        log.info("Message transmission rate: %.3f msgs/s" % mpertime)
+        log.info("Data transfer rate: %.3f MB/s" % datarate_mb)
         print N, 'objects passed through connection in',elapsed,'seconds'
         print 'average number/sec:', N/elapsed
 
