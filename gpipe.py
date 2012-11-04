@@ -29,7 +29,7 @@ possibly in contradiction with the above:
         child and closes 2 unnecessary file handlers after forking
       - increase communication performance (increase bandwidth, decrease
         latency): implement binary communication protocol (look at
-        multiprocessing Connections, make use of pickle, 
+        multiprocessing Connections, make use of pickle,
         UNIX domain sockets, ...
 
 Where we currently manage about 400 MB/s, lmbench on the same machine does:
@@ -45,6 +45,13 @@ Pipe bandwidth: 1523.87 MB/sec
 import os
 import sys
 import logging
+import io
+import struct
+try:
+   import cPickle as pickle
+except:
+   import pickle
+
 from collections import deque
 try:
     import simplejson as json
@@ -58,6 +65,15 @@ log = logging.getLogger()
 
 
 def pipe():
+    # Windows (msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx):
+    #   - CreatePipe(&read, &write, NULL, 0)
+    #   - Create an anonymous pipe, let system handle buffer size.
+    #   - Anonymous pipes are implemented using a named pipe with a unique name.
+    #   - Asynchronous (overlapped) read and write operations are not supported
+    #     by anonymous pipes
+    # Posix (http://linux.die.net/man/2/pipe):
+    #   - pipe(fds)
+    #   - on Linux, the pipe buffer usually is 4096 bytes
     r, w = os.pipe()
     return _GPipeReader(r), _GPipeWriter(w)
 
@@ -71,7 +87,7 @@ class _GPipeHandler(object):
         self._validate_process()
         os.close(self._fd)
 
-    def _validate_process(self):     
+    def _validate_process(self):
         if os.getpid() != self._legit_pid:
             return
             raise RuntimeError("GPipeHandler not registered for current process.")
@@ -145,7 +161,7 @@ class _GPipeHandler(object):
 class _GPipeReader(_GPipeHandler):
     def __init__(self, pipe_read_fd):
         _GPipeHandler.__init__(self)
-        self._fd = pipe_read_fd   
+        self._fd = pipe_read_fd
         self._messages = deque()
         self._residual = []
         self._descr_flag = os.O_RDONLY
@@ -158,6 +174,27 @@ class _GPipeReader(_GPipeHandler):
         """Set read buffer size of `os.read()` to `bufsize`.
         """
         self._readbuffer = bufsize
+
+    def _recv_in_buffer(self, size):
+        #log.debug("recv in buffer")
+        readbuf = io.BytesIO()
+        remaining = size
+        while remaining > 0:
+            chunk = gevent.os.read(self._fd, remaining)
+            n = len(chunk)
+            if n == 0:
+                if remaining == size:
+                    raise EOFError
+                else:
+                    raise IOError("Message interrupted by EOF")
+            readbuf.write(chunk)
+            remaining -= n
+        #log.debug("read object!")
+        return readbuf
+        
+    def pickleget(self):
+        messagesize,  = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
+        return pickle.loads(self._recv_in_buffer(messagesize).getvalue())
 
     def get(self, raw=False):
         """Get next message. If not available, wait in a gevent-cooperative
@@ -202,18 +239,30 @@ class _GPipeWriter(_GPipeHandler):
         self._fd = pipe_write_fd
         self._descr_flag = os.O_WRONLY
 
+    def _write(self, bindata):
+        while True:
+            diff = len(bindata) - gevent.os.write(self._fd, bindata)
+            if not diff:
+                break
+            bindata = bindata[-diff:]        
+        
+    def pickleput(self, o):
+        bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
+        self._write(struct.pack("!i", len(bindata)))
+        self._write(bindata)    
+        
     def put(self, m, raw=False):
         """Put message into the pipe in a gevent-cooperative manner.
 
         By default, the message is JSON-encoded before written to the pipe.
-        
+
         Args:
             `m`: JSON-encodable object
             `raw` (default: `False`): If `True`, do not JSON-encode message (Re-
                 quires `m` to be a bytestring).
-                
+
         Based on `gevent.os.write()`, a cooperative variant of `os.write()`.
-        """    
+        """
         #self._validate_process()
         if not raw:
             m = json.dumps(m)+'\n' # Returns bytestring.

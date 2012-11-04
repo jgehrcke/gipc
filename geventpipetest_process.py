@@ -46,14 +46,15 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 99999
-    msg = "a"*256+'\n'
+    N = 9999
+    msg = "a"*1000+'\n'
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     
     # Prepare file descriptor for transfer to subprocess on Windows.
     #gpwriter.pre_windows_process_inheritance()
     
+    gpwriter.pre_fork()
     pwrite = Process(target=writeprocess, args=[gpwriter, N, msg])
     pwrite.start()
     log.info("Read greenlet and write process started.")
@@ -82,7 +83,7 @@ def main():
 def writeprocess(gpwriter, N, msg):
     log.debug("WRITE greenlet started from PID %s" % os.getpid())
     # Restore file descriptor after transfer to subprocess on Windows.
-    #gpwriter.post_windows_process_inheritance()
+    gpwriter.post_fork()
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
     gwrite.join()
 
@@ -90,7 +91,8 @@ def writeprocess(gpwriter, N, msg):
 def readgreenlet(gpreader, N, msg):
     log.debug("READ greenlet started from PID %s" % os.getpid())
     for i in xrange(1, N+1):
-        m = gpreader.get(raw=True)
+        #m = gpreader.get(raw=True)
+        m = gpreader.pickleget()
         if m != msg:
             raise Exception("Wrong message received")
     gpreader.close()
@@ -98,7 +100,8 @@ def readgreenlet(gpreader, N, msg):
 
 def writegreenlet(gpwriter, N, msg):
     for i in xrange(N):
-        gpwriter.put(msg, raw=True)
+        #gpwriter.put(msg, raw=True)
+        gpwriter.pickleput(msg)        
     gpwriter.close()
 
 
