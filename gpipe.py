@@ -125,7 +125,7 @@ class _GPipeHandler(object):
         h = msvcrt.get_osfhandle(self._tempfd)
         # Duplicate file handle, rendering the duplicate inheritable by
         # processes created by the current process. Store duplicate.
-        self._ih = duplicate(handle=h, inheritable=True)
+        self._ihfd = duplicate(handle=h, inheritable=True)
         # Close and get rid of the "old" file descriptor.
         os.close(self._tempfd)
 
@@ -135,12 +135,13 @@ class _GPipeHandler(object):
         a `multiprocessing.Process`.
         """
         if self._fd is not None:
-            raise RuntimeError("First, call `pre_fork`.")
+            raise RuntimeError(
+                "Call to `post_fork` without prior call to `pre_fork`.")
         if WINDOWS:
             import msvcrt
-            # Get C file descriptor from (iherited) Windows file handle, store it.
-            self._tempfd = msvcrt.open_osfhandle(self._ih, self._descr_flag)
-            del self._ih
+            # Get C file descriptor from Windows file handle.
+            self._tempfd = msvcrt.open_osfhandle(self._ihfd, self._descr_flag)
+            del self._ihfd
         pid = os.getpid()
         if pid != self._legit_pid:
             # Child: keep file descriptor open (restore it)

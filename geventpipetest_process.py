@@ -31,23 +31,72 @@ on Ubuntu 10.04 on a Xeon E5630 for
 """
 
 
-import time
 import os
 import sys
 import logging
+import time
+if sys.platform == 'win32':
+    TIMER = time.clock
+else:
+    TIMER = time.time
+from multiprocessing import Process, Condition
+
 import gevent
 import gpipe
-from multiprocessing import Process
+
 
 
 logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
+def writer_process(writer, condition, N):
+    log.debug("write PID: %s" % os.getpid())    
+    writer.post_fork()
+    m = '0' * 9999
+    condition.acquire()
+    condition.notify()
+    condition.release()
+    for i in xrange(N):
+        writer.pickleput(m)
+    writer.pickleput('stop')  
+
 
 def main():
+    DELTA = 1      
+        
+    def test_pipespeed():
+        reader, writer = gpipe.pipe()
+        condition = Condition()
+        elapsed = 0
+        N = 1
+        writer.pre_fork()  
+        while elapsed < DELTA:
+            N *= 2
+            p = Process(target=writer_process, args=(writer, condition, N))        
+            condition.acquire()
+            p.start()
+            condition.wait()
+            condition.release()
+            
+            result = None
+            t = TIMER()
+            while result != 'stop':
+                result = reader.pickleget()
+            elapsed = TIMER() - t
+            p.join()
+
+        print N, 'objects passed through connection in',elapsed,'seconds'
+        print 'average number/sec:', N/elapsed
+
+    test_pipespeed()
+    log.debug("should exit")
+    sys.exit()
+
+
+
     N = 9999
-    msg = "a"*1000+'\n'
+    msg = "a"*90000
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     
@@ -84,8 +133,9 @@ def writeprocess(gpwriter, N, msg):
     log.debug("WRITE greenlet started from PID %s" % os.getpid())
     # Restore file descriptor after transfer to subprocess on Windows.
     gpwriter.post_fork()
-    gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
-    gwrite.join()
+    for i in xrange(N):
+        #gpwriter.put(msg, raw=True)
+        gpwriter.pickleput(msg)   
 
 
 def readgreenlet(gpreader, N, msg):
