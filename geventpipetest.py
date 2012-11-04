@@ -41,8 +41,8 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 99999
-    msg = "x"*10000+'\n'
+    N = 9999
+    msg = "x"*100+'\n'
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
@@ -63,7 +63,8 @@ def main():
 
 def readgreenlet(gpreader, N, msg):
     for i in xrange(1, N+1):
-        m = gpreader.get(True)
+        #m = gpreader.pickleget()
+        m = gpreader.get(True)        
         if m != msg:
             raise Exception("Wrong message received: %r" %  m)
     gpreader.close()
@@ -71,7 +72,8 @@ def readgreenlet(gpreader, N, msg):
 
 def writegreenlet(gpwriter, N, msg):
     for i in xrange(N):
-        gpwriter.put(msg, True)
+        #gpwriter.pickleput(msg)
+        gpwriter.put(msg, True)        
     gpwriter.close()
 
 
