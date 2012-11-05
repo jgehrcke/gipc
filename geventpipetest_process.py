@@ -60,7 +60,7 @@ MSG = 'A' * 9999
 
 def main():
     # Init GPipe.
-    
+
     # Spawn a greenlet that does something on the side.
     useless = gevent.spawn(do_something_useless_on_the_side)
 
@@ -72,11 +72,11 @@ def main():
     while elapsed < DELTA:
         N *= 3
         reader, writer = gpipe.pipe()
-        writer.pre_fork()
-        p = Process(target=writer_process, args=(writer, condition, N))
         condition.acquire()
-        p.start()
-        writer.post_fork()
+        p = gpipe.start_process(
+            writer,
+            writer_process,
+            kwargs={'condition': condition, 'N': N})
         condition.wait()
         condition.release()
         result = None
@@ -85,6 +85,7 @@ def main():
             result = reader.pickleget()
         elapsed = TIMER() - t
         p.join()
+        #elapsed = 5
 
     mpertime = N/elapsed
     datasize_mb = float(len(MSG)*N)/1024/1024
@@ -96,7 +97,6 @@ def main():
 
 
 def writer_process(writer, condition, N):
-    writer.post_fork()
     condition.acquire()
     condition.notify()
     condition.release()
@@ -106,10 +106,10 @@ def writer_process(writer, condition, N):
 
 
 def do_something_useless_on_the_side():
-    gevent.sleep(0.5)
-    log.info("I'm doing nothing.")
-    gevent.sleep(1)
-    log.info("Still nothing.")
+    gevent.sleep(0.1)
+    log.info("I'm doing nothing. PID %s" % os.getpid())
+    gevent.sleep(0.1)
+    log.info("Still nothing. PID %s" % os.getpid())
 
 
 if __name__ == "__main__":
