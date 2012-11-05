@@ -15,31 +15,6 @@
 #   limitations under the License.
 
 """
- TODO:- handler encode/decode methods that are called by writer/
-        reader. Facilitates implementation of other codecs in the
-        future (e.g. pickle).
-      - split pre/post fork methods and windows-specific modifications
-      - properly deal with _validate_process (profile it and make it
-        deactivatable
-
-possibly in contradiction with the above:
-
-      - yet better: add spawn_process_with_me method that wraps a call
-        to Process(target, args, kwargs), executes gevent reinit in
-        child and closes 2 unnecessary file handlers after forking
-      - increase communication performance (increase bandwidth, decrease
-        latency): implement binary communication protocol (look at
-        multiprocessing Connections, make use of pickle,
-        UNIX domain sockets, ...
-
-Where we currently manage about 400 MB/s, lmbench on the same machine does:
-
-[jang@pi:/usr/lib/lmbench/bin/x86_64-linux-gnu]
-22:02:00 $ ./bw_unix
-AF_UNIX sock stream bandwidth: 8343.00 MB/sec
-[jang@pi:/usr/lib/lmbench/bin/x86_64-linux-gnu]
-22:02:42 $ ./bw_pipe
-Pipe bandwidth: 1523.87 MB/sec
 """
 
 import os
@@ -47,11 +22,14 @@ import sys
 import logging
 import io
 import struct
+from multiprocessing import Process
 try:
    import cPickle as pickle
 except:
    import pickle
-
+WINDOWS = sys.platform == "win32"
+if WINDOWS:
+    import msvcrt
 from collections import deque
 try:
     import simplejson as json
@@ -60,33 +38,94 @@ except ImportError:
 import gevent.os
 import gevent
 
-
-WINDOWS = sys.platform == "win32"
 log = logging.getLogger()
+
+# Define non-blocking read and write functions
+if hasattr(gevent.os, 'nb_write'):
+    # Usually POSIX (actual non-blocking I/O)
+    _READ = gevent.os.nb_read
+    _WRITE = gevent.os.nb_write
+else:
+    # Usually Windows (fake non-blocking I/O based on threadpool)
+    _READ = gevent.os.tb_read
+    _WRITE = gevent.os.tb_write
+
+
+_all_handles = []
 
 
 def pipe():
-    # Windows (msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx):
-    #   - CreatePipe(&read, &write, NULL, 0)
-    #   - Create an anonymous pipe, let system handle buffer size.
-    #   - Anonymous pipes are implemented using a named pipe with a unique name.
-    #   - Asynchronous (overlapped) read and write operations are not supported
+    # on Windows (msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx):
+    #   - based on CreatePipe(&read, &write, NULL, 0)
+    #   - creates an anonymous pipe, lets system handle buffer size.
+    #   - anonymous pipes are implemented using a named pipe with a unique name.
+    #   - asynchronous (overlapped) read and write operations are not supported
     #     by anonymous pipes
-    # Posix (http://linux.die.net/man/2/pipe):
-    #   - pipe(fds)
+    # POSIX (http://linux.die.net/man/2/pipe):
+    #   - based on system call pipe(fds)
     #   - on Linux, the pipe buffer usually is 4096 bytes
     r, w = os.pipe()
-    return _GPipeReader(r), _GPipeWriter(w)
+    reader = _GPipeReader(r)
+    writer = _GPipeWriter(w)
+    _all_handles.append(reader)
+    _all_handles.append(writer)
+    return reader, writer
+
+
+def _subprocess(target, childhandles, kwargs):
+    # Re-init the gevent event loop (get rid of events and greenlets
+    # that have been registered/spawned before forking)
+    gevent.reinit()
+    h = gevent.get_hub()
+    #h.loop.destroy()
+    #h.loop.__init__()
+    print repr(h)
+    for h in childhandles:
+        h.post_fork_windows()
+    # Close file handlers (pipe ends) in child that are not intended for
+    # further usage.
+    for h in _all_handles:
+        if not h in childhandles:
+            h.close()
+    target(*childhandles, **kwargs)
+
+
+def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
+    if not (isinstance(childhandles, list) or isinstance(childhandles, tuple)):
+        childhandles = (childhandles,)
+    for h in childhandles:
+        h.pre_fork_windows()
+    p = Process(
+        target=_subprocess,
+        name=name,
+        args=(target, childhandles, kwargs))
+    if daemon is not None:
+        p.daemon = daemon
+    p.start()
+    # Close file handlers in parent that are not further required.
+    for h in childhandles:
+        h.close()
+    return p
 
 
 class _GPipeHandler(object):
     def __init__(self):
         self._legit_pid = os.getpid()
+        self._make_nonblocking()
+
+    def _make_nonblocking(self):
+        if hasattr(gevent.os, 'make_nonblocking'):
+            # On POSIX, file descriptor flags are inherited after forking,
+            # i.e. it is enough to make nonblocking once.
+            gevent.os.make_nonblocking(self._fd)
 
     def close(self):
         """Close pipe file descriptor."""
-        self._validate_process()
-        os.close(self._fd)
+        #self._validate_process()
+        if self in _all_handles:
+            log.debug("Close fd %s in process %s" % (self._fd, os.getpid()))
+            os.close(self._fd)
+            _all_handles.remove(self)
 
     def _validate_process(self):
         if os.getpid() != self._legit_pid:
@@ -94,7 +133,7 @@ class _GPipeHandler(object):
             raise RuntimeError(
                 "GPipeHandler not registered for current process.")
 
-    def pre_fork(self):
+    def pre_fork_windows(self):
         """Prepare file descriptor for transfer to subprocess. Call
         right before passing the reader/writer to a `multiprocessing.Process`.
 
@@ -114,51 +153,27 @@ class _GPipeHandler(object):
         version of Python 3 as of 2012-10-20. The code below is influenced by
         multiprocessing's forking.py.
         """
-        # Force user to call `post_fork` after `pre_fork`: hide fd
-        self._tempfd = self._fd
-        self._fd = None
-        if not WINDOWS:
-            return
-        import msvcrt
-        from multiprocessing.forking import duplicate
-        # Get Windows file handle from C file descriptor.
-        h = msvcrt.get_osfhandle(self._tempfd)
-        # Duplicate file handle, rendering the duplicate inheritable by
-        # processes created by the current process. Store duplicate.
-        self._ihfd = duplicate(handle=h, inheritable=True)
-        # Close "old" (in-inheritable) file descriptor.
-        os.close(self._tempfd)
-
-    def post_fork(self):
-        """
-        """
-        if self._fd is not None:
-            raise RuntimeError(
-                "`post_fork` called without prior call to `pre_fork`.")
         if WINDOWS:
-            import msvcrt
+            from multiprocessing.forking import duplicate
+            # Get Windows file handle from C file descriptor.
+            h = msvcrt.get_osfhandle(self._fd)
+            # Duplicate file handle, rendering the duplicate inheritable by
+            # processes created by the current process. Store duplicate.
+            self._ihfd = duplicate(handle=h, inheritable=True)
+            # Close "old" (in-inheritable) file descriptor.
+            os.close(self._fd)
+
+    def post_fork_windows(self):
+        """
+        """
+        if WINDOWS:
             # Get C file descriptor from Windows file handle.
-            self._tempfd = msvcrt.open_osfhandle(self._ihfd, self._descr_flag)
+            self._fd = msvcrt.open_osfhandle(self._ihfd, self._descr_flag)
             del self._ihfd
-        pid = os.getpid()
-        if pid != self._legit_pid:
-            # Child:
-            # Restore file descriptor
-            self._fd = self._tempfd
-            del self._tempfd
-            # Make child's PID the legit PID
-            self._legit_pid = pid
-            # Re-init the gevent event loop (get rid of events and greenlets
-            # and events that have been registered/spawned before forking)
-            gevent.reinit()
-        else:
-            # Parent: close file descriptor
-            os.close(self._tempfd)
 
 
 class _GPipeReader(_GPipeHandler):
     def __init__(self, pipe_read_fd):
-        _GPipeHandler.__init__(self)
         self._fd = pipe_read_fd
         self._messages = deque()
         self._residual = []
@@ -167,6 +182,7 @@ class _GPipeReader(_GPipeHandler):
         # capacity of 65536 bytes. Make buffer OS-dependent? On Windows,
         # for IPC, 65536 yields 2x performance as with 1000000.
         self._readbuffer = 65536
+        _GPipeHandler.__init__(self)
 
     def set_buffer(self, bufsize):
         """Set read buffer size of `os.read()` to `bufsize`.
@@ -178,7 +194,7 @@ class _GPipeReader(_GPipeHandler):
         readbuf = io.BytesIO()
         remaining = size
         while remaining > 0:
-            chunk = gevent.os.read(self._fd, remaining)
+            chunk = _READ(self._fd, remaining)
             n = len(chunk)
             if n == 0:
                 if remaining == size:
@@ -189,7 +205,7 @@ class _GPipeReader(_GPipeHandler):
             remaining -= n
         #log.debug("read object!")
         return readbuf
-        
+
     def pickleget(self):
         messagesize,  = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
         return pickle.loads(self._recv_in_buffer(messagesize).getvalue())
@@ -233,22 +249,22 @@ class _GPipeReader(_GPipeHandler):
 
 class _GPipeWriter(_GPipeHandler):
     def __init__(self, pipe_write_fd):
-        _GPipeHandler.__init__(self)
         self._fd = pipe_write_fd
         self._descr_flag = os.O_WRONLY
+        _GPipeHandler.__init__(self)
 
     def _write(self, bindata):
         while True:
-            diff = len(bindata) - gevent.os.write(self._fd, bindata)
+            diff = len(bindata) - _WRITE(self._fd, bindata)
             if not diff:
                 break
-            bindata = bindata[-diff:]        
-        
+            bindata = bindata[-diff:]
+
     def pickleput(self, o):
         bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
         self._write(struct.pack("!i", len(bindata)))
-        self._write(bindata)    
-        
+        self._write(bindata)
+
     def put(self, m, raw=False):
         """Put message into the pipe in a gevent-cooperative manner.
 
