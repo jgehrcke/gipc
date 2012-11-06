@@ -62,7 +62,7 @@ else:
     TIMER = time.time
 
 
-MSG = 'A' * 1
+MSG = 'A' * 199999
 REPETITIONS = 3
 
 
@@ -89,7 +89,7 @@ def main():
         datasize_mb = float(len(MSG)*N)/1024/1024
         datarate_mb = datasize_mb/elapsed
         log.info(" Single benchmark result:")
-        log.info("  --> N: %s" % N)
+        log.info("  --> N: %s, MSG length: %s" % (N, len(MSG)))
         log.info("  --> Read duration: %.3f s" % elapsed)
         log.info("  --> Average msg tx rate: %.3f msgs/s" % mpertime)
         log.info("  --> Payload transfer rate: %.3f MB/s" % datarate_mb)
