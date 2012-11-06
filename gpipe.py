@@ -50,15 +50,19 @@ _all_handles = []
 
 
 def pipe():
-    # on Windows (msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx):
-    #   - based on CreatePipe(&read, &write, NULL, 0)
-    #   - creates an anonymous pipe, lets system handle buffer size.
-    #   - anonymous pipes are implemented using a named pipe with a unique name.
-    #   - asynchronous (overlapped) read and write operations are not supported
-    #     by anonymous pipes
-    # POSIX (http://linux.die.net/man/2/pipe):
-    #   - based on system call pipe(fds)
-    #   - on Linux, the pipe buffer usually is 4096 bytes
+    """
+    Create pipe reader and writer. Returns (reader, writer) tuple.
+
+    os.pipe() implementation on Windows (msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx):
+      - based on CreatePipe(&read, &write, NULL, 0)
+      - creates an anonymous pipe, lets system handle buffer size.
+      - anonymous pipes are implemented using a named pipe with a unique name.
+      - asynchronous (overlapped) read and write operations are not supported
+        by anonymous pipes
+    On POSIX (http://linux.die.net/man/2/pipe):
+      - based on system call pipe(fds)
+      - on Linux, the pipe buffer usually is 4096 bytes
+    """
     r, w = os.pipe()
     reader = _GPipeReader(r)
     writer = _GPipeWriter(w)
@@ -90,7 +94,7 @@ def _subprocess(target, childhandles, kwargs):
     #h.loop.__init__()
     #print repr(h)
     for h in childhandles:
-        h.post_fork_windows()
+        h._post_fork_windows()
     # Close file handlers (pipe ends) in child that are not intended for
     # further usage.
     for h in _all_handles:
@@ -103,7 +107,7 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
     if not (isinstance(childhandles, list) or isinstance(childhandles, tuple)):
         childhandles = (childhandles,)
     for h in childhandles:
-        h.pre_fork_windows()
+        h._pre_fork_windows()
     p = Process(
         target=_subprocess,
         name=name,
@@ -125,7 +129,7 @@ class _GPipeHandler(object):
     def _make_nonblocking(self):
         if hasattr(gevent.os, 'make_nonblocking'):
             # On POSIX, file descriptor flags are inherited after forking,
-            # i.e. it is enough to make nonblocking once.
+            # i.e. it is enough to make them nonblocking once (in parent).
             gevent.os.make_nonblocking(self._fd)
 
     def close(self):
@@ -142,9 +146,10 @@ class _GPipeHandler(object):
             raise RuntimeError(
                 "GPipeHandler not registered for current process.")
 
-    def pre_fork_windows(self):
-        """Prepare file descriptor for transfer to subprocess. Call
-        right before passing the reader/writer to a `multiprocessing.Process`.
+    def _pre_fork_windows(self):
+        """Prepare file descriptor for transfer to subprocess on Windows. Call
+        right before forking (i.e. before passing the reader/writer to a
+        `multiprocessing.Process`.
 
         By default, file descriptors are not inherited by subprocesses on
         Windows. However, they can be made inheritable via calling the system
@@ -172,9 +177,8 @@ class _GPipeHandler(object):
             # Close "old" (in-inheritable) file descriptor.
             os.close(self._fd)
 
-    def post_fork_windows(self):
-        """
-        """
+    def _post_fork_windows(self):
+        """Restore file descriptor after fork on Windows."""
         if WINDOWS:
             # Get C file descriptor from Windows file handle.
             self._fd = msvcrt.open_osfhandle(self._ihfd, self._descr_flag)
@@ -188,7 +192,7 @@ class _GPipeReader(_GPipeHandler):
         _GPipeHandler.__init__(self)
 
     def _recv_in_buffer(self, size):
-        """Read cooperativelt from file to buffer."""
+        """Read cooperatively from file to buffer."""
         readbuf = io.BytesIO()
         remaining = size
         while remaining > 0:
