@@ -30,11 +30,6 @@ except:
 WINDOWS = sys.platform == "win32"
 if WINDOWS:
     import msvcrt
-from collections import deque
-try:
-    import simplejson as json
-except ImportError:
-    import json
 import gevent.os
 import gevent
 
@@ -75,11 +70,25 @@ def pipe():
 def _subprocess(target, childhandles, kwargs):
     # Re-init the gevent event loop (get rid of events and greenlets
     # that have been registered/spawned before forking)
+    #del gevent.os
+    #del gevent
+    #import gevent
+    #import gevent.os
     gevent.reinit()
     h = gevent.get_hub()
-    #h.loop.destroy()
+    #print repr(h)
+    #h.__init__()
+    h.destroy(destroy_loop=True)
+    #log.debug("DESTROYED: %s" % gevent.core._default_loop_destroyed)
+    #try:
+    #    log.debug("HUB POST DESTROY:%s" % str(gevent.hub._threadlocal.hub))
+    #except:
+    #    log.debug("NO HUB POST DESTROY:")
+    #h.destroy()
+    h = gevent.get_hub()
+    #log.debug("HUB POST GET HUB:%s" % str(gevent.hub._threadlocal.hub))
     #h.loop.__init__()
-    print repr(h)
+    #print repr(h)
     for h in childhandles:
         h.post_fork_windows()
     # Close file handlers (pipe ends) in child that are not intended for
@@ -175,22 +184,11 @@ class _GPipeHandler(object):
 class _GPipeReader(_GPipeHandler):
     def __init__(self, pipe_read_fd):
         self._fd = pipe_read_fd
-        self._messages = deque()
-        self._residual = []
         self._descr_flag = os.O_RDONLY
-        # TODO: Research reasonable buffer size. POSIX pipes have a
-        # capacity of 65536 bytes. Make buffer OS-dependent? On Windows,
-        # for IPC, 65536 yields 2x performance as with 1000000.
-        self._readbuffer = 65536
         _GPipeHandler.__init__(self)
 
-    def set_buffer(self, bufsize):
-        """Set read buffer size of `os.read()` to `bufsize`.
-        """
-        self._readbuffer = bufsize
-
     def _recv_in_buffer(self, size):
-        #log.debug("recv in buffer")
+        """Read cooperativelt from file to buffer."""
         readbuf = io.BytesIO()
         remaining = size
         while remaining > 0:
@@ -203,45 +201,13 @@ class _GPipeReader(_GPipeHandler):
                     raise IOError("Message interrupted by EOF")
             readbuf.write(chunk)
             remaining -= n
-        #log.debug("read object!")
         return readbuf
 
     def pickleget(self):
-        messagesize,  = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
-        return pickle.loads(self._recv_in_buffer(messagesize).getvalue())
-
-    def get(self, raw=False):
-        """Get next message. If not available, wait in a gevent-cooperative
-        manner.
-
-        By default, the message is JSON-decoded before returned.
-
-        Args:
-            `raw` (default: `False`): If `True`, do not JSON-decode message.
-
-        Returns:
-            - case `raw==False`: JSON-decoded message
-            - case `raw==False`: message as bytestring
-
-        Based on `gevent.os.read()`, a cooperative variant of `os.read()`.
-        Message re-assembly method is profiled, optimized, and works well
-        also for small buffer sizes.
-        """
+        """Get next (un)picklelable object from pipe."""
         #self._validate_process()
-        while not self._messages:
-            data = gevent.os.read(self._fd, self._readbuffer).splitlines(True)
-            nlend = data[-1].endswith('\n')
-            if self._residual and (nlend or len(data) > 1):
-                data[0] = ''.join(self._residual+[data[0]])
-                self._residual = []
-            if not nlend:
-                self._residual.append(data.pop())
-            self._messages.extend(data)
-        if raw:
-            return self._messages.popleft()
-        # Encoded messages are still terminated with a newline character. The
-        # JSON decoder seems to ignore (remove) it.
-        return json.loads(self._messages.popleft())
+        messagesize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
+        return pickle.loads(self._recv_in_buffer(messagesize).getvalue())
 
     def __str__(self):
         return "_GPipeReader"
@@ -254,6 +220,22 @@ class _GPipeWriter(_GPipeHandler):
         _GPipeHandler.__init__(self)
 
     def _write(self, bindata):
+        """Write to pipe in a gevent-cooperative manner.
+
+        http://linux.die.net/man/7/pipe:
+            - Since Linux 2.6.11, the pipe capacity is 65536 bytes
+            - Relevant for large messages:
+            case O_NONBLOCK enabled, n > PIPE_BUF (4096 Byte, usually):
+            "If the pipe is full, then write(2) fails, with errno set
+            to EAGAIN. Otherwise, from 1 to n bytes may be written (i.e.,
+            a "partial write" may occur; the caller should check the
+            return value from write(2) to see how many bytes were
+            actualy written), and these bytes may be interleaved with
+            writes by other processes."
+
+        EAGAIN is handled within _WRITE; partial writes
+        are handled by this loop.
+        """
         while True:
             diff = len(bindata) - _WRITE(self._fd, bindata)
             if not diff:
@@ -261,45 +243,13 @@ class _GPipeWriter(_GPipeHandler):
             bindata = bindata[-diff:]
 
     def pickleput(self, o):
+        """Put pickleable object into the pipe."""
+        #self._validate_process()
         bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
+        # TODO: one write instead of two?
         self._write(struct.pack("!i", len(bindata)))
         self._write(bindata)
 
-    def put(self, m, raw=False):
-        """Put message into the pipe in a gevent-cooperative manner.
-
-        By default, the message is JSON-encoded before written to the pipe.
-
-        Args:
-            `m`: JSON-encodable object
-            `raw` (default: `False`): If `True`, do not JSON-encode message (Re-
-                quires `m` to be a bytestring).
-
-        Based on `gevent.os.write()`, a cooperative variant of `os.write()`.
-        """
-        #self._validate_process()
-        if not raw:
-            m = json.dumps(m)+'\n' # Returns bytestring.
-        # Else: user must make sure `m` is bytestring and delimit messages
-        # himself via newline char.
-        while True:
-            # http://linux.die.net/man/7/pipe:
-            #  - Since Linux 2.6.11, the pipe capacity is 65536 bytes
-            #  - Relevant for large messages:
-            #    case O_NONBLOCK enabled, n > PIPE_BUF (4096 Byte, usually):
-            #    """If the pipe is full, then write(2) fails, with errno set
-            #    to EAGAIN. Otherwise, from 1 to n bytes may be written (i.e.,
-            #    a "partial write" may occur; the caller should check the
-            #    return value from write(2) to see how many bytes were
-            #    actualy written), and these bytes may be interleaved with
-            #    writes by other processes. """
-            #
-            # EAGAIN is handled within gevent.os.posix_write; partial writes
-            # are handled by this loop.
-            diff = len(m) - gevent.os.write(self._fd, m)
-            if not diff:
-                break
-            m = m[-diff:]
-
     def __str__(self):
         return "_GPipeWriter"
+

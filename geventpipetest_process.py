@@ -43,7 +43,7 @@ import logging
 import time
 from multiprocessing import Process, Condition
 import gevent
-import gpipe
+import gevent.hub
 
 
 logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
@@ -54,8 +54,11 @@ if sys.platform == 'win32':
 else:
     TIMER = time.time
 
-
+import gpipe
 MSG = 'A' * 9999
+
+
+#log.debug(str(gevent.hub._threadlocal.hub))
 
 
 def main():
@@ -63,7 +66,7 @@ def main():
 
     # Spawn a greenlet that does something on the side.
     useless = gevent.spawn(do_something_useless_on_the_side)
-
+    #log.debug("HUB:%s" % str(gevent.hub._threadlocal.hub))
     condition = Condition()
     elapsed = 0
     N = 1
@@ -83,9 +86,11 @@ def main():
         t = TIMER()
         while result != 'stop':
             result = reader.pickleget()
+            if not (result == MSG or result == 'stop'):
+                log.error("PROBLEM")
         elapsed = TIMER() - t
         p.join()
-        #elapsed = 5
+        elapsed = 5
 
     mpertime = N/elapsed
     datasize_mb = float(len(MSG)*N)/1024/1024
@@ -103,6 +108,10 @@ def writer_process(writer, condition, N):
     for i in xrange(N):
         writer.pickleput(MSG)
     writer.pickleput('stop')
+    gevent.sleep(0.1)
+    log.info("I'm doing nothing. PID %s" % os.getpid())
+    gevent.sleep(1)
+    log.info("Still nothing. PID %s" % os.getpid())
 
 
 def do_something_useless_on_the_side():
