@@ -41,9 +41,9 @@ if hasattr(gevent.os, 'nb_write'):
     _READ_NB = gevent.os.nb_read
     _WRITE_NB = gevent.os.nb_write
 else:
-    # We're on Windows  and fake non-blocking I/O based on a threadpool
-    _READ_NB = gevent.os.tb_read
-    _WRITE_NB = gevent.os.tb_write
+    # We're on Windows and fake non-blocking I/O based on a gevent threadpool
+    _READ_NB = gevent.os.tp_read
+    _WRITE_NB = gevent.os.tp_write
 
 
 # Container for keeping track of valid `_GPipeHandler`s
@@ -160,9 +160,10 @@ class _GPipeHandler(object):
         Closes underlying file descriptor and removes the handler from the
         list of valid handlers.
         """
-        if self in _all_handles:
+        if self._fd is not None:
             log.debug("Close fd %s in process %s" % (self._fd, os.getpid()))
-            os.close(self._fd)
+            os.close(self._fd)        
+        if self in _all_handles:
             _all_handles.remove(self)
 
     def _validate_process(self):
@@ -199,6 +200,7 @@ class _GPipeHandler(object):
             self._ihfd = duplicate(handle=h, inheritable=True)
             # Close "old" (in-inheritable) file descriptor.
             os.close(self._fd)
+            self._fd = None
 
     def _post_fork_windows(self):
         """Restore file descriptor in child on Windows."""
