@@ -125,6 +125,7 @@ def benchmark(N):
     while result != 'stop':
         result = reader.get()
     elapsed = TIMER() - t
+    p.join()
     return N, elapsed
 
 

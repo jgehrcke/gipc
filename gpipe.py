@@ -24,7 +24,7 @@ try:
    import cPickle as pickle
 except:
    import pickle
-from multiprocessing import Process
+import multiprocessing
 WINDOWS = sys.platform == "win32"
 if WINDOWS:
     import msvcrt
@@ -130,7 +130,7 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
         childhandles = (childhandles,)
     for h in childhandles:
         h._pre_fork_windows()
-    p = Process(
+    p = GProcess(
         target=_subprocess,
         name=name,
         args=(target, childhandles, kwargs))
@@ -141,6 +141,28 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
     for h in childhandles:
         h.close()
     return p
+
+
+class GProcess(multiprocessing.Process):
+    def join(self, timeout=None):
+        """
+        Wait cooperatively until child process terminates.
+
+        On Unix, this calls waitpid() and therefore prevents zombie creation
+        if applied properly. Currently based on polling with a certain rate.
+
+        TODO:   - implement timeout based on gevent timeouts
+                - we could install our own signal handler/watcher based on
+                  SIGCHLD. at least on Unix, this could be much cleaner than
+                  frequent polling.
+        """
+        # `is_alive()` invokes `waitpid()` on Unix.
+        with gevent.Timeout(timeout, False):
+            while self.is_alive():
+                gevent.sleep(0.1)
+        # Call original method in any case (if child is dead, clean up
+        # after it as designed by Process class).
+        super(GProcess, self).join(timeout=0)
 
 
 class _GPipeHandler(object):
@@ -162,7 +184,7 @@ class _GPipeHandler(object):
         """
         if self._fd is not None:
             log.debug("Close fd %s in process %s" % (self._fd, os.getpid()))
-            os.close(self._fd)        
+            os.close(self._fd)
         if self in _all_handles:
             _all_handles.remove(self)
 
