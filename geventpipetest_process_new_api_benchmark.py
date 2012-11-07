@@ -62,7 +62,7 @@ else:
     TIMER = time.time
 
 
-MSG = 'A' * 199999
+MSG = 'A' * 59999
 REPETITIONS = 3
 
 
@@ -126,6 +126,8 @@ def benchmark(N):
         result = reader.get()
     elapsed = TIMER() - t
     p.join()
+    reader.close()
+    writer.close()
     return N, elapsed
 
 
