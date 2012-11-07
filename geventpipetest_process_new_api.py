@@ -79,6 +79,7 @@ def main():
         if not (result == MSG or result == 'stop'):
             log.error("PROBLEM")
     elapsed = TIMER() - t
+    log.info("Messaging done.")
     reader.close()
     writer.close()
     p.join()

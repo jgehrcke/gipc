@@ -74,13 +74,15 @@ def pipe():
     return reader, writer
 
 
-def _child(target, childhandles, kwargs):
+def _child(target, childhandles, all_handles, kwargs):
     """(Runs in child process) Sanitize situation in child process and
     execute user-given function.
 
     `target`: user-given function to be called with `kwargs`
     `childhandles`: GPipeHandles that are intented to be used in child.
     """
+    # Re-populate `_all_handles` (only required on Windows, but does not harm).
+    _all_handles = all_handles
     if not WINDOWS:
         # Clean up after fork.
         # Call `libev.ev_loop_fork()`: required after fork
@@ -93,12 +95,14 @@ def _child(target, childhandles, kwargs):
         gevent.get_hub()
     # Register inherited handles for current process.
     # Close pipe ends in child that are not intended for further usage.
+    log.debug("all handles: %s" % _all_handles)
     for h in _all_handles[:]:
         h._set_legit_process()
-        if h in childhandles:
+        if WINDOWS:
+            log.debug("Restore %s in child." % h)
             h._post_fork_windows()
-        else:
-            # Close fd, remove `h` from _all_handles
+        if not h in childhandles:
+            log.debug("Remove %s in child." % h)
             h.close()
     target(*childhandles, **kwargs)
     # Close childhandles here?
@@ -125,22 +129,26 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
         `kwargs`: dictionary defining keyword arguments provided to `target`
 
     Returns:
-        `multiprocessing.Process` instance
-
+        `GProcess` instance (inherits from `multiprocessing.Process`)
     """
     if not (isinstance(childhandles, list) or isinstance(childhandles, tuple)):
         childhandles = (childhandles,)
-    for h in childhandles:
-        h._pre_fork_windows()
+    if WINDOWS:
+        for h in _all_handles:
+            h._pre_fork_windows()
     p = GProcess(
         target=_child,
         name=name,
-        args=(target, childhandles, kwargs))
+        args=(target, childhandles, _all_handles, kwargs))
     if daemon is not None:
         p.daemon = daemon
     p.start()
+    if WINDOWS:
+        for h in _all_handles:
+            h._post_fork_windows()
     # Close file handlers in parent that are not further required.
     for h in childhandles:
+        log.debug("Remove %s in parent." % h)
         h.close()
     return p
 
@@ -169,6 +177,7 @@ class GProcess(multiprocessing.Process):
 
 class _GPipeHandle(object):
     def __init__(self):
+        self._id = os.urandom(4).encode("hex")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
 
@@ -185,22 +194,24 @@ class _GPipeHandle(object):
         list of valid handles.
         """
         self._validate_process()
-        log.debug("PID %s: close %s" % (os.getpid(), self))
+        log.debug("PID %s: Removing %s..." % (os.getpid(), self))
         if self._fd is not None:
             log.debug("PID %s: os.close(%s)" % (os.getpid(), self._fd))
             os.close(self._fd)
             self._fd = None
         if self in _all_handles:
-            log.debug("PID %s: Remove %s from _all_handles" % (os.getpid(), self))        
+            log.debug("PID %s: Remove %s from _all_handles" %
+                (os.getpid(), self))
             _all_handles.remove(self)
 
     def _set_legit_process(self):
+        log.debug("PID %s: legitimate %s" % (os.getpid(), self))
         self._legit_pid = os.getpid()
-    
+
     def _validate_process(self):
         """Raise exception if this handle is not registered to be used in
         the current process.
-        
+
         Intended to be called before every operation on `self._fd`.
         Reveals wrong usage of this module in the context of multiple
         processes. Might save the user the trouble of tedious debugging
@@ -212,7 +223,7 @@ class _GPipeHandle(object):
 
         In the future, we might decide to not call this method within
         each get and put operation performed on a pipe.
-        """ 
+        """
         if os.getpid() != self._legit_pid:
             raise RuntimeError(
                 "GPipeHandle not registered for current process.")
@@ -248,7 +259,7 @@ class _GPipeHandle(object):
             self._fd = None
 
     def _post_fork_windows(self):
-        """Restore file descriptor in child on Windows."""
+        """Restore file descriptor on Windows."""
         if WINDOWS:
             # Get C file descriptor from Windows file handle.
             self._fd = msvcrt.open_osfhandle(self._ihfd, self._descr_flag)
@@ -287,7 +298,13 @@ class _GPipeReader(_GPipeHandle):
         return pickle.loads(self._recv_in_buffer(messagesize).getvalue())
 
     def __str__(self):
-        return "<_GPipeReader fd: %s>" % (self._fd)
+        return self.__repr__()
+
+    def __repr__(self):
+        fd = self._fd
+        if hasattr(self, "_ihfd"):
+            fd = "WIN_%s" % self._ihfd
+        return "<_GPipeReader_%s fd: %s>" % (self._id, fd)
 
 
 class _GPipeWriter(_GPipeHandle):
@@ -327,5 +344,11 @@ class _GPipeWriter(_GPipeHandle):
         self._write(bindata)
 
     def __str__(self):
-        return "<_GPipeWriter fd: %s>" % (self._fd)
+        return self.__repr__()
+
+    def __repr__(self):
+        fd = self._fd
+        if hasattr(self, "_ihfd"):
+            fd = "WIN_%s" % self._ihfd
+        return "<_GPipeWriter_%s fd: %s>" % (self._id, fd)
 
