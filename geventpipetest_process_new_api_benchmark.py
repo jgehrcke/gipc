@@ -53,7 +53,10 @@ import gpipe
 import numpy
 import math
 
-logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
+logging.basicConfig(
+    format='%(asctime)s,%(msecs)-6.1f %(funcName)s# %(message)s',
+    datefmt='%H:%M:%S')
+log = logging.getLogger()
 log = logging.getLogger()
 log.setLevel(logging.INFO)
 if sys.platform == 'win32':

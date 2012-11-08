@@ -14,9 +14,6 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
-"""
-TODO: rename post/pre_fork, as fork is not from windows world.
-"""
 
 import os
 import sys
@@ -103,7 +100,7 @@ def _child(target, childhandles, all_handles, kwargs):
         h._set_legit_process()
         if WINDOWS:
             log.debug("Restore %s in child." % h)
-            h._post_fork_windows()
+            h._post_createprocess_windows()
         if not h in childhandles:
             log.debug("Remove %s in child." % h)
             h.close()
@@ -138,7 +135,7 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
         childhandles = (childhandles,)
     if WINDOWS:
         for h in _all_handles:
-            h._pre_fork_windows()
+            h._pre_createprocess_windows()
     p = GProcess(
         target=_child,
         name=name,
@@ -148,7 +145,7 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
     p.start()
     if WINDOWS:
         for h in _all_handles:
-            h._post_fork_windows()
+            h._post_createprocess_windows()
     # Close file handlers in parent that are not further required.
     for h in childhandles:
         log.debug("Remove %s in parent." % h)
@@ -165,22 +162,21 @@ class GProcess(multiprocessing.Process):
         if applied properly. Currently based on polling with a certain rate.
 
         TODO:   - implement timeout based on gevent timeouts
-                - we could install our own signal handler/watcher based on
-                  SIGCHLD. at least on Unix, this could be much cleaner than
-                  frequent polling.
+                - We could install our own signal handler/watcher based on
+                  SIGCHLD (on Unix). Would be cleaner than frequent polling.
         """
         # `is_alive()` invokes `waitpid()` on Unix.
         with gevent.Timeout(timeout, False):
             while self.is_alive():
                 gevent.sleep(0.1)
-        # Call original method in any case (if child is dead, clean up
-        # after it as designed by Process class).
+        # Call original method in non-blocking mode, even if timeout was
+        # triggered above: clean up after child as designed by Process class.
         super(GProcess, self).join(timeout=0)
 
 
 class _GPipeHandle(object):
     def __init__(self):
-        self._id = os.urandom(4).encode("hex")
+        self._id = os.urandom(3).encode("hex")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
 
@@ -231,10 +227,10 @@ class _GPipeHandle(object):
             raise RuntimeError(
                 "GPipeHandle not registered for current process.")
 
-    def _pre_fork_windows(self):
+    def _pre_createprocess_windows(self):
         """Prepare file descriptor for transfer to child process on Windows.
 
-        By default, file descriptors are not inherited by subprocesses on
+        By default, file descriptors are not inherited by child processes on
         Windows. However, they can be made inheritable via calling the system
         function `DuplicateHandle` while setting `bInheritHandle` to True.
         From MSDN:
@@ -261,7 +257,7 @@ class _GPipeHandle(object):
             os.close(self._fd)
             self._fd = None
 
-    def _post_fork_windows(self):
+    def _post_createprocess_windows(self):
         """Restore file descriptor on Windows."""
         if WINDOWS:
             # Get C file descriptor from Windows file handle.
