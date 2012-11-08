@@ -36,6 +36,7 @@ if WINDOWS:
 # 3rd party modules
 import gevent
 import gevent.os
+import gevent.lock
 
 
 log = logging.getLogger("gpipe")
@@ -200,6 +201,8 @@ class _GPipeHandle(object):
         self._id = os.urandom(3).encode("hex")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
+        self._glock = gevent.lock.Semaphore(value=1)
+        self._valid = True
 
     def _make_nonblocking(self):
         if hasattr(gevent.os, 'make_nonblocking'):
@@ -213,8 +216,9 @@ class _GPipeHandle(object):
         Closes underlying file descriptor and removes the handle from the
         list of valid handles.
         """
-        self._validate_process()
-        log.debug("Removing %s ..." % self)
+        self._validate()
+        log.debug("Invalidating %s ..." % self)
+        self._valid = False
         if self._fd is not None:
             log.debug("os.close(%s)" % self._fd)
             os.close(self._fd)
@@ -227,7 +231,7 @@ class _GPipeHandle(object):
         log.debug("Legitimate %s" % self)
         self._legit_pid = os.getpid()
 
-    def _validate_process(self):
+    def _validate(self):
         """Raise exception if this handle is not registered to be used in
         the current process.
 
@@ -243,6 +247,9 @@ class _GPipeHandle(object):
         In the future, we might decide to not call this method within
         each get and put operation performed on a pipe.
         """
+        if not self._valid:
+            raise RuntimeError(
+                "GPipeHandle has been closed before.")
         if os.getpid() != self._legit_pid:
             raise RuntimeError(
                 "GPipeHandle not registered for current process.")
@@ -321,9 +328,12 @@ class _GPipeReader(_GPipeHandle):
 
         Blocks cooperatively until message is available.
         TODO: timeout option"""
-        self._validate_process()
+        self._validate()
+        self._glock.acquire()
         messagesize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
-        return pickle.loads(self._recv_in_buffer(messagesize).getvalue())
+        bindata = self._recv_in_buffer(messagesize).getvalue()
+        self._glock.release()
+        return pickle.loads(bindata)
 
 
 class _GPipeWriter(_GPipeHandle):
@@ -356,9 +366,11 @@ class _GPipeWriter(_GPipeHandle):
 
     def put(self, o):
         """Put pickleable object into the pipe."""
-        self._validate_process()
+        self._validate()
+        self._glock.acquire()
         bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
         # TODO: one write instead of two?
         self._write(struct.pack("!i", len(bindata)))
         self._write(bindata)
+        self._glock.release()
 
