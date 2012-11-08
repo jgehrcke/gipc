@@ -54,7 +54,7 @@ import numpy
 import math
 
 logging.basicConfig(
-    format='%(asctime)s,%(msecs)-6.1f %(funcName)s# %(message)s',
+    format='%(asctime)s,%(msecs)-6.1f [%(process)d]%(funcName)s# %(message)s',
     datefmt='%H:%M:%S')
 log = logging.getLogger()
 log = logging.getLogger()
