@@ -43,16 +43,17 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 9999
+    N = 5
     msg = "x"*100+'\n'
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
-    gread = gevent.spawn(readgreenlet, gpreader, N, msg)
-    #gread = gevent.spawn(readgreenlet, gpreader, N, msg)
+    gread = gevent.spawn(readgreenlet, gpreader, msg)
+    gread2 = gevent.spawn(readgreenlet, gpreader, msg)
     log.info("Read&write greenlets started.")
     t1 = time.time()
     gread.join()
+    gread2.join()
     t2 = time.time()
     tdiff = t2-t1
     mpertime = N/tdiff
@@ -64,19 +65,28 @@ def main():
     gwrite.join()
 
 
-def readgreenlet(gpreader, N, msg):
-    for i in xrange(1, N+1):
-        #m = gpreader.pickleget()
+def readgreenlet(gpreader, msg):
+    counter = 0
+    while True:
         m = gpreader.get()
+        log.debug("m received: %s" % m)
+        counter += 1
+        #log.debug(m)
+        if m == "STOP":
+            log.info("stop received")
+            break
         if m != msg:
             raise Exception("Wrong message received: %r" %  m)
+        #gevent.sleep(0.001)
+    log.info("Got %s messages." % counter)
     gpreader.close()
 
 
 def writegreenlet(gpwriter, N, msg):
     for i in xrange(N):
-        #gpwriter.pickleput(msg)
         gpwriter.put(msg)
+    gpwriter.put("STOP")
+    log.debug("writer done.")
     gpwriter.close()
 
 
