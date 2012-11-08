@@ -17,11 +17,13 @@
 
 import sys
 import os
+import gevent
+
 sys.path.insert(0, os.path.abspath('..'))
 import gpipe
 
 
-class TestPipe():
+class TestSingleProcess():
     """
     Flow for each test_method:
     o = TestPipe()
@@ -32,15 +34,66 @@ class TestPipe():
         o.teardown()
     """
     def setup(self):
-        self.r, self.w = gpipe.pipe()
-    
+        self.rh, self.wh = gpipe.pipe()
+
     def teardown(self):
-        self.r.close()
-        self.w.close()
-        
-    def test_msg_short(self):
+        self.rh.close()
+        self.wh.close()
+
+    def test_singlemsg_short_bin(self):
         m = "OK"
-        self.w.put(m)
-        t = self.r.get()
+        g = gevent.spawn(lambda r: r.get(), self.rh)
+        self.wh.put(m)
+        t = g.get()
         assert m == t
-    
+        assert type(m) == type(t)
+
+    def test_singlemsg_short_list(self):
+        m = [1]
+        g = gevent.spawn(lambda r: r.get(), self.rh)
+        self.wh.put(m)
+        t = g.get()
+        assert m == t
+        assert type(m) == type(t)
+
+    def test_singlemsg_long_bin(self):
+        m = "OK" * 999999
+        g = gevent.spawn(lambda r: r.get(), self.rh)
+        self.wh.put(m)
+        t = g.get()
+        assert m == t
+        assert type(m) == type(t)
+
+    def test_singlemsg_long_list(self):
+        m = [1] * 999999
+        g = gevent.spawn(lambda r: r.get(), self.rh)
+        self.wh.put(m)
+        t = g.get()
+        assert m == t
+        assert type(m) == type(t)
+
+    def test_singlemsg_between_greenlets(self):
+        m = [1] * 999999
+        def gwrite(writer, m):
+            writer.put(m)
+        def gread(reader):
+            return reader.get()
+        gw = gevent.spawn(gwrite, self.wh, m)
+        gr = gevent.spawn(gread, self.rh)
+        t = gr.get()
+        assert m == t
+        assert type(m) == type(t)
+
+    def test_onewriter_multiple_readers(self):
+        m = [1] * 999999
+        def gwrite(writer, m):
+            writer.put(m)
+        def gread(reader):
+            return reader.get()
+        gw = gevent.spawn(gwrite, self.wh, m)
+        gr1 = gevent.spawn(gread, self.rh)
+        gr2 = gevent.spawn(gread, self.rh)
+        t = gr1.get()
+        gr2.kill(gevent.GreenletExit)
+        assert m == t
+        assert type(m) == type(t)

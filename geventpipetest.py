@@ -35,7 +35,9 @@ import gevent
 import gpipe
 
 
-logging.basicConfig(format='%(asctime)-15s %(funcName)s# %(message)s')
+logging.basicConfig(
+    format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
+    datefmt='%H:%M:%S')
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
@@ -47,6 +49,7 @@ def main():
     log.info("Pipe initialized.")
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
     gread = gevent.spawn(readgreenlet, gpreader, N, msg)
+    #gread = gevent.spawn(readgreenlet, gpreader, N, msg)
     log.info("Read&write greenlets started.")
     t1 = time.time()
     gread.join()
@@ -64,7 +67,7 @@ def main():
 def readgreenlet(gpreader, N, msg):
     for i in xrange(1, N+1):
         #m = gpreader.pickleget()
-        m = gpreader.get(True)        
+        m = gpreader.get()
         if m != msg:
             raise Exception("Wrong message received: %r" %  m)
     gpreader.close()
@@ -73,7 +76,7 @@ def readgreenlet(gpreader, N, msg):
 def writegreenlet(gpwriter, N, msg):
     for i in xrange(N):
         #gpwriter.pickleput(msg)
-        gpwriter.put(msg, True)        
+        gpwriter.put(msg)
     gpwriter.close()
 
 

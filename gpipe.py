@@ -14,22 +14,28 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+"""
+TODO:
+    - make reader/writer context manager-compatible (close() on exit)?
+"""
 
 import os
 import sys
 import logging
 import io
 import struct
+import multiprocessing
 try:
    import cPickle as pickle
 except:
    import pickle
-import multiprocessing
 WINDOWS = sys.platform == "win32"
 if WINDOWS:
     import msvcrt
-import gevent.os
+
+# 3rd party modules
 import gevent
+import gevent.os
 
 
 log = logging.getLogger("gpipe")
@@ -37,11 +43,11 @@ log = logging.getLogger("gpipe")
 
 # Define non-blocking read and write functions
 if hasattr(gevent.os, 'nb_write'):
-    # We're on a POSIX system and can use actual non-blocking I/O
+    # POSIX system -> use actual non-blocking I/O
     _READ_NB = gevent.os.nb_read
     _WRITE_NB = gevent.os.nb_write
 else:
-    # We're on Windows and fake non-blocking I/O based on a gevent threadpool
+    # Windows -> imitate non-blocking I/O based on a gevent threadpool
     _READ_NB = gevent.os.tp_read
     _WRITE_NB = gevent.os.tp_write
 
@@ -51,14 +57,15 @@ _all_handles = []
 
 
 def pipe():
-    """Create pipe reader and writer.
+    """Create pipe as well as handles for reading and writing.
 
+    Based on os.pipe().
     os.pipe() implementation on Windows:
-      - based on CreatePipe(&read, &write, NULL, 0) (http://bit.ly/RDuKUm)
-      - creates an anonymous pipe, lets system handle buffer size.
+      - uses CreatePipe(&read, &write, NULL, 0) (http://bit.ly/RDuKUm)
+      - creates an anonymous pipe, system handles buffer size.
       - anonymous pipes are implemented using a named pipe with a unique name.
       - asynchronous (overlapped) read and write operations are not supported
-        by anonymous pipes
+        by anonymous pipes.
     os.pipe() on POSIX (http://linux.die.net/man/2/pipe):
       - based on system call pipe(fds)
       - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
@@ -81,10 +88,10 @@ def _child(target, childhandles, all_handles, kwargs):
     `target`: user-given function to be called with `kwargs`
     `childhandles`: GPipeHandles that are intented to be used in child.
     """
-    # Re-populate `_all_handles` (only required on Windows, but does not harm).
+    # Restore `_all_handles` (required on Windows; does not harm elsewhere)
     _all_handles = all_handles
     if not WINDOWS:
-        # Clean up after fork.
+        # Clean up after fork
         # Call `libev.ev_loop_fork()`: required after fork
         gevent.reinit()
         # Destroy default event loop via `libev.ev_loop_destroy()` and delete
@@ -94,7 +101,7 @@ def _child(target, childhandles, all_handles, kwargs):
         # Create a fresh event loop via `ev_loop_new` and a new hub.
         gevent.get_hub()
     # Register inherited handles for current process.
-    # Close pipe ends in child that are not intended for further usage.
+    # Close file descriptors that are not intended for further usage.
     log.debug("all handles: %s" % _all_handles)
     for h in _all_handles[:]:
         h._set_legit_process()
@@ -109,23 +116,37 @@ def _child(target, childhandles, all_handles, kwargs):
 
 
 def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
-    """Spawn child process and execute target(*childhandles, **kwargs) there.
+    """Spawn child process with the intention to use the `_GPipeHandle`s
+    provided via `childhandles` within the child process. Execute
+    target(*childhandles, **kwargs) in the child process. Similar to
+    `multiprocessing.Process()` interface.
 
     Process creation is based on multiprocessing.Process(). When working with
     gevent and gevent-messagepipe, instead of calling Process() on your own,
-    create child processes via this method. It takes care of
-        - closing dispensable file descriptors after subprocess creation.
+    it is highly recommended to create child processes via this method.
+    It takes care of
+        - closing dispensable file descriptors after child process creation.
         - proper file descriptor inheritance on Windows.
-        - re-initialization of the gevent event loop in the subprocess (no
-          greenlet spawned in the parent will run in the child).
+        - re-initialization of the gevent event loop in the child process (no
+          greenlet spawned in the parent will run in the child) on Unix.
+
+    Example:
+        def childfunction(reader, foo):
+            s = reader.get()
+            print s, foo # prints "hello to child bar"
+
+        reader, writer = gpipe.pipe()
+        p = gpipe.start_process(reader, childfunction, kwargs={'foo': 'bar'})
+        writer.put("hello to child")
+        p.join()
 
     Args:
-        `childhandles`: GPipeHandle or list or tuple of GPipeHandles
-            that are intented to be used in the child. Will be unusable in
+        `childhandles`: `GPipeHandle` or list or tuple of `GPipeHandle`s
+            that is/are intented to be used in the child. Unusable in
             parent afterwards.
         `target`: user-given function to be called with `kwargs`
-        `name`: forwarded to multiprocessing.Process()
-        `daemon`: flag that is set before starting process
+        `name`: `multiprocessing.Process.name`
+        `daemon`: `multiprocessing.Process.daemon`
         `kwargs`: dictionary defining keyword arguments provided to `target`
 
     Returns:
@@ -159,11 +180,11 @@ class GProcess(multiprocessing.Process):
         Wait cooperatively until child process terminates.
 
         On Unix, this calls waitpid() and therefore prevents zombie creation
-        if applied properly. Currently based on polling with a certain rate.
+        if applied properly.
 
-        TODO:   - implement timeout based on gevent timeouts
-                - We could install our own signal handler/watcher based on
-                  SIGCHLD (on Unix). Would be cleaner than frequent polling.
+        TODO:
+            - We could install our own signal handler/watcher based on
+              SIGCHLD (on Unix). Would be cleaner than frequent polling.
         """
         # `is_alive()` invokes `waitpid()` on Unix.
         with gevent.Timeout(timeout, False):
@@ -193,18 +214,17 @@ class _GPipeHandle(object):
         list of valid handles.
         """
         self._validate_process()
-        log.debug("PID %s: Removing %s..." % (os.getpid(), self))
+        log.debug("Removing %s ..." % self)
         if self._fd is not None:
-            log.debug("PID %s: os.close(%s)" % (os.getpid(), self._fd))
+            log.debug("os.close(%s)" % self._fd)
             os.close(self._fd)
             self._fd = None
         if self in _all_handles:
-            log.debug("PID %s: Remove %s from _all_handles" %
-                (os.getpid(), self))
+            log.debug("Remove %s from _all_handles" % self)
             _all_handles.remove(self)
 
     def _set_legit_process(self):
-        log.debug("PID %s: legitimate %s" % (os.getpid(), self))
+        log.debug("Legitimate %s" % self)
         self._legit_pid = os.getpid()
 
     def _validate_process(self):
@@ -255,7 +275,7 @@ class _GPipeHandle(object):
             self._ihfd = duplicate(handle=h, inheritable=True)
             # Close "old" (in-inheritable) file descriptor.
             os.close(self._fd)
-            self._fd = None
+            self._fd = False
 
     def _post_createprocess_windows(self):
         """Restore file descriptor on Windows."""
@@ -263,6 +283,15 @@ class _GPipeHandle(object):
             # Get C file descriptor from Windows file handle.
             self._fd = msvcrt.open_osfhandle(self._ihfd, self._descr_flag)
             del self._ihfd
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        fd = self._fd
+        if hasattr(self, "_ihfd"):
+            fd = "WIN_%s" % self._ihfd
+        return "<%s_%s fd: %s>" % (self.__class__.__name__, self._id, fd)
 
 
 class _GPipeReader(_GPipeHandle):
@@ -295,15 +324,6 @@ class _GPipeReader(_GPipeHandle):
         self._validate_process()
         messagesize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
         return pickle.loads(self._recv_in_buffer(messagesize).getvalue())
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __repr__(self):
-        fd = self._fd
-        if hasattr(self, "_ihfd"):
-            fd = "WIN_%s" % self._ihfd
-        return "<_GPipeReader_%s fd: %s>" % (self._id, fd)
 
 
 class _GPipeWriter(_GPipeHandle):
@@ -341,13 +361,4 @@ class _GPipeWriter(_GPipeHandle):
         # TODO: one write instead of two?
         self._write(struct.pack("!i", len(bindata)))
         self._write(bindata)
-
-    def __str__(self):
-        return self.__repr__()
-
-    def __repr__(self):
-        fd = self._fd
-        if hasattr(self, "_ihfd"):
-            fd = "WIN_%s" % self._ihfd
-        return "<_GPipeWriter_%s fd: %s>" % (self._id, fd)
 
