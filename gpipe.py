@@ -312,11 +312,14 @@ class _GPipeReader(_GPipeHandle):
         readbuf = io.BytesIO()
         remaining = size
         while remaining > 0:
+            log.debug("BEFORE _READ_NB")
             chunk = _READ_NB(self._fd, remaining)
+            log.debug("AFTER _READ_NB")
             n = len(chunk)
             if n == 0:
                 if remaining == size:
-                    raise EOFError
+                    # Other pipe end was closed
+                    raise EOFError("Other pipe end was closed.")
                 else:
                     raise IOError("Message interrupted by EOF")
             readbuf.write(chunk)
@@ -329,11 +332,10 @@ class _GPipeReader(_GPipeHandle):
         Blocks cooperatively until message is available.
         TODO: timeout option"""
         self._validate()
-        self._glock.acquire()
-        messagesize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
-        bindata = self._recv_in_buffer(messagesize).getvalue()
-        self._glock.release()
-        return pickle.loads(bindata)
+        with self._glock:
+            msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
+            bindata = self._recv_in_buffer(msize).getvalue()
+            return pickle.loads(bindata)
 
 
 class _GPipeWriter(_GPipeHandle):
@@ -367,10 +369,9 @@ class _GPipeWriter(_GPipeHandle):
     def put(self, o):
         """Put pickleable object into the pipe."""
         self._validate()
-        self._glock.acquire()
-        bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
-        # TODO: one write instead of two?
-        self._write(struct.pack("!i", len(bindata)))
-        self._write(bindata)
-        self._glock.release()
+        with self._glock:
+            bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
+            # TODO: one write instead of two?
+            self._write(struct.pack("!i", len(bindata)))
+            self._write(bindata)
 

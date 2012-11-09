@@ -43,15 +43,17 @@ log.setLevel(logging.DEBUG)
 
 
 def main():
-    N = 5
-    msg = "x"*100+'\n'
+    N = 3
+    msg = "x"*10
     gpreader, gpwriter = gpipe.pipe()
     log.info("Pipe initialized.")
     gwrite = gevent.spawn(writegreenlet, gpwriter, N, msg)
-    gread = gevent.spawn(readgreenlet, gpreader, msg)
-    gread2 = gevent.spawn(readgreenlet, gpreader, msg)
+    gread = gevent.spawn(readgreenlet, gpreader, msg, gid=1)
+    gread2 = gevent.spawn(readgreenlet, gpreader, msg, gid=2)
     log.info("Read&write greenlets started.")
     t1 = time.time()
+    gevent.sleep(3)
+    gpreader.close()
     gread.join()
     gread2.join()
     t2 = time.time()
@@ -63,23 +65,27 @@ def main():
     log.info("Message transmission rate: %.3f msgs/s" % mpertime)
     log.info("Data transfer rate: %.3f MB/s" % datarate_mb)
     gwrite.join()
+    gpreader.close()
 
 
-def readgreenlet(gpreader, msg):
+def readgreenlet(gpreader, msg, gid):
     counter = 0
     while True:
-        m = gpreader.get()
-        log.debug("m received: %s" % m)
+        try:
+            log.info("%s: Invoking get() ..." % gid)
+            m = gpreader.get()
+        except EOFError:
+            log.info("%s: Pipe got closed." % gid)
+            break
+        log.info("%s: m received: %s" % (gid, m))
         counter += 1
-        #log.debug(m)
         if m == "STOP":
-            log.info("stop received")
+            log.info("%s: stop received" % gid)
             break
         if m != msg:
-            raise Exception("Wrong message received: %r" %  m)
-        #gevent.sleep(0.001)
-    log.info("Got %s messages." % counter)
-    gpreader.close()
+            raise Exception("%s: Wrong message received: %r" %  (gid,m))
+        gevent.sleep(1)
+    log.info("%s: Got %s messages." % (gid, counter))
 
 
 def writegreenlet(gpwriter, N, msg):
@@ -87,7 +93,7 @@ def writegreenlet(gpwriter, N, msg):
         gpwriter.put(msg)
     gpwriter.put("STOP")
     log.debug("writer done.")
-    gpwriter.close()
+    #gpwriter.close()
 
 
 if __name__ == "__main__":
