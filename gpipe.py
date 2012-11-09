@@ -196,13 +196,17 @@ class GProcess(multiprocessing.Process):
         super(GProcess, self).join(timeout=0)
 
 
+class GPipeError(Exception):
+    pass
+
+
 class _GPipeHandle(object):
     def __init__(self):
         self._id = os.urandom(3).encode("hex")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
         self._glock = gevent.lock.Semaphore(value=1)
-        self._valid = True
+        self._closed = False
 
     def _make_nonblocking(self):
         if hasattr(gevent.os, 'make_nonblocking'):
@@ -218,9 +222,9 @@ class _GPipeHandle(object):
         """
         self._validate()
         if not self._glock.acquire(blocking=False):
-            raise RuntimeError("GPipeHandle locked for I/O operation.")
+            raise GPipeError("GPipeHandle locked for I/O operation.")
         log.debug("Invalidating %s ..." % self)
-        self._valid = False
+        self._closed = True
         if self._fd is not None:
             log.debug("os.close(%s)" % self._fd)
             os.close(self._fd)
@@ -250,11 +254,11 @@ class _GPipeHandle(object):
         In the future, we might decide to not call this method within
         each get and put operation performed on a pipe.
         """
-        if not self._valid:
-            raise RuntimeError(
+        if self._closed:
+            raise GPipeError(
                 "GPipeHandle has been closed before.")
         if os.getpid() != self._legit_pid:
-            raise RuntimeError(
+            raise GPipeError(
                 "GPipeHandle not registered for current process.")
 
     def _pre_createprocess_windows(self):
@@ -315,9 +319,7 @@ class _GPipeReader(_GPipeHandle):
         readbuf = io.BytesIO()
         remaining = size
         while remaining > 0:
-            log.debug("BEFORE _READ_NB")
             chunk = _READ_NB(self._fd, remaining)
-            log.debug("AFTER _READ_NB")
             n = len(chunk)
             if n == 0:
                 if remaining == size:
