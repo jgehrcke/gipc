@@ -130,7 +130,7 @@ def benchmark(N):
     elapsed = TIMER() - t
     p.join()
     reader.close()
-    writer.close()
+    #writer.close()
     return N, elapsed
 
 
