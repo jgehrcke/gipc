@@ -217,6 +217,8 @@ class _GPipeHandle(object):
         list of valid handles.
         """
         self._validate()
+        if not self._glock.acquire(blocking=False):
+            raise RuntimeError("GPipeHandle locked for I/O operation.")
         log.debug("Invalidating %s ..." % self)
         self._valid = False
         if self._fd is not None:
@@ -226,6 +228,7 @@ class _GPipeHandle(object):
         if self in _all_handles:
             log.debug("Remove %s from _all_handles" % self)
             _all_handles.remove(self)
+        self._glock.release()
 
     def _set_legit_process(self):
         log.debug("Legitimate %s" % self)
