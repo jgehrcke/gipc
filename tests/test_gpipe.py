@@ -20,7 +20,8 @@ import os
 import gevent
 
 sys.path.insert(0, os.path.abspath('..'))
-import gpipe
+from gpipe import pipe, GPipeError
+from nose.tools import *
 
 
 class TestSingleProcess():
@@ -34,11 +35,17 @@ class TestSingleProcess():
         o.teardown()
     """
     def setup(self):
-        self.rh, self.wh = gpipe.pipe()
+        self.rh, self.wh = pipe()
 
     def teardown(self):
-        self.rh.close()
-        self.wh.close()
+        try:
+            self.rh.close()
+        except GPipeError:
+            pass
+        try:
+            self.wh.close()
+        except GPipeError:
+            pass
 
     def test_singlemsg_short_bin(self):
         m = "OK"
@@ -55,6 +62,15 @@ class TestSingleProcess():
         t = g.get()
         assert m == t
         assert type(m) == type(t)
+
+    def test_singlemsg_short_list_commontypes(self):
+        mlist = [1, True, False, None, Exception]
+        g = gevent.spawn(lambda r: r.get(), self.rh)
+        self.wh.put(mlist)
+        tlist = g.get()
+        for i, m in enumerate(mlist):
+            assert m == tlist[i]
+            assert type(m) == type(tlist[i])
 
     def test_singlemsg_long_bin(self):
         m = "OK" * 999999
@@ -84,16 +100,35 @@ class TestSingleProcess():
         assert m == t
         assert type(m) == type(t)
 
-    def test_onewriter_multiple_readers(self):
+    def test_onewriter_two_readers(self):
         m = [1] * 999999
         def gwrite(writer, m):
+            writer.put(m)
             writer.put(m)
         def gread(reader):
             return reader.get()
         gw = gevent.spawn(gwrite, self.wh, m)
         gr1 = gevent.spawn(gread, self.rh)
         gr2 = gevent.spawn(gread, self.rh)
-        t = gr1.get()
-        gr2.kill(gevent.GreenletExit)
-        assert m == t
-        assert type(m) == type(t)
+        t1 = gr1.get()
+        t2 = gr2.get()
+        assert m == t1 == t2
+        assert type(m) == type(t1)
+
+    def test_twowriters_one_reader(self):
+        m = [1] * 999999
+        def gwrite(writer, m):
+            writer.put(m)
+        def gread(reader):
+            return [reader.get() for _ in xrange(2)]
+        gw1 = gevent.spawn(gwrite, self.wh, m)
+        gw2 = gevent.spawn(gwrite, self.wh, m)
+        gr = gevent.spawn(gread, self.rh)
+        t = gr.get()
+        assert [m, m] == t
+        assert type(t[0]) == type(m)
+
+    @raises(GPipeError)
+    def test_twoclose(self):
+        self.wh.close()
+        self.wh.close()
