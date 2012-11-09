@@ -83,7 +83,7 @@ def main():
     elapsed = TIMER() - t
     log.info("Messaging done.")
     reader.close()
-    writer.close()
+    #writer.close()
     p.join()
 
     mpertime = N/elapsed

@@ -16,7 +16,13 @@
 
 """
 TODO:
-    - make reader/writer context manager-compatible (close() on exit)?
+    - make reader/writer context manager-aware (close() on __exit__)?
+    - implement non-blocking get() based on some kind of fd polling
+      should raise some kind of WouldBlockException instead of returning
+      a special value
+    - check if the gevent FileObjectPosix can be of any use
+    - review buffer-implementation, consider, buffer(), memoryview(), ..
+    - ensure portability between Python 2 and 3
 """
 
 import os
@@ -103,14 +109,13 @@ def _child(target, childhandles, all_handles, kwargs):
         gevent.get_hub()
     # Register inherited handles for current process.
     # Close file descriptors that are not intended for further usage.
-    log.debug("all handles: %s" % _all_handles)
     for h in _all_handles[:]:
         h._set_legit_process()
         if WINDOWS:
             log.debug("Restore %s in child." % h)
             h._post_createprocess_windows()
         if not h in childhandles:
-            log.debug("Remove %s in child." % h)
+            log.debug("Invalidate %s in child." % h)
             h.close()
     target(*childhandles, **kwargs)
     # Close childhandles here?
@@ -158,7 +163,7 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
     if WINDOWS:
         for h in _all_handles:
             h._pre_createprocess_windows()
-    p = GProcess(
+    p = _GProcess(
         target=_child,
         name=name,
         args=(target, childhandles, _all_handles, kwargs))
@@ -170,12 +175,12 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
             h._post_createprocess_windows()
     # Close file handlers in parent that are not further required.
     for h in childhandles:
-        log.debug("Remove %s in parent." % h)
+        log.debug("Invalidate %s in parent." % h)
         h.close()
     return p
 
 
-class GProcess(multiprocessing.Process):
+class _GProcess(multiprocessing.Process):
     def join(self, timeout=None):
         """
         Wait cooperatively until child process terminates.
@@ -193,7 +198,7 @@ class GProcess(multiprocessing.Process):
                 gevent.sleep(0.1)
         # Call original method in non-blocking mode, even if timeout was
         # triggered above: clean up after child as designed by Process class.
-        super(GProcess, self).join(timeout=0)
+        super(_GProcess, self).join(timeout=0)
 
 
 class GPipeError(Exception):
@@ -222,7 +227,7 @@ class _GPipeHandle(object):
         """
         self._validate()
         if not self._glock.acquire(blocking=False):
-            raise GPipeError("GPipeHandle locked for I/O operation.")
+            raise GPipeError("Can't close: handle locked for I/O operation.")
         log.debug("Invalidating %s ..." % self)
         self._closed = True
         if self._fd is not None:
@@ -235,7 +240,7 @@ class _GPipeHandle(object):
         self._glock.release()
 
     def _set_legit_process(self):
-        log.debug("Legitimate %s" % self)
+        log.debug("Legitimate %s for current process." % self)
         self._legit_pid = os.getpid()
 
     def _validate(self):
@@ -324,9 +329,10 @@ class _GPipeReader(_GPipeHandle):
             if n == 0:
                 if remaining == size:
                     # Other pipe end was closed
-                    raise EOFError("Other pipe end was closed.")
+                    raise EOFError(
+                        "Most likely the other pipe end was closed.")
                 else:
-                    raise IOError("Message interrupted by EOF")
+                    raise IOError("Message interrupted by EOF.")
             readbuf.write(chunk)
             remaining -= n
         return readbuf
