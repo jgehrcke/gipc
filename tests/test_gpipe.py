@@ -279,10 +279,13 @@ class TestIPC():
                     pass
                 ii = gpipe.start_process(iichild)
                 ii.join()
+                assert ii.returncode == 0
             i = gpipe.start_process(ichild)
             i.join()
+            assert i.returncode == 0
         c = gpipe.start_process(child)
         c.join()
+        assert c.returncode == 0
 
     def test_child_in_child_in_child_comm(self):
         m = "RATZEPENG"
