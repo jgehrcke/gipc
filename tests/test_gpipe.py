@@ -194,7 +194,7 @@ class TestIPC():
         def child(r):
             t = r.get()
             assert t == m
-        p = gpipe.start_process(self.rh, child)
+        p = gpipe.start_process(child, args=(self.rh,))
         self.wh.put(m)
         p.join()
 
@@ -206,12 +206,12 @@ class TestIPC():
             assert t == m1
             t = r2.get()
             assert t == m2
-        p = gpipe.start_process((self.rh, self.rh2), child)
+        p = gpipe.start_process(child, args=(self.rh, self.rh2))
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
 
-    def test_comm_in_child(self):
+    def test_childparentcomm_withinchildcomm(self):
         m1 = "OK"
         m2 = "FOO"
         def child(r1, r2):
@@ -236,16 +236,27 @@ class TestIPC():
             assert t == m2
             gw.join()
             gr.join()
-        p = gpipe.start_process((self.rh, self.rh2), child)
+        p = gpipe.start_process(target=child, args=(self.rh, self.rh2))
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
+
+    def test_childchildcomm(self):
+        m = {("KLADUSCH",): "foo"}
+        def readchild(r):
+            assert r.get() == m
+        def writechild(w):
+            w.put(m)
+        pr = gpipe.start_process(readchild, args=(self.rh,))
+        pw = gpipe.start_process(writechild, args=(self.wh,))
+        pr.join()
+        pw.join()
 
     @raises(GPipeError)
     def test_handler_after_transfer_to_child(self):
         def child(r):
             pass
-        p = gpipe.start_process(self.rh, child)
+        p = gpipe.start_process(child, args=(self.rh,))
         self.rh.close()
         p.join()
 
@@ -260,3 +271,6 @@ class TestIPC():
         p.start()
         p.join()
         self.rh.close()
+
+    def test_eventloop_in_child(self):
+        pass
