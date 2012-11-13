@@ -17,9 +17,9 @@
 """
 TODO:
     - make reader/writer context manager-aware (close() on __exit__)?
-    - implement non-blocking get() based on some kind of fd polling
-      should raise some kind of WouldBlockException instead of returning
-      a special value
+    - implement 'polling' get() based on some kind of fd polling.
+      Should raise some kind of WouldBlockException if no data available.
+      Difficult (impossible?) to identify complete messages in advance.
     - check if the gevent FileObjectPosix can be of any use
     - review buffer-implementation, consider, buffer(), memoryview(), ..
     - ensure portability between Python 2 and 3
@@ -132,13 +132,18 @@ def _child(target, all_handles, args, kwargs):
             log.debug("Invalidate %s in child." % h)
             h.close()
     target(*args, **kwargs)
-    # Close childhandles here?
+    for h in childhandles:
+        try:
+            # The user or a child of this child might already have closen it.
+            h.close()
+        except GPipeError:
+            pass
 
 
 def start_process(target, name=None, args=(), kwargs={}, daemon=None):
-    """Spawn child process with the intention to use the `_GPipeHandle`s
-    provided via `childhandles` within the child process. Execute
-    target(*childhandles, **kwargs) in the child process.
+    """Spawn child process with the intention to use `_GPipeHandle`s
+    provided via `args`/`kwargs` within the child process. Execute
+    target(*args, **kwargs) in the child process.
 
     Process creation is based on multiprocessing.Process(). When working with
     gevent and gevent-messagepipe, instead of calling Process() on your own,
@@ -148,28 +153,17 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
         - proper file descriptor inheritance on Windows.
         - re-initialization of the gevent event loop in the child process (no
           greenlet spawned in the parent will run in the child) on Unix.
-
-    Example:
-        def childfunction(reader, foo):
-            s = reader.get()
-            print s, foo # prints "hello to child bar"
-
-        reader, writer = gpipe.pipe()
-        p = gpipe.start_process(reader, childfunction, kwargs={'foo': 'bar'})
-        writer.put("hello to child")
-        p.join()
+        - making `join()` cooperative
 
     Args:
-        `childhandles`: `GPipeHandle` or list or tuple of `GPipeHandle`s
-            that is/are intented to be used in the child. Unusable in
-            parent afterwards.
         `target`: user-given function to be called with `kwargs`
         `name`: `multiprocessing.Process.name`
         `daemon`: `multiprocessing.Process.daemon`
+        `args`: tuple defining positional arguments provided to `target`
         `kwargs`: dictionary defining keyword arguments provided to `target`
 
     Returns:
-        `GProcess` instance (inherits from `multiprocessing.Process`)
+        `_GProcess` instance (inherits from `multiprocessing.Process`)
     """
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
@@ -189,7 +183,7 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     if WINDOWS:
         for h in _all_handles:
             h._post_createprocess_windows()
-    # Close file handlers in parent that are not further required.
+    # Close those file handlers in parent that are not further required.
     for h in childhandles:
         log.debug("Invalidate %s in parent." % h)
         h.close()
@@ -200,7 +194,7 @@ class _GProcess(mp.Process):
     """
     Implements adjustments to multiprocessing's Process class.
 
-    On POSIX, the `join()` implementation adjusted to the framework, as we
+    On POSIX, adjust the `join()` implementation to the framework, as we
     cannot rely on
         `multiprocessing.Process._popen.wait()`
     to 'tell the truth' about the state for children of children.
@@ -229,7 +223,7 @@ class _GProcess(mp.Process):
             hub.loop.install_sigchld()
             super(_GProcess, self).start()
             # Is there a race condition? (can it happen that the child already
-            # finished before the watcher below is installed?)
+            # finished before the watcher below is started?)
             self._sigchld_watcher = hub.loop.child(self.pid)
             self._sigchld_watcher.start(
                 self._on_sigchld, self._sigchld_watcher)
@@ -320,10 +314,7 @@ class _GPipeHandle(object):
         Intended to be called before every operation on `self._fd`.
         Reveals wrong usage of this module in the context of multiple
         processes. Might prevent tedious debugging sessions.
-        Little performance impact, asgetpid() system call ist very fast.
-        Profiling example:
-            `posix.read():` 3.40 s of CPU time
-            this method: 0.12 s.
+        Has little performance impact, as getpid() system call ist very fast.
         """
         if self._closed:
             raise GPipeError(
@@ -385,21 +376,21 @@ class _GPipeReader(_GPipeHandle):
         self._fd_flag = os.O_RDONLY
         _GPipeHandle.__init__(self)
 
-    def _recv_in_buffer(self, size):
-        """Read `size` bytes cooperatively from file descriptor to buffer."""
+    def _recv_in_buffer(self, n):
+        """Cooperatively read `n` bytes from file descriptor to buffer."""
         readbuf = io.BytesIO()
-        remaining = size
+        remaining = n
         while remaining > 0:
             chunk = _READ_NB(self._fd, remaining)
-            n = len(chunk)
-            if n == 0:
-                if remaining == size:
+            received = len(chunk)
+            if received == 0:
+                if remaining == n:
                     raise EOFError(
                         "Most likely, the other pipe end is closed.")
                 else:
                     raise IOError("Message interrupted by EOF.")
             readbuf.write(chunk)
-            remaining -= n
+            remaining -= received
         return readbuf
 
     def get(self):
@@ -443,7 +434,7 @@ class _GPipeWriter(_GPipeHandle):
             bindata = bindata[-diff:]
 
     def put(self, o):
-        """Put pickleable object into the pipe."""
+        """Put pickleable object into the pipe. Block cooperatively."""
         self._validate_process()
         with self._lock:
             bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
