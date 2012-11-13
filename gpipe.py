@@ -31,8 +31,10 @@ import sys
 import logging
 import io
 import struct
-import multiprocessing
+import multiprocessing as mp
+import multiprocessing.process as mp_process
 import itertools
+import signal
 try:
    import cPickle as pickle
 except:
@@ -45,6 +47,7 @@ if WINDOWS:
 import gevent
 import gevent.os
 import gevent.lock
+import gevent.event
 
 
 log = logging.getLogger("gpipe")
@@ -193,20 +196,78 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     return p
 
 
-class _GProcess(multiprocessing.Process):
+class _GProcess(mp.Process):
+    """
+    Implements adjustments to multiprocessing's Process class.
+
+    On POSIX, the `join()` implementation adjusted to the framework, as we
+    cannot rely on
+        `multiprocessing.Process._popen.wait()`
+    to 'tell the truth' about the state for children of children.
+    With the current code base, libev seems to handle SIGCHLD by default in
+    children of children. This makes os.waitpid() (used in `_popen.wait()`)
+    throw an ECHILD error ("process specified by pid does not exist or is
+    not a child of the calling process"), after which multiprocessing's
+    `_popen.wait()` returns None, meaning 'alive' even for child processes
+    that finished before. This could be rectified via re-installing the
+    default signal handler with
+        `signal.signal(signal.SIGCHLD, signal.SIG_DFL)`.
+    However, doing so would render libev's child watchers useless. Instead,
+    for each _GProcess, a libev child watcher is explicitly installed in the
+    modified `start()` method below. The modified `join()` method is adjusted
+    to this libev-watcher-based child monitoring.
+    `multiprocessing.Process.join()` is entirely surpassed, but resembled.
+
+    On Windows, cooperative `join` is realized via frequent non-blocking calls
+    to `is_alive` and the original join method.
+    """
+    if not WINDOWS:
+        def start(self):
+            self.returncode = None
+            hub = gevent.get_hub()
+            self._gresult = gevent.event.AsyncResult()
+            hub.loop.install_sigchld()
+            super(_GProcess, self).start()
+            # Is there a race condition? (can it happen that the child already
+            # finished before the watcher below is installed?)
+            self._sigchld_watcher = hub.loop.child(self.pid)
+            self._sigchld_watcher.start(
+                self._on_sigchld, self._sigchld_watcher)
+            log.debug("SIGCHLD watcher for %s installed." % self.pid)
+
+        def _on_sigchld(self, watcher):
+            watcher.stop()
+            # Status evaluation copied from multiprocessing.forking
+            if os.WIFSIGNALED(watcher.rstatus):
+                self.returncode = -os.WTERMSIG(watcher.rstatus)
+            else:
+                assert os.WIFEXITED(watcher.rstatus)
+                self.returncode = os.WEXITSTATUS(watcher.rstatus)
+            self._gresult.set(self.returncode)
+            log.debug(("SIGCHLD watcher callback for %s invoked. Returncode "
+                       "stored: %s" % (self.pid, self.returncode)))
+
     def join(self, timeout=None):
         """
-        Wait cooperatively until child process terminates.
-
-        TODO:
-            - We could install our own signal handler/watcher based on
-              SIGCHLD (on Unix). Would be cleaner than frequent polling.
+        Wait cooperatively until child process terminates or timeout ocurrs.
         """
+        if not WINDOWS:
+            # Resemble multiprocessing's join() method while replacing
+            # `self._popen.wait(timeout)` with
+            # `self._gresult.wait(timeout)`
+            assert self._parent_pid == os.getpid(),(
+                'Can only join a child process.')
+            assert self._popen is not None,(
+                'Can only join a started process.')
+            self._gresult.wait(timeout=timeout)
+            if self.returncode is not None:
+                mp_process._current_process._children.discard(self)
+            return
+
         with gevent.Timeout(timeout, False):
             while self.is_alive():
-                gevent.sleep(0.1)
-        # Call original method in non-blocking mode, even if timeout was
-        # triggered above: clean up after child as designed by Process class.
+                gevent.sleep(0.05)
+        # Clean up after child as designed by Process class (non-blocking).
         super(_GProcess, self).join(timeout=0)
 
 
@@ -291,7 +352,7 @@ class _GPipeHandle(object):
         multiprocessing's forking.py.
         """
         if WINDOWS:
-            from multiprocessing.forking import duplicate
+            from mp.forking import duplicate
             # Get Windows file handle from C file descriptor.
             h = msvcrt.get_osfhandle(self._fd)
             # Duplicate file handle, rendering the duplicate inheritable by

@@ -272,5 +272,31 @@ class TestIPC():
         p.join()
         self.rh.close()
 
-    def test_eventloop_in_child(self):
-        pass
+    def test_child_in_child_in_child(self):
+        def child():
+            def ichild():
+                def iichild():
+                    pass
+                ii = gpipe.start_process(iichild)
+                ii.join()
+            i = gpipe.start_process(ichild)
+            i.join()
+        c = gpipe.start_process(child)
+        c.join()
+
+    def test_child_in_child_in_child_comm(self):
+        m = "RATZEPENG"
+        def child(w):
+            def ichild(w):
+                def iichild(w):
+                    w.put(m)
+                    w.close()
+                ii = gpipe.start_process(iichild, args=(w,))
+                ii.join()
+            i = gpipe.start_process(ichild, args=(w,))
+            i.join()
+        c = gpipe.start_process(child, args=(self.wh,))
+        c.join()
+        t = self.rh.get()
+        assert m == t
+
