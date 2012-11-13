@@ -32,6 +32,7 @@ import logging
 import io
 import struct
 import multiprocessing
+import itertools
 try:
    import cPickle as pickle
 except:
@@ -115,13 +116,8 @@ def _child(target, all_handles, args, kwargs):
         # `libev.gevent_ev_default_loop`.
         h = gevent.get_hub(default=True)
         assert h.loop.default, 'Could not create new default event loop.'
-    childhandles = []
-    for a in args:
-        if isinstance(a, _GPipeHandle):
-            childhandles.append(a)
-    for v in kwargs.itervalues():
-        if isinstance(v, _GPipeHandle):
-            childhandles.append(v)
+    allargs = itertools.chain(args, kwargs.values())
+    childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
     # Register inherited handles for current process.
     # Close file descriptors that are not intended for further usage.
     for h in _all_handles[:]:
@@ -172,13 +168,8 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     Returns:
         `GProcess` instance (inherits from `multiprocessing.Process`)
     """
-    childhandles = []
-    for a in args:
-        if isinstance(a, _GPipeHandle):
-            childhandles.append(a)
-    for v in kwargs.itervalues():
-        if isinstance(v, _GPipeHandle):
-            childhandles.append(v)
+    allargs = itertools.chain(args, kwargs.values())
+    childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
     if WINDOWS:
         for h in _all_handles:
             h._pre_createprocess_windows()
