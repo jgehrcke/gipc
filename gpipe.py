@@ -89,7 +89,7 @@ def pipe():
     return reader, writer
 
 
-def _child(target, childhandles, all_handles, kwargs):
+def _child(target, all_handles, args, kwargs):
     """Runs in child process. Sanitizes situation in child process and
     executes user-given function.
 
@@ -115,6 +115,13 @@ def _child(target, childhandles, all_handles, kwargs):
         # `libev.gevent_ev_default_loop`.
         h = gevent.get_hub(default=True)
         assert h.loop.default, 'Could not create new default event loop.'
+    childhandles = []
+    for a in args:
+        if isinstance(a, _GPipeHandle):
+            childhandles.append(a)
+    for v in kwargs.itervalues():
+        if isinstance(v, _GPipeHandle):
+            childhandles.append(v)
     # Register inherited handles for current process.
     # Close file descriptors that are not intended for further usage.
     for h in _all_handles[:]:
@@ -125,11 +132,11 @@ def _child(target, childhandles, all_handles, kwargs):
         if not h in childhandles:
             log.debug("Invalidate %s in child." % h)
             h.close()
-    target(*childhandles, **kwargs)
+    target(*args, **kwargs)
     # Close childhandles here?
 
 
-def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
+def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     """Spawn child process with the intention to use the `_GPipeHandle`s
     provided via `childhandles` within the child process. Execute
     target(*childhandles, **kwargs) in the child process.
@@ -165,15 +172,23 @@ def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
     Returns:
         `GProcess` instance (inherits from `multiprocessing.Process`)
     """
-    if not (isinstance(childhandles, list) or isinstance(childhandles, tuple)):
-        childhandles = (childhandles,)
+    childhandles = []
+    for a in args:
+        if isinstance(a, _GPipeHandle):
+            childhandles.append(a)
+    for v in kwargs.itervalues():
+        if isinstance(v, _GPipeHandle):
+            childhandles.append(v)
     if WINDOWS:
         for h in _all_handles:
             h._pre_createprocess_windows()
     p = _GProcess(
         target=_child,
         name=name,
-        args=(target, childhandles, _all_handles, kwargs))
+        kwargs={"target": target,
+                "all_handles": _all_handles,
+                "args": args,
+                "kwargs": kwargs})
     if daemon is not None:
         p.daemon = daemon
     p.start()
