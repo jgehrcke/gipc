@@ -22,6 +22,7 @@ import gevent
 sys.path.insert(0, os.path.abspath('..'))
 from gpipe import pipe, GPipeError
 import gpipe
+import multiprocessing
 from nose.tools import *
 
 
@@ -43,18 +44,14 @@ class TestSingleProcess():
         # Make sure to not leak file descriptors
         try:
             self.rh.close()
-        except GPipeError:
-            try:
-                os.close(self.rh._fd)
-            except:
-                pass
+            os.close(self.rh._fd)
+        except:
+            pass
         try:
             self.wh.close()
-        except GPipeError:
-            try:
-                os.close(self.wh._fd)
-            except:
-                pass
+            os.close(self.wh._fd)
+        except:
+            pass
         gpipe._all_handles = []
         for g in self._greenlets_to_be_killed:
             g.kill()
@@ -152,4 +149,114 @@ class TestSingleProcess():
         g = gevent.spawn(lambda r: r.get(), self.rh)
         self._greenlets_to_be_killed.append(g)
         gevent.sleep(0.01)
+        self.rh.close()
+
+    @raises(EOFError)
+    def test_closewrite_read(self):
+        self.wh.close()
+        self.rh.get()
+
+
+class TestIPC():
+    def setup(self):
+        self.rh, self.wh = pipe()
+        self.rh2, self.wh2 = pipe()
+        self._greenlets_to_be_killed = []
+
+    def teardown(self):
+        # Make sure to not leak file descriptors
+        try:
+            self.rh.close()
+            os.close(self.rh._fd)
+        except:
+            pass
+        try:
+            self.wh.close()
+            os.close(self.wh._fd)
+        except:
+            pass
+        try:
+            self.rh2.close()
+            os.close(self.rh2._fd)
+        except:
+            pass
+        try:
+            self.wh2.close()
+            os.close(self.wh2._fd)
+        except:
+            pass
+        gpipe._all_handles = []
+        for g in self._greenlets_to_be_killed:
+            g.kill()
+
+    def test_singlemsg_long_list(self):
+        m = [1] * 999999
+        def child(r):
+            t = r.get()
+            assert t == m
+        p = gpipe.start_process(self.rh, child)
+        self.wh.put(m)
+        p.join()
+
+    def test_twochannels_singlemsg(self):
+        m1 = "OK"
+        m2 = "FOO"
+        def child(r1, r2):
+            t = r1.get()
+            assert t == m1
+            t = r2.get()
+            assert t == m2
+        p = gpipe.start_process((self.rh, self.rh2), child)
+        self.wh.put(m1)
+        self.wh2.put(m2)
+        p.join()
+
+    def test_comm_in_child(self):
+        m1 = "OK"
+        m2 = "FOO"
+        def child(r1, r2):
+            # Receive first message from parent
+            t = r1.get()
+            assert t == m1
+            # Test messaging between greenlets in child process
+            local_reader, local_writer = pipe()
+            testmsg = [1] * 999999
+            def gwrite(writer):
+                writer.put(testmsg)
+            def gread(reader):
+                return reader.get()
+            gw = gevent.spawn(gwrite, local_writer)
+            gr = gevent.spawn(gread, local_reader)
+            t = gr.get()
+            assert testmsg == t
+            local_reader.close()
+            local_writer.close()
+            # Receive second message from parent
+            t = r2.get()
+            assert t == m2
+            gw.join()
+            gr.join()
+        p = gpipe.start_process((self.rh, self.rh2), child)
+        self.wh.put(m1)
+        self.wh2.put(m2)
+        p.join()
+
+    @raises(GPipeError)
+    def test_handler_after_transfer_to_child(self):
+        def child(r):
+            pass
+        p = gpipe.start_process(self.rh, child)
+        self.rh.close()
+        p.join()
+
+    def test_handler_in_nonregistered_process(self):
+        def child(r):
+            try:
+                r.close()
+            except GPipeError:
+                return
+            assert False
+        p = multiprocessing.Process(target=child, args=(self.rh, ))
+        p.start()
+        p.join()
         self.rh.close()

@@ -23,6 +23,7 @@ TODO:
     - check if the gevent FileObjectPosix can be of any use
     - review buffer-implementation, consider, buffer(), memoryview(), ..
     - ensure portability between Python 2 and 3
+    - hub.cancel_wait() (cf. gevent sockets) in close instead of lock check?
 """
 
 import os
@@ -89,24 +90,31 @@ def pipe():
 
 
 def _child(target, childhandles, all_handles, kwargs):
-    """(Runs in child process) Sanitize situation in child process and
-    execute user-given function.
+    """Runs in child process. Sanitizes situation in child process and
+    executes user-given function.
 
     `target`: user-given function to be called with `kwargs`
     `childhandles`: GPipeHandles that are intented to be used in child.
+
+    After fork on POSIX systems, gevent's state is inherited by the
+    child which may lead to undesired and undefined behavior, such as
+    greenlets running in both, the parent and the child. Therefore, on POSIX,
+    gevent's state is entirely reset before running the user-given function.
     """
     # Restore `_all_handles` (required on Windows; does not harm elsewhere)
     _all_handles = all_handles
     if not WINDOWS:
-        # Clean up after fork
-        # Call `libev.ev_loop_fork()`: required after fork
+        # `gevent.reinit` calls `libev.ev_loop_fork()`, which is designed to
+        # be called after fork.
         gevent.reinit()
         # Destroy default event loop via `libev.ev_loop_destroy()` and delete
-        # hub. This gets rid of all registered events
-        # and greenlets that have been duplicated from the parent.
+        # hub. This dumps all registered events and greenlets that have been
+        # duplicated from the parent.
         gevent.get_hub().destroy(destroy_loop=True)
-        # Create a fresh event loop via `ev_loop_new` and a new hub.
-        gevent.get_hub()
+        # Create a new hub and a new default event loop via
+        # `libev.gevent_ev_default_loop`.
+        h = gevent.get_hub(default=True)
+        assert h.loop.default, 'Could not create new default event loop.'
     # Register inherited handles for current process.
     # Close file descriptors that are not intended for further usage.
     for h in _all_handles[:]:
@@ -124,8 +132,7 @@ def _child(target, childhandles, all_handles, kwargs):
 def start_process(childhandles, target, name=None, kwargs={}, daemon=None):
     """Spawn child process with the intention to use the `_GPipeHandle`s
     provided via `childhandles` within the child process. Execute
-    target(*childhandles, **kwargs) in the child process. Similar to
-    `multiprocessing.Process()` interface.
+    target(*childhandles, **kwargs) in the child process.
 
     Process creation is based on multiprocessing.Process(). When working with
     gevent and gevent-messagepipe, instead of calling Process() on your own,
@@ -185,14 +192,10 @@ class _GProcess(multiprocessing.Process):
         """
         Wait cooperatively until child process terminates.
 
-        On Unix, this calls waitpid() and therefore prevents zombie creation
-        if applied properly.
-
         TODO:
             - We could install our own signal handler/watcher based on
               SIGCHLD (on Unix). Would be cleaner than frequent polling.
         """
-        # `is_alive()` invokes `waitpid()` on Unix.
         with gevent.Timeout(timeout, False):
             while self.is_alive():
                 gevent.sleep(0.1)
@@ -210,7 +213,7 @@ class _GPipeHandle(object):
         self._id = os.urandom(3).encode("hex")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
-        self._glock = gevent.lock.Semaphore(value=1)
+        self._lock = gevent.lock.Semaphore(value=1)
         self._closed = False
 
     def _make_nonblocking(self):
@@ -225,8 +228,8 @@ class _GPipeHandle(object):
         Closes underlying file descriptor and removes the handle from the
         list of valid handles.
         """
-        self._validate()
-        if not self._glock.acquire(blocking=False):
+        self._validate_process()
+        if not self._lock.acquire(blocking=False):
             raise GPipeError("Can't close: handle locked for I/O operation.")
         log.debug("Invalidating %s ..." % self)
         self._closed = True
@@ -237,27 +240,23 @@ class _GPipeHandle(object):
         if self in _all_handles:
             log.debug("Remove %s from _all_handles" % self)
             _all_handles.remove(self)
-        self._glock.release()
+        self._lock.release()
 
     def _set_legit_process(self):
         log.debug("Legitimate %s for current process." % self)
         self._legit_pid = os.getpid()
 
-    def _validate(self):
+    def _validate_process(self):
         """Raise exception if this handle is not registered to be used in
         the current process.
 
         Intended to be called before every operation on `self._fd`.
         Reveals wrong usage of this module in the context of multiple
-        processes. Might save the user the trouble of tedious debugging
-        sessions. Based on `os.getpid()`, which uses a fast system call.
-        Benchmarks show that this method does almost not affect the
-        performance of the module. Profiling reveals that while
-        `posix.read()` consumes e.g. 3.40 s of CPU time, this method
-        consumes 0.12 s.
-
-        In the future, we might decide to not call this method within
-        each get and put operation performed on a pipe.
+        processes. Might prevent tedious debugging sessions.
+        Little performance impact, asgetpid() system call ist very fast.
+        Profiling example:
+            `posix.read():` 3.40 s of CPU time
+            this method: 0.12 s.
         """
         if self._closed:
             raise GPipeError(
@@ -300,7 +299,7 @@ class _GPipeHandle(object):
         """Restore file descriptor on Windows."""
         if WINDOWS:
             # Get C file descriptor from Windows file handle.
-            self._fd = msvcrt.open_osfhandle(self._ihfd, self._descr_flag)
+            self._fd = msvcrt.open_osfhandle(self._ihfd, self._fd_flag)
             del self._ihfd
 
     def __str__(self):
@@ -316,7 +315,7 @@ class _GPipeHandle(object):
 class _GPipeReader(_GPipeHandle):
     def __init__(self, pipe_read_fd):
         self._fd = pipe_read_fd
-        self._descr_flag = os.O_RDONLY
+        self._fd_flag = os.O_RDONLY
         _GPipeHandle.__init__(self)
 
     def _recv_in_buffer(self, size):
@@ -328,9 +327,8 @@ class _GPipeReader(_GPipeHandle):
             n = len(chunk)
             if n == 0:
                 if remaining == size:
-                    # Other pipe end was closed
                     raise EOFError(
-                        "Most likely the other pipe end was closed.")
+                        "Most likely, the other pipe end is closed.")
                 else:
                     raise IOError("Message interrupted by EOF.")
             readbuf.write(chunk)
@@ -342,8 +340,8 @@ class _GPipeReader(_GPipeHandle):
 
         Blocks cooperatively until message is available.
         TODO: timeout option"""
-        self._validate()
-        with self._glock:
+        self._validate_process()
+        with self._lock:
             msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
             bindata = self._recv_in_buffer(msize).getvalue()
             return pickle.loads(bindata)
@@ -352,7 +350,7 @@ class _GPipeReader(_GPipeHandle):
 class _GPipeWriter(_GPipeHandle):
     def __init__(self, pipe_write_fd):
         self._fd = pipe_write_fd
-        self._descr_flag = os.O_WRONLY
+        self._fd_flag = os.O_WRONLY
         _GPipeHandle.__init__(self)
 
     def _write(self, bindata):
@@ -379,8 +377,8 @@ class _GPipeWriter(_GPipeHandle):
 
     def put(self, o):
         """Put pickleable object into the pipe."""
-        self._validate()
-        with self._glock:
+        self._validate_process()
+        with self._lock:
             bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
             # TODO: one write instead of two?
             self._write(struct.pack("!i", len(bindata)))
