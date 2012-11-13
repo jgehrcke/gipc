@@ -25,6 +25,14 @@ import gpipe
 import multiprocessing
 from nose.tools import *
 
+#import logging
+#logging.basicConfig(
+#    format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
+#    datefmt='%H:%M:%S')
+#log = logging.getLogger()
+#log.setLevel(logging.DEBUG)
+
+LONG = 999999
 
 class TestSingleProcess():
     """
@@ -79,32 +87,29 @@ class TestSingleProcess():
             assert m == tlist[i]
 
     def test_singlemsg_long_bin(self):
-        m = "OK" * 999999
+        m = "OK" * LONG
         g = gevent.spawn(lambda r: r.get(), self.rh)
         self.wh.put(m)
-        t = g.get()
-        assert m == t
+        assert m == g.get()
 
     def test_singlemsg_long_list(self):
-        m = [1] * 999999
+        m = [1] * LONG
         g = gevent.spawn(lambda r: r.get(), self.rh)
         self.wh.put(m)
-        t = g.get()
-        assert m == t
+        assert m == g.get()
 
     def test_singlemsg_between_greenlets(self):
-        m = [1] * 999999
+        m = [1] * LONG
         def gwrite(writer, m):
             writer.put(m)
         def gread(reader):
             return reader.get()
         gw = gevent.spawn(gwrite, self.wh, m)
         gr = gevent.spawn(gread, self.rh)
-        t = gr.get()
-        assert m == t
+        assert m == gr.get()
 
     def test_onewriter_two_readers(self):
-        m = [1] * 999999
+        m = [1] * LONG
         def gwrite(writer, m):
             writer.put(m)
             writer.put(m)
@@ -113,12 +118,10 @@ class TestSingleProcess():
         gw = gevent.spawn(gwrite, self.wh, m)
         gr1 = gevent.spawn(gread, self.rh)
         gr2 = gevent.spawn(gread, self.rh)
-        t1 = gr1.get()
-        t2 = gr2.get()
-        assert m == t1 == t2
+        assert m == gr1.get() == gr2.get()
 
     def test_twowriters_one_reader(self):
-        m = [1] * 999999
+        m = [1] * LONG
         def gwrite(writer, m):
             writer.put(m)
         def gread(reader):
@@ -126,8 +129,7 @@ class TestSingleProcess():
         gw1 = gevent.spawn(gwrite, self.wh, m)
         gw2 = gevent.spawn(gwrite, self.wh, m)
         gr = gevent.spawn(gread, self.rh)
-        t = gr.get()
-        assert [m, m] == t
+        assert [m, m] == gr.get()
 
     @raises(GPipeError)
     def test_twoclose(self):
@@ -190,23 +192,15 @@ class TestIPC():
             g.kill()
 
     def test_singlemsg_long_list(self):
-        m = [1] * 999999
-        def child(r):
-            t = r.get()
-            assert t == m
-        p = gpipe.start_process(child, args=(self.rh,))
+        m = [1] * LONG
+        p = gpipe.start_process(readchild_a, args=(self.rh, m))
         self.wh.put(m)
         p.join()
 
     def test_twochannels_singlemsg(self):
         m1 = "OK"
         m2 = "FOO"
-        def child(r1, r2):
-            t = r1.get()
-            assert t == m1
-            t = r2.get()
-            assert t == m2
-        p = gpipe.start_process(child, args=(self.rh, self.rh2))
+        p = gpipe.start_process(child_b, args=(self.rh, self.rh2, m1, m2))
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
@@ -214,92 +208,101 @@ class TestIPC():
     def test_childparentcomm_withinchildcomm(self):
         m1 = "OK"
         m2 = "FOO"
-        def child(r1, r2):
-            # Receive first message from parent
-            t = r1.get()
-            assert t == m1
-            # Test messaging between greenlets in child process
-            local_reader, local_writer = pipe()
-            testmsg = [1] * 999999
-            def gwrite(writer):
-                writer.put(testmsg)
-            def gread(reader):
-                return reader.get()
-            gw = gevent.spawn(gwrite, local_writer)
-            gr = gevent.spawn(gread, local_reader)
-            t = gr.get()
-            assert testmsg == t
-            local_reader.close()
-            local_writer.close()
-            # Receive second message from parent
-            t = r2.get()
-            assert t == m2
-            gw.join()
-            gr.join()
-        p = gpipe.start_process(target=child, args=(self.rh, self.rh2))
+        p = gpipe.start_process(
+            target=child_c, args=(self.rh, self.rh2, m1, m2))
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
 
     def test_childchildcomm(self):
         m = {("KLADUSCH",): "foo"}
-        def readchild(r):
-            assert r.get() == m
-        def writechild(w):
-            w.put(m)
-        pr = gpipe.start_process(readchild, args=(self.rh,))
-        pw = gpipe.start_process(writechild, args=(self.wh,))
+        pr = gpipe.start_process(readchild_a, args=(self.rh, m))
+        pw = gpipe.start_process(writechild_a, args=(self.wh, m))
         pr.join()
         pw.join()
 
     @raises(GPipeError)
     def test_handler_after_transfer_to_child(self):
-        def child(r):
-            pass
-        p = gpipe.start_process(child, args=(self.rh,))
+        p = gpipe.start_process(child_boring_reader, args=(self.rh,))
         self.rh.close()
         p.join()
 
     def test_handler_in_nonregistered_process(self):
-        def child(r):
-            try:
-                r.close()
-            except GPipeError:
-                return
-            assert False
-        p = multiprocessing.Process(target=child, args=(self.rh, ))
+        p = multiprocessing.Process(target=child_d, args=(self.rh, ))
         p.start()
         p.join()
         self.rh.close()
 
     def test_child_in_child_in_child(self):
-        def child():
-            def ichild():
-                def iichild():
-                    pass
-                ii = gpipe.start_process(iichild)
-                ii.join()
-                assert ii.returncode == 0
-            i = gpipe.start_process(ichild)
-            i.join()
-            assert i.returncode == 0
-        c = gpipe.start_process(child)
-        c.join()
-        assert c.returncode == 0
+        p = gpipe.start_process(child_e)
+        p.join()
+        assert p.exitcode == 0
 
     def test_child_in_child_in_child_comm(self):
         m = "RATZEPENG"
-        def child(w):
-            def ichild(w):
-                def iichild(w):
-                    w.put(m)
-                    w.close()
-                ii = gpipe.start_process(iichild, args=(w,))
-                ii.join()
-            i = gpipe.start_process(ichild, args=(w,))
-            i.join()
-        c = gpipe.start_process(child, args=(self.wh,))
-        c.join()
-        t = self.rh.get()
-        assert m == t
+        p = gpipe.start_process(child_f, args=(self.wh, m))
+        p.join()
+        assert m == self.rh.get()
 
+def readchild_a(r, m):
+    assert r.get() == m
+    
+def writechild_a(w, m):
+    w.put(m)             
+
+def child_boring_reader(r):
+    pass    
+    
+def child_b(r1, r2, m1, m2):
+    assert r1.get() == m1
+    assert r2.get() == m2
+
+def child_c(r1, r2, m1, m2):
+    assert r1.get() == m1
+    # Test messaging between greenlets in child.
+    local_reader, local_writer = pipe()
+    testmsg = [1] * LONG
+    gw = gevent.spawn(lambda w: w.put(testmsg), local_writer)
+    gr = gevent.spawn(lambda r: r.get(), local_reader)
+    assert testmsg == gr.get()
+    gr.join()
+    gw.join()
+    local_reader.close()
+    local_writer.close()
+    # Receive second message from parent
+    assert r2.get() == m2
+
+def child_d(r):
+    try:
+        r.close()
+    except GPipeError:
+        return
+    assert False    
+
+def child_e():
+    i = gpipe.start_process(child_e2)
+    i.join()
+    assert i.exitcode == 0
+    
+def child_e2():
+    ii = gpipe.start_process(child_e3)
+    ii.join()
+    assert ii.exitcode == 0
+
+def child_e3():
+    pass    
+
+def child_f(w, m):
+    i = gpipe.start_process(child_f2, args=(w, m))
+    i.join()    
+
+def child_f2(w, m):
+    ii = gpipe.start_process(child_f3, args=(w, m))
+    ii.join()
+    
+def child_f3(w, m):
+    w.put(m)
+    w.close()    
+    
+if __name__ == "__main__":
+    pass
