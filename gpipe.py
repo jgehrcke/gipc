@@ -31,8 +31,9 @@ import sys
 import logging
 import io
 import struct
-import multiprocessing as mp
-import multiprocessing.process as mp_process
+import multiprocessing
+import multiprocessing.forking
+import multiprocessing.process
 import itertools
 import signal
 try:
@@ -105,7 +106,11 @@ def _child(target, all_handles, args, kwargs):
     greenlets running in both, the parent and the child. Therefore, on POSIX,
     gevent's state is entirely reset before running the user-given function.
     """
-    # Restore `_all_handles` (required on Windows; does not harm elsewhere)
+    log.debug("_child start. target: %s" % target)
+    # The value of global variables set in the parent process are not
+    # automagically propagated to the child processes on Windows. 
+    # Restore global `_all_handles` (required on Win, does not harm elsewhere).
+    global _all_handles
     _all_handles = all_handles
     if not WINDOWS:
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which is designed to
@@ -126,11 +131,12 @@ def _child(target, all_handles, args, kwargs):
     for h in _all_handles[:]:
         h._set_legit_process()
         if WINDOWS:
-            log.debug("Restore %s in child." % h)
             h._post_createprocess_windows()
         if not h in childhandles:
             log.debug("Invalidate %s in child." % h)
             h.close()
+            continue
+        log.debug("Valid in child: %s" % h)
     target(*args, **kwargs)
     for h in childhandles:
         try:
@@ -165,6 +171,7 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     Returns:
         `_GProcess` instance (inherits from `multiprocessing.Process`)
     """
+    log.debug("Run target %s in child process ..." % target)
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
     if WINDOWS:
@@ -190,7 +197,7 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     return p
 
 
-class _GProcess(mp.Process):
+class _GProcess(multiprocessing.Process):
     """
     Implements adjustments to multiprocessing's Process class.
 
@@ -217,7 +224,7 @@ class _GProcess(mp.Process):
     """
     if not WINDOWS:
         def start(self):
-            self.returncode = None
+            self.exitcode = None
             hub = gevent.get_hub()
             self._gresult = gevent.event.AsyncResult()
             hub.loop.install_sigchld()
@@ -233,13 +240,13 @@ class _GProcess(mp.Process):
             watcher.stop()
             # Status evaluation copied from multiprocessing.forking
             if os.WIFSIGNALED(watcher.rstatus):
-                self.returncode = -os.WTERMSIG(watcher.rstatus)
+                self.exitcode = -os.WTERMSIG(watcher.rstatus)
             else:
                 assert os.WIFEXITED(watcher.rstatus)
-                self.returncode = os.WEXITSTATUS(watcher.rstatus)
-            self._gresult.set(self.returncode)
-            log.debug(("SIGCHLD watcher callback for %s invoked. Returncode "
-                       "stored: %s" % (self.pid, self.returncode)))
+                self.exitcode = os.WEXITSTATUS(watcher.rstatus)
+            self._gresult.set(self.exitcode)
+            log.debug(("SIGCHLD watcher callback for %s invoked. Exitcode "
+                       "stored: %s" % (self.pid, self.exitcode)))
 
     def join(self, timeout=None):
         """
@@ -254,8 +261,8 @@ class _GProcess(mp.Process):
             assert self._popen is not None,(
                 'Can only join a started process.')
             self._gresult.wait(timeout=timeout)
-            if self.returncode is not None:
-                mp_process._current_process._children.discard(self)
+            if self.exitcode is not None:
+                multiprocessing.process._current_process._children.discard(self)
             return
 
         with gevent.Timeout(timeout, False):
@@ -289,17 +296,16 @@ class _GPipeHandle(object):
         Closes underlying file descriptor and removes the handle from the
         list of valid handles.
         """
+        global _all_handles
         self._validate_process()
         if not self._lock.acquire(blocking=False):
             raise GPipeError("Can't close: handle locked for I/O operation.")
         log.debug("Invalidating %s ..." % self)
         self._closed = True
         if self._fd is not None:
-            log.debug("os.close(%s)" % self._fd)
             os.close(self._fd)
             self._fd = None
         if self in _all_handles:
-            log.debug("Remove %s from _all_handles" % self)
             _all_handles.remove(self)
         self._lock.release()
 
@@ -321,7 +327,8 @@ class _GPipeHandle(object):
                 "GPipeHandle has been closed before.")
         if os.getpid() != self._legit_pid:
             raise GPipeError(
-                "GPipeHandle not registered for current process.")
+                "GPipeHandle %s not registered for current process %s." % (
+                self, os.getpid()))
 
     def _pre_createprocess_windows(self):
         """Prepare file descriptor for transfer to child process on Windows.
@@ -343,7 +350,7 @@ class _GPipeHandle(object):
         multiprocessing's forking.py.
         """
         if WINDOWS:
-            from mp.forking import duplicate
+            from multiprocessing.forking import duplicate
             # Get Windows file handle from C file descriptor.
             h = msvcrt.get_osfhandle(self._fd)
             # Duplicate file handle, rendering the duplicate inheritable by
