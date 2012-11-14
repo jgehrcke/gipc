@@ -23,7 +23,16 @@ sys.path.insert(0, os.path.abspath('..'))
 from gpipe import pipe, GPipeError
 import gpipe
 import multiprocessing
-from nose.tools import *
+
+
+import time
+import signal
+
+# py.test runs tests by order of definition. Useful for running simple,
+# fundamental tests first and more complex tests later.
+from py.test import raises
+# Nose is great and all, but runs tests alphabetically.
+# from nose.tools import raises
 
 #import logging
 #logging.basicConfig(
@@ -34,7 +43,7 @@ from nose.tools import *
 
 LONG = 999999
 
-class TestSingleProcess():
+class TestComm():
     """
     Flow for each test_method:
     o = TestPipe()
@@ -131,32 +140,94 @@ class TestSingleProcess():
         gr = gevent.spawn(gread, self.rh)
         assert [m, m] == gr.get()
 
-    @raises(GPipeError)
     def test_twoclose(self):
         self.wh.close()
-        self.wh.close()
+        with raises(GPipeError):
+            self.wh.close()
 
-    @raises(GPipeError)
     def test_closewrite(self):
         self.wh.close()
-        self.wh.put('')
+        with raises(GPipeError):
+            self.wh.put('')
 
-    @raises(GPipeError)
     def test_closeread(self):
         self.rh.close()
-        self.rh.get()
+        with raises(GPipeError):
+            self.rh.get()
 
-    @raises(GPipeError)
     def test_readclose(self):
         g = gevent.spawn(lambda r: r.get(), self.rh)
         self._greenlets_to_be_killed.append(g)
         gevent.sleep(0.01)
-        self.rh.close()
+        with raises(GPipeError):
+            self.rh.close()
 
-    @raises(EOFError)
     def test_closewrite_read(self):
         self.wh.close()
-        self.rh.get()
+        with raises(EOFError):
+            self.rh.get()
+
+
+class TestProcess():
+    def test_is_alive_true(self):
+        p = gpipe.start_process(child_xa)
+        assert p.is_alive()
+
+    def test_is_alive_false(self):
+        p = gpipe.start_process(child_xa)
+        p.join()
+        assert not p.is_alive()
+
+    def test_exitcode_0(self):
+        p = gpipe.start_process(child_xa)
+        p.join()
+        assert p.exitcode == 0
+
+    def test_exitcode_sigkill(self):
+        p = gpipe.start_process(child_xb)
+        p.join()
+        assert p.exitcode == -signal.SIGKILL
+
+    def test_exitcode_1(self):
+        p = gpipe.start_process(child_xc)
+        p.join()
+        assert p.exitcode == 1
+
+    def test_pid(self):
+        p = gpipe.start_process(child_xa)
+        p.join()
+        assert p.pid is not None
+
+    def test_terminate(self):
+        p = gpipe.start_process(gevent.sleep, args=(1,))
+        p.terminate()
+        p.join()
+        assert p.exitcode == -signal.SIGTERM
+
+    def test_child_in_child_in_child(self):
+        p = gpipe.start_process(child_xe)
+        p.join()
+
+
+def child_xa():
+    gevent.sleep(0.01)
+
+def child_xb():
+    os.kill(os.getpid(), signal.SIGKILL)
+
+def child_xc():
+    sys.exit(1)
+
+def child_xe():
+    i = gpipe.start_process(child_xe2)
+    i.join()
+
+def child_xe2():
+    ii = gpipe.start_process(child_xe3)
+    ii.join()
+
+def child_xe3():
+    pass
 
 
 class TestIPC():
@@ -193,14 +264,14 @@ class TestIPC():
 
     def test_singlemsg_long_list(self):
         m = [1] * LONG
-        p = gpipe.start_process(readchild_a, args=(self.rh, m))
+        p = gpipe.start_process(ipc_readchild, args=(self.rh, m))
         self.wh.put(m)
         p.join()
 
     def test_twochannels_singlemsg(self):
         m1 = "OK"
         m2 = "FOO"
-        p = gpipe.start_process(child_b, args=(self.rh, self.rh2, m1, m2))
+        p = gpipe.start_process(ipc_child_b, args=(self.rh, self.rh2, m1, m2))
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
@@ -209,55 +280,51 @@ class TestIPC():
         m1 = "OK"
         m2 = "FOO"
         p = gpipe.start_process(
-            target=child_c, args=(self.rh, self.rh2, m1, m2))
+            target=ipc_child_c, args=(self.rh, self.rh2, m1, m2))
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
 
     def test_childchildcomm(self):
         m = {("KLADUSCH",): "foo"}
-        pr = gpipe.start_process(readchild_a, args=(self.rh, m))
-        pw = gpipe.start_process(writechild_a, args=(self.wh, m))
+        pr = gpipe.start_process(ipc_readchild, args=(self.rh, m))
+        pw = gpipe.start_process(ipc_writechild, args=(self.wh, m))
         pr.join()
         pw.join()
 
-    @raises(GPipeError)
     def test_handler_after_transfer_to_child(self):
-        p = gpipe.start_process(child_boring_reader, args=(self.rh,))
-        self.rh.close()
+        p = gpipe.start_process(ipc_child_boring_reader, args=(self.rh,))
+        with raises(GPipeError):
+            self.rh.close()
         p.join()
 
     def test_handler_in_nonregistered_process(self):
-        p = multiprocessing.Process(target=child_d, args=(self.rh, ))
+        p = multiprocessing.Process(target=ipc_child_d, args=(self.rh, ))
         p.start()
         p.join()
         self.rh.close()
 
-    def test_child_in_child_in_child(self):
-        p = gpipe.start_process(child_e)
-        p.join()
-        assert p.exitcode == 0
-
     def test_child_in_child_in_child_comm(self):
         m = "RATZEPENG"
-        p = gpipe.start_process(child_f, args=(self.wh, m))
+        p = gpipe.start_process(ipc_child_f, args=(self.wh, m))
         p.join()
         assert m == self.rh.get()
 
-def readchild_a(r, m):
-    assert r.get() == m
-    
-def writechild_a(w, m):
-    w.put(m)             
 
-def child_boring_reader(r):
-    pass    
-    
-def child_b(r1, r2, m1, m2):
+def ipc_readchild(r, m):
+    assert r.get() == m
+
+def ipc_writechild(w, m):
+    w.put(m)
+
+def ipc_child_boring_reader(r):
+    pass
+
+def ipc_child_b(r1, r2, m1, m2):
     assert r1.get() == m1
     assert r2.get() == m2
 
-def child_c(r1, r2, m1, m2):
+def ipc_child_c(r1, r2, m1, m2):
     assert r1.get() == m1
     # Test messaging between greenlets in child.
     local_reader, local_writer = pipe()
@@ -272,37 +339,24 @@ def child_c(r1, r2, m1, m2):
     # Receive second message from parent
     assert r2.get() == m2
 
-def child_d(r):
+def ipc_child_d(r):
     try:
         r.close()
     except GPipeError:
         return
-    assert False    
+    assert False
 
-def child_e():
-    i = gpipe.start_process(child_e2)
+def ipc_child_f(w, m):
+    i = gpipe.start_process(ipc_child_f2, args=(w, m))
     i.join()
-    assert i.exitcode == 0
-    
-def child_e2():
-    ii = gpipe.start_process(child_e3)
+
+def ipc_child_f2(w, m):
+    ii = gpipe.start_process(ipc_child_f3, args=(w, m))
     ii.join()
-    assert ii.exitcode == 0
 
-def child_e3():
-    pass    
-
-def child_f(w, m):
-    i = gpipe.start_process(child_f2, args=(w, m))
-    i.join()    
-
-def child_f2(w, m):
-    ii = gpipe.start_process(child_f3, args=(w, m))
-    ii.join()
-    
-def child_f3(w, m):
+def ipc_child_f3(w, m):
     w.put(m)
-    w.close()    
-    
+    w.close()
+
 if __name__ == "__main__":
     pass

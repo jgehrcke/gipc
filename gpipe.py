@@ -261,8 +261,8 @@ class _GProcess(multiprocessing.Process):
 
         def is_alive(self):
             if self._popen.returncode is None:
-                return False
-            return True
+                return True
+            return False
 
         @property
         def exitcode(self):
