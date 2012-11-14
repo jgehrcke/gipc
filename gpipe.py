@@ -176,8 +176,10 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     Returns:
         `_GProcess` instance (inherits from `multiprocessing.Process`)
     """
-    assert isinstance(args, tuple), '`args` must be tuple.'
-    assert isinstance(kwargs, dict), '`kwargs` must be dictionary.'
+    if not isinstance(args, tuple):
+        raise TypeError, '`args` must be tuple.'
+    if not isinstance(kwargs, dict):
+        raise TypeError, '`kwargs` must be dictionary.'
     log.debug("Run target %s in child process ..." % target)
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
@@ -274,7 +276,7 @@ class _GProcess(multiprocessing.Process):
         """
         Wait cooperatively until child process terminates or timeout occurs.
         """
-        assert self._parent_pid == os.getpid(), 'Can only join a child process.'
+        assert self._parent_pid == os.getpid(), "I'm not parent of this child."
         assert self._popen is not None, 'Can only join a started process.'
         if not WINDOWS:
             # Resemble multiprocessing's join() method while replacing
