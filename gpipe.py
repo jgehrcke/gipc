@@ -176,6 +176,8 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     Returns:
         `_GProcess` instance (inherits from `multiprocessing.Process`)
     """
+    assert isinstance(args, tuple), '`args` must be tuple.'
+    assert isinstance(kwargs, dict), '`kwargs` must be dictionary.'
     log.debug("Run target %s in child process ..." % target)
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]

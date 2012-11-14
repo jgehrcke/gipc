@@ -208,6 +208,12 @@ class TestProcess():
         p = gpipe.start_process(child_xe)
         p.join()
 
+    def test_join_timeout(self):
+        p = gpipe.start_process(gevent.sleep, args=(0.1, ))
+        p.join(timeout=0.00001)
+        assert p.is_alive()
+        p.join()
+
 
 def child_xa():
     gevent.sleep(0.01)
