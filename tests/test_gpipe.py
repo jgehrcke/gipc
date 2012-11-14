@@ -17,21 +17,20 @@
 
 import sys
 import os
+import time
+import signal
+import multiprocessing
 import gevent
 
 sys.path.insert(0, os.path.abspath('..'))
 from gpipe import pipe, GPipeError
 import gpipe
-import multiprocessing
 
-
-import time
-import signal
 
 # py.test runs tests by order of definition. Useful for running simple,
 # fundamental tests first and more complex tests later.
 from py.test import raises
-# Nose is great and all, but runs tests alphabetically.
+# Nose is great and all, but runs tests alphabetically. Can't be changed.
 # from nose.tools import raises
 
 #import logging
@@ -170,31 +169,31 @@ class TestComm():
 
 class TestProcess():
     def test_is_alive_true(self):
-        p = gpipe.start_process(child_xa)
+        p = gpipe.start_process(p_child_a)
         assert p.is_alive()
 
     def test_is_alive_false(self):
-        p = gpipe.start_process(child_xa)
+        p = gpipe.start_process(p_child_a)
         p.join()
         assert not p.is_alive()
 
     def test_exitcode_0(self):
-        p = gpipe.start_process(child_xa)
+        p = gpipe.start_process(p_child_a)
         p.join()
         assert p.exitcode == 0
 
     def test_exitcode_sigkill(self):
-        p = gpipe.start_process(child_xb)
+        p = gpipe.start_process(p_child_b)
         p.join()
         assert p.exitcode == -signal.SIGKILL
 
     def test_exitcode_1(self):
-        p = gpipe.start_process(child_xc)
+        p = gpipe.start_process(p_child_c)
         p.join()
         assert p.exitcode == 1
 
     def test_pid(self):
-        p = gpipe.start_process(child_xa)
+        p = gpipe.start_process(p_child_a)
         p.join()
         assert p.pid is not None
 
@@ -205,7 +204,7 @@ class TestProcess():
         assert p.exitcode == -signal.SIGTERM
 
     def test_child_in_child_in_child(self):
-        p = gpipe.start_process(child_xe)
+        p = gpipe.start_process(p_child_e)
         p.join()
 
     def test_join_timeout(self):
@@ -214,25 +213,38 @@ class TestProcess():
         assert p.is_alive()
         p.join()
 
+    def test_typecheck(self):
+        with raises(TypeError):
+            gpipe.start_process(gevent.sleep, args="peter")
 
-def child_xa():
+    def test_typecheck(self):
+        with raises(TypeError):
+            gpipe.start_process(gevent.sleep, kwargs="peter")
+
+
+def p_child_a():
     gevent.sleep(0.01)
 
-def child_xb():
+
+def p_child_b():
     os.kill(os.getpid(), signal.SIGKILL)
 
-def child_xc():
+
+def p_child_c():
     sys.exit(1)
 
-def child_xe():
-    i = gpipe.start_process(child_xe2)
+
+def p_child_e():
+    i = gpipe.start_process(p_child_e2)
     i.join()
 
-def child_xe2():
-    ii = gpipe.start_process(child_xe3)
+
+def p_child_e2():
+    ii = gpipe.start_process(cp_hild_e3)
     ii.join()
 
-def child_xe3():
+
+def p_child_e3():
     pass
 
 
@@ -320,15 +332,19 @@ class TestIPC():
 def ipc_readchild(r, m):
     assert r.get() == m
 
+
 def ipc_writechild(w, m):
     w.put(m)
+
 
 def ipc_child_boring_reader(r):
     pass
 
+
 def ipc_child_b(r1, r2, m1, m2):
     assert r1.get() == m1
     assert r2.get() == m2
+
 
 def ipc_child_c(r1, r2, m1, m2):
     assert r1.get() == m1
@@ -345,6 +361,7 @@ def ipc_child_c(r1, r2, m1, m2):
     # Receive second message from parent
     assert r2.get() == m2
 
+
 def ipc_child_d(r):
     try:
         r.close()
@@ -352,17 +369,21 @@ def ipc_child_d(r):
         return
     assert False
 
+
 def ipc_child_f(w, m):
     i = gpipe.start_process(ipc_child_f2, args=(w, m))
     i.join()
+
 
 def ipc_child_f2(w, m):
     ii = gpipe.start_process(ipc_child_f3, args=(w, m))
     ii.join()
 
+
 def ipc_child_f3(w, m):
     w.put(m)
     w.close()
+
 
 if __name__ == "__main__":
     pass
