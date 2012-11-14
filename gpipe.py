@@ -107,8 +107,8 @@ def _child(target, all_handles, args, kwargs):
     gevent's state is entirely reset before running the user-given function.
     """
     log.debug("_child start. target: %s" % target)
-    # The value of global variables set in the parent process are not
-    # automagically propagated to the child processes on Windows. 
+    # The value of a global variable set in the parent process is not
+    # propagated to the child processes on Windows (as is on Unix via fork()).
     # Restore global `_all_handles` (required on Win, does not harm elsewhere).
     global _all_handles
     _all_handles = all_handles
@@ -118,7 +118,7 @@ def _child(target, all_handles, args, kwargs):
         gevent.reinit()
         # Destroy default event loop via `libev.ev_loop_destroy()` and delete
         # hub. This dumps all registered events and greenlets that have been
-        # duplicated from the parent.
+        # duplicated from the parent via fork().
         gevent.get_hub().destroy(destroy_loop=True)
         # Create a new hub and a new default event loop via
         # `libev.gevent_ev_default_loop`.
@@ -157,9 +157,14 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     It takes care of
         - closing dispensable file descriptors after child process creation.
         - proper file descriptor inheritance on Windows.
-        - re-initialization of the gevent event loop in the child process (no
-          greenlet spawned in the parent will run in the child) on Unix.
-        - making `join()` cooperative
+        - re-initialization of the default gevent event loop in the child
+          process (no greenlet spawned in the parent will run in the child)
+          on Unix.
+        - making `join()` cooperative.
+
+    Calling this method breaks `os.waitpid()`: on Unix, `join()` is based on
+    libev child watchers, making libev reap children in the moment they die.
+    `os.waitpid()` will throw ECHILD, cf. http://linux.die.net/man/2/waitid.
 
     Args:
         `target`: user-given function to be called with `kwargs`
@@ -201,70 +206,83 @@ class _GProcess(multiprocessing.Process):
     """
     Implements adjustments to multiprocessing's Process class.
 
-    On POSIX, adjust the `join()` implementation to the framework, as we
-    cannot rely on
-        `multiprocessing.Process._popen.wait()`
-    to 'tell the truth' about the state for children of children.
-    With the current code base, libev seems to handle SIGCHLD by default in
-    children of children. This makes os.waitpid() (used in `_popen.wait()`)
-    throw an ECHILD error ("process specified by pid does not exist or is
-    not a child of the calling process"), after which multiprocessing's
-    `_popen.wait()` returns None, meaning 'alive' even for child processes
-    that finished before. This could be rectified via re-installing the
-    default signal handler with
-        `signal.signal(signal.SIGCHLD, signal.SIG_DFL)`.
-    However, doing so would render libev's child watchers useless. Instead,
-    for each _GProcess, a libev child watcher is explicitly installed in the
-    modified `start()` method below. The modified `join()` method is adjusted
-    to this libev-watcher-based child monitoring.
+    On POSIX, adjust the `join()` implementation to the gevent context, as we
+    cannot rely on `multiprocessing.Process.is_alive()` and
+    `multiprocessing.Process._popen.wait()` to tell the truth about the state
+    for children of children:
+        In the initial process, gevent makes libev's default event loop not
+    reap dead children. In children however, after re-initialization of the
+    libev default event loop, dead children (grandchildren of the initial
+    process) become reaped immediately by the event loop.
+        This makes `os.waitpid(grandchild_pid)` throw an ECHILD error ("process
+    specified by pid does not exist or is not a child of the calling process").
+    This leads to multiprocessing's `_popen.wait()` returning None, meaning
+    'alive' even for child processes that finished before.
+        Immediate child reaping by libev could be rectified via re-installing
+    the default signal handler with `signal(signal.SIGCHLD, signal.SIG_DFL)`.
+    However, doing so would render libev's child watchers useless.
+        Instead, for each _GProcess, a libev child watcher is explicitly
+    started in the modified `start()` method below. The modified `join()` method
+    is adjusted to this libev-watcher-based child monitoring.
     `multiprocessing.Process.join()` is entirely surpassed, but resembled.
+    `os.waitpid()` is broken in any generation after the first _GProcess
+    has been started.
 
     On Windows, cooperative `join` is realized via frequent non-blocking calls
-    to `is_alive` and the original join method.
+    to `Process.is_alive()` and the original join method.
     """
     if not WINDOWS:
         def start(self):
-            self.exitcode = None
             hub = gevent.get_hub()
-            self._gresult = gevent.event.AsyncResult()
+            self._returnevent = gevent.event.Event()
+            # Start grabbing SIGCHLD in libev event loop.
             hub.loop.install_sigchld()
+            # Run new process (fork on POSIX, CreateProcess on Windows).
             super(_GProcess, self).start()
-            # Is there a race condition? (can it happen that the child already
-            # finished before the watcher below is started?)
+            # The occurrence of SIGCHLD is recorded asynchronously in libev.
+            # This guarantees proper behaviour even if the child watcher is
+            # started after the child exits. Start child watcher now.
             self._sigchld_watcher = hub.loop.child(self.pid)
             self._sigchld_watcher.start(
                 self._on_sigchld, self._sigchld_watcher)
-            log.debug("SIGCHLD watcher for %s installed." % self.pid)
+            log.debug("SIGCHLD watcher for %s started." % self.pid)
 
         def _on_sigchld(self, watcher):
             watcher.stop()
-            # Status evaluation copied from multiprocessing.forking
+            # Status evaluation taken from multiprocessing.forking.
             if os.WIFSIGNALED(watcher.rstatus):
-                self.exitcode = -os.WTERMSIG(watcher.rstatus)
+                self._popen.returncode = -os.WTERMSIG(watcher.rstatus)
             else:
                 assert os.WIFEXITED(watcher.rstatus)
-                self.exitcode = os.WEXITSTATUS(watcher.rstatus)
-            self._gresult.set(self.exitcode)
+                self._popen.returncode = os.WEXITSTATUS(watcher.rstatus)
+            self._returnevent.set()
             log.debug(("SIGCHLD watcher callback for %s invoked. Exitcode "
-                       "stored: %s" % (self.pid, self.exitcode)))
+                       "stored: %s" % (self.pid, self._popen.returncode)))
+
+        def is_alive(self):
+            if self._popen.returncode is None:
+                return False
+            return True
+
+        @property
+        def exitcode(self):
+            return self._popen.returncode
 
     def join(self, timeout=None):
         """
-        Wait cooperatively until child process terminates or timeout ocurrs.
+        Wait cooperatively until child process terminates or timeout occurs.
         """
+        assert self._parent_pid == os.getpid(), 'Can only join a child process.'
+        assert self._popen is not None, 'Can only join a started process.'
         if not WINDOWS:
             # Resemble multiprocessing's join() method while replacing
             # `self._popen.wait(timeout)` with
             # `self._gresult.wait(timeout)`
-            assert self._parent_pid == os.getpid(),(
-                'Can only join a child process.')
-            assert self._popen is not None,(
-                'Can only join a started process.')
-            self._gresult.wait(timeout=timeout)
-            if self.exitcode is not None:
-                multiprocessing.process._current_process._children.discard(self)
+            self._returnevent.wait(timeout)
+            if self._popen.returncode is not None:
+                multiprocessing.process._current_process._children.discard(
+                    self)
             return
-
         with gevent.Timeout(timeout, False):
             while self.is_alive():
                 gevent.sleep(0.05)
