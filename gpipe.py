@@ -452,9 +452,15 @@ class _GPipeReader(_GPipeHandle):
         return readbuf
 
     def get(self, timeout=None):
-        """Receive and return object from pipe.
+        """Receive and return object from pipe. Block gevent-cooperatively
+        until message is available.
 
-        Blocks gevent-cooperatively until message is available.
+        Args:
+            `timeout`: a `gevent.Timeout` instance, either started or not
+                       started. Recommended usage:
+
+                        with gevent.Timeout(TIME_SECONDS, False) as t:
+                            reader.get(timeout=t)
         """
         self._validate_process()
         if timeout:
