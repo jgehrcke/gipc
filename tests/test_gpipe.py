@@ -22,6 +22,7 @@ import signal
 import multiprocessing
 import random
 
+WINDOWS = sys.platform == "win32"
 import gevent
 import gevent.queue
 sys.path.insert(0, os.path.abspath('..'))
@@ -197,7 +198,10 @@ class TestProcess():
     def test_exitcode_sigkill(self):
         p = gpipe.start_process(p_child_b)
         p.join()
-        assert p.exitcode == -signal.SIGKILL
+        if not WINDOWS:
+            assert p.exitcode == -signal.SIGKILL
+        else:
+            assert p.exitcode == 1
 
     def test_exitcode_1(self):
         p = gpipe.start_process(p_child_c)
@@ -241,7 +245,10 @@ def p_child_a():
 
 
 def p_child_b():
-    os.kill(os.getpid(), signal.SIGKILL)
+    if not WINDOWS:
+        os.kill(os.getpid(), signal.SIGKILL)
+    else:
+        sys.exit(1)
 
 
 def p_child_c():
@@ -467,7 +474,7 @@ class TestContextManager():
             with r:
                 pass
                 # The context manager can't close `r`, as it is locked in `g`.
-        g.kill()
+        g.kill(block=False)
         r.close()
         w.close()
 
