@@ -502,6 +502,8 @@ class _GPipeWriter(_GPipeHandle):
             EAGAIN is handled within _WRITE_NB; partial writes here.
         """
         while True:
+            # Can easily cause OSError (broken pipe, errno 32) when read end
+            # is closed.
             diff = len(bindata) - _WRITE_NB(self._fd, bindata)
             if not diff:
                 break
