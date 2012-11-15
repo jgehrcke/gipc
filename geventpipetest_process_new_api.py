@@ -66,33 +66,33 @@ def main():
     condition = Condition()
     N = 50
 
-    reader, writer = gpipe.pipe()
-    condition.acquire()
-    p = gpipe.start_process(
-        writer,
-        writer_process,
-        kwargs={'condition': condition, 'N': N})
-    condition.wait()
-    condition.release()
-    result = None
-    t = TIMER()
-    while result != 'stop':
-        result = reader.get()
-        if not (result == MSG or result == 'stop'):
-            log.error("PROBLEM")
-    elapsed = TIMER() - t
-    log.info("Messaging done.")
-    reader.close()
-    #writer.close()
-    p.join()
+    #reader, writer = gpipe.Pipe()
+    with gpipe.Pipe() as (reader, writer):
+        condition.acquire()
+        p = gpipe.start_process(
+            writer_process,
+            kwargs={'writer': writer, 'condition': condition, 'N': N})
+        condition.wait()
+        condition.release()
+        result = None
+        t = TIMER()
+        while result != 'stop':
+            result = reader.get()
+            if not (result == MSG or result == 'stop'):
+                log.error("PROBLEM")
+        elapsed = TIMER() - t
+        log.info("Messaging done.")
+        reader.close()
+        #writer.close()
+        p.join()
 
-    mpertime = N/elapsed
-    datasize_mb = float(len(MSG)*N)/1024/1024
-    datarate_mb = datasize_mb/elapsed
-    log.info("Read duration: %.3f s" % elapsed)
-    log.info("Average message transmission rate: %.3f msgs/s" % mpertime)
-    log.info("Data transfer rate: %.3f MB/s" % datarate_mb)
-    useless.join()
+        mpertime = N/elapsed
+        datasize_mb = float(len(MSG)*N)/1024/1024
+        datarate_mb = datasize_mb/elapsed
+        log.info("Read duration: %.3f s" % elapsed)
+        log.info("Average message transmission rate: %.3f msgs/s" % mpertime)
+        log.info("Data transfer rate: %.3f MB/s" % datarate_mb)
+        useless.join()
 
 
 def writer_process(writer, condition, N):
