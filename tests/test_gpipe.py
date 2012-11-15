@@ -401,21 +401,31 @@ class TestContextManager():
         if gpipe._all_handles:
             raise Exception("Cleanup was not successful.")
 
-    def test_both(self):
-        with Pipe() as (r, w):
-            w.put('')
-            r.get()
-        assert not len(gpipe._all_handles)
+    def test_all_handles_length(self):
         r, w = Pipe()
         assert len(gpipe._all_handles) == 2
         r.close()
         w.close()
 
+    def test_combi(self):
+        with Pipe() as (r, w):
+            fd1 = r._fd
+            fd2 = w._fd
+        # Make sure the C file descriptors are closed.
+        with raises(OSError):
+            os.close(fd1)
+        with raises(OSError):
+            os.close(fd2)
+        # Make sure the module's self-cleanup works properly.
+        assert not len(gpipe._all_handles)
+
     def test_single_reader(self):
         r, w = Pipe()
         with w as foo:
-            foo.put('')
-        print foo._fd
+            fd = foo._fd
+        # Make sure the C file descriptor is closed.
+        with raises(OSError):
+            os.close(fd)
         assert len(gpipe._all_handles) == 1
         with raises(GPipeClosed):
             w.close()
@@ -425,7 +435,10 @@ class TestContextManager():
     def test_single_writer(self):
         r, w = Pipe()
         with r as foo:
-            pass
+            fd = foo._fd
+        # Make sure the C file descriptor is closed.
+        with raises(OSError):
+            os.close(fd)
         assert len(gpipe._all_handles) == 1
         with raises(GPipeClosed):
             r.close()
@@ -482,7 +495,6 @@ class TestGetTimeout():
                 r.get(timeout=t)
                 return
         assert False
-
 
 
 if __name__ == "__main__":
