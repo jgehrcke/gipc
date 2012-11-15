@@ -20,8 +20,10 @@ import os
 import time
 import signal
 import multiprocessing
-import gevent
+import random
 
+import gevent
+import gevent.queue
 sys.path.insert(0, os.path.abspath('..'))
 from gpipe import Pipe, GPipeError, GPipeClosed, GPipeLocked
 import gpipe
@@ -167,6 +169,11 @@ class TestComm():
         self.wh.close()
         with raises(EOFError):
             self.rh.get()
+
+    def test_closeread_write(self):
+        self.rh.close()
+        with raises(OSError):
+            self.wh.put('')
 
 
 class TestProcess():
@@ -495,6 +502,136 @@ class TestGetTimeout():
                 r.get(timeout=t)
                 return
         assert False
+
+
+class TestUsecases():
+    def teardown(self):
+        if gpipe._all_handles:
+            raise Exception("Cleanup was not successful.")
+
+    def test_whatever_1(self):
+        """
+        From a writing child, fire into the pipe. In a greenlet in the parent, receive one of these messages and return it to the main greenlet.
+        Terminate the child process.
+        """
+        with Pipe() as (r, w):
+            p = gpipe.start_process(usecase_child_a, args=(w, ))
+            gevent.sleep(SHORTTIME)
+            def readgreenlet(reader):
+                with gevent.Timeout(SHORTTIME, False) as t:
+                    return reader.get(timeout=t)
+            g = gevent.spawn(readgreenlet, r)
+            assert g.get() == "SPLASH"
+            p.terminate()
+            p.join()
+            assert p.exitcode == -signal.SIGTERM
+
+    def test_whatever_2(self):
+        """
+        Send two messages between two child processes. The second message takes
+        too long.
+        """
+        with Pipe() as (r, w):
+            pw = gpipe.start_process(usecase_child_b, args=(w, ))
+            pr = gpipe.start_process(usecase_child_c, args=(r, ))
+            pw.join()
+            pr.join()
+            assert pw.exitcode == 0
+            assert pr.exitcode == 5
+
+    def test_whatever_3(self):
+        """
+        Circular messaging! Random messages are in `sendlist` in parent.
+        sendlist -> sendqueue(greenlet, parent)
+        sendqueue -> forthpipe to child (greenlet, parent)
+        forthpipe -> recvqueue (greenlet, child)
+        recvqueue -> backpipe (greenlet, child)
+        backpipe -> recvlist (greenlet, parent)
+        assert sendlist == recvlist
+        """
+        sendlist = [random.choice('UFTATA') for x in xrange(100)]
+        sendlist.append("STOP")
+        sendqueue = gevent.queue.Queue()
+        def g_from_list_to_sendq():
+            for item in sendlist:
+                sendqueue.put(item)
+
+        def g_from_q_to_forthpipe(forthwriter):
+            while True:
+                m = sendqueue.get()
+                forthwriter.put(m)
+                if m == "STOP":
+                    break
+
+        def g_from_backpipe_to_recvlist(backreader):
+            recvlist = []
+            while True:
+                m = backreader.get()
+                recvlist.append(m)
+                if m == "STOP":
+                    break
+            return recvlist
+
+        with Pipe() as (forthr, forthw):
+            with Pipe() as (backr, backw):
+                p = gpipe.start_process(usecase_child_d, args=(forthr, backw))
+                g1 = gevent.spawn(g_from_list_to_sendq)
+                g2 = gevent.spawn(g_from_q_to_forthpipe, forthw)
+                g3 = gevent.spawn(g_from_backpipe_to_recvlist, backr)
+                g1.join()
+                g2.join()
+                p.join()
+                recvlist = g3.get()
+                assert recvlist == sendlist
+
+
+def usecase_child_d(forthreader, backwriter):
+    recvqueue = gevent.queue.Queue()
+    def g_from_forthpipe_to_q(forthreader):
+        while True:
+            m = forthreader.get()
+            recvqueue.put(m)
+            if m == "STOP":
+                break
+
+    def g_from_q_to_backpipe(backwriter):
+        while True:
+            m = recvqueue.get()
+            backwriter.put(m)
+            if m == "STOP":
+                break
+
+    g1 = gevent.spawn(g_from_forthpipe_to_q, forthreader)
+    g2 = gevent.spawn(g_from_q_to_backpipe, backwriter)
+    g1.join()
+    g2.join()
+
+
+def usecase_child_a(writer):
+    with writer:
+        while True:
+            writer.put("SPLASH")
+            gevent.sleep(ALMOSTZERO)
+
+
+def usecase_child_b(writer):
+    with writer:
+        writer.put("CHICKEN")
+        gevent.sleep(SHORTTIME*2)
+        try:
+            writer.put("CHICKENPUREE")
+        except OSError:
+            # Read end already closed.
+            pass
+
+def usecase_child_c(reader):
+    with gevent.Timeout(SHORTTIME, False) as t:
+        assert reader.get(timeout=t) == "CHICKEN"
+        reader.get(timeout=t)
+        sys.exit(0)
+    reader.close()
+    sys.exit(5)
+
 
 
 if __name__ == "__main__":
