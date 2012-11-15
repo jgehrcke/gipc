@@ -16,7 +16,6 @@
 
 """
 TODO:
-    - make reader/writer context manager-aware (close() on __exit__)?
     - implement 'polling' get() based on some kind of fd polling.
       Should raise some kind of WouldBlockException if no data available.
       Difficult (impossible?) to identify complete messages in advance.
@@ -28,14 +27,14 @@ TODO:
 
 import os
 import sys
-import logging
 import io
 import struct
+import itertools
+import signal
+import logging
 import multiprocessing
 import multiprocessing.forking
 import multiprocessing.process
-import itertools
-import signal
 try:
    import cPickle as pickle
 except:
@@ -43,8 +42,6 @@ except:
 WINDOWS = sys.platform == "win32"
 if WINDOWS:
     import msvcrt
-
-# 3rd party modules
 import gevent
 import gevent.os
 import gevent.lock
@@ -54,52 +51,34 @@ import gevent.event
 log = logging.getLogger("gpipe")
 
 
-# Define non-blocking read and write functions
-if hasattr(gevent.os, 'nb_write'):
-    # POSIX system -> use actual non-blocking I/O
-    _READ_NB = gevent.os.nb_read
-    _WRITE_NB = gevent.os.nb_write
-else:
-    # Windows -> imitate non-blocking I/O based on a gevent threadpool
-    _READ_NB = gevent.os.tp_read
-    _WRITE_NB = gevent.os.tp_write
-
-
-# Container for keeping track of valid `_GPipeHandle`s
-_all_handles = []
-
-
-class HandlerPairContext(tuple):
-    def __init__(self, handlertuple):
-        super(HandlerPairContext, self).__init__(handlertuple)
-        self.handlertuple = handlertuple
-
-    def __enter__(self):
-        for h in self.handlertuple:
-            h.__enter__()
-        return self.handlertuple
-
-    def __exit__(self, exc_type, exc_value, traceback):
-        for h in self.handlertuple:
-            h.__exit__(exc_type, exc_value, traceback)
-
-
 class Pipe(object):
-    """Creates new pipe as well as read and write handles.
-
-    Based on os.pipe().
-    os.pipe() implementation on Windows:
-      - uses CreatePipe(&read, &write, NULL, 0) (http://bit.ly/RDuKUm)
-      - creates an anonymous pipe, system handles buffer size.
-      - anonymous pipes are implemented using a named pipe with a unique name.
-      - asynchronous (overlapped) read and write operations are not supported
-        by anonymous pipes.
-    os.pipe() on POSIX (http://linux.die.net/man/2/pipe):
-      - based on system call pipe(fds)
-      - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
+    """Creates a new pipe as well as one readhandle and one writehandle.
 
     Returns:
         (reader, writer) tuple, both instances of `_GPipeHandle`.
+
+    The handles are context manager-aware. They are closed on context exit.
+    All of the following examples work:
+
+    with Pipe() as (reader, writer):
+        do_something()
+
+    reader, writer = Pipe()
+    with reader as r:
+        do_something()
+
+    with writer:
+        do_something()
+
+    Transport layer based on os.pipe().
+    os.pipe() implementation on Windows (http://bit.ly/RDuKUm):
+      - CreatePipe(&read, &write, NULL, 0)
+      - anonymous pipe, system handles buffer size.
+      - anonymous pipes are implemented using a named pipe with a unique name.
+      - asynchronous (overlapped) read and write operations are not supported.
+    os.pipe() implementation on Unix (http://linux.die.net/man/7/pipe):
+      - based on pipe()
+      - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
     """
     def __new__(cls):
         r, w = os.pipe()
@@ -107,7 +86,67 @@ class Pipe(object):
         writer = _GPipeWriter(w)
         _all_handles.append(reader)
         _all_handles.append(writer)
-        return HandlerPairContext((reader, writer))
+        return _HandlePairContext((reader, writer))
+
+
+def start_process(target, name=None, args=(), kwargs={}, daemon=None):
+    """Spawn child process with the intention to use `_GPipeHandle`s
+    provided via `args`/`kwargs` within the child process. Execute
+    target(*args, **kwargs) in the child process.
+
+    Process creation is based on multiprocessing.Process(). When working with
+    gevent and gevent-messagepipe, instead of calling Process() on your own,
+    it is highly recommended to create child processes via this method.
+    It takes care of
+        - closing dispensable file descriptors after child process creation.
+        - proper file descriptor inheritance on Windows.
+        - re-initialization of the default gevent event loop in the child
+          process (no greenlet spawned in the parent will run in the child)
+          on POSIX-compliant systems.
+        - providing cooperative Process methods (such as `join()`).
+
+    Calling this method breaks `os.waitpid()` on Unix: `join()` is based on
+    libev child watchers, making libev reap children in the moment they die.
+    `os.waitpid()` will throw ECHILD, cf. http://linux.die.net/man/2/waitid.
+
+    Args:
+        `target`: user-given function to be called as target(*args, **kwargs)
+        `name`: `multiprocessing.Process.name`
+        `daemon`: `multiprocessing.Process.daemon`
+        `args`: tuple defining positional arguments provided to `target`
+        `kwargs`: dictionary defining keyword arguments provided to `target`
+
+    Returns:
+        `_GProcess` instance (inherits from `multiprocessing.Process`)
+    """
+    if not isinstance(args, tuple):
+        raise TypeError, '`args` must be tuple.'
+    if not isinstance(kwargs, dict):
+        raise TypeError, '`kwargs` must be dictionary.'
+    log.debug("Run target %s in child process ..." % target)
+    allargs = itertools.chain(args, kwargs.values())
+    childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
+    if WINDOWS:
+        for h in _all_handles:
+            h._pre_createprocess_windows()
+    p = _GProcess(
+        target=_child,
+        name=name,
+        kwargs={"target": target,
+                "all_handles": _all_handles,
+                "args": args,
+                "kwargs": kwargs})
+    if daemon is not None:
+        p.daemon = daemon
+    p.start()
+    if WINDOWS:
+        for h in _all_handles:
+            h._post_createprocess_windows()
+    # Close those file handlers in parent that are not further required.
+    for h in childhandles:
+        log.debug("Invalidate %s in parent." % h)
+        h.close()
+    return p
 
 
 def _child(target, all_handles, args, kwargs):
@@ -117,9 +156,9 @@ def _child(target, all_handles, args, kwargs):
     `target`: user-given function to be called with `kwargs`
     `childhandles`: GPipeHandles that are intented to be used in child.
 
-    After fork on POSIX systems, gevent's state is inherited by the
+    After fork on POSIX-compliant systems, gevent's state is inherited by the
     child which may lead to undesired and undefined behavior, such as
-    greenlets running in both, the parent and the child. Therefore, on POSIX,
+    greenlets running in both, the parent and the child. Therefore, on Unix,
     gevent's state is entirely reset before running the user-given function.
     """
     log.debug("_child start. target: %s" % target)
@@ -162,94 +201,34 @@ def _child(target, all_handles, args, kwargs):
             pass
 
 
-def start_process(target, name=None, args=(), kwargs={}, daemon=None):
-    """Spawn child process with the intention to use `_GPipeHandle`s
-    provided via `args`/`kwargs` within the child process. Execute
-    target(*args, **kwargs) in the child process.
-
-    Process creation is based on multiprocessing.Process(). When working with
-    gevent and gevent-messagepipe, instead of calling Process() on your own,
-    it is highly recommended to create child processes via this method.
-    It takes care of
-        - closing dispensable file descriptors after child process creation.
-        - proper file descriptor inheritance on Windows.
-        - re-initialization of the default gevent event loop in the child
-          process (no greenlet spawned in the parent will run in the child)
-          on Unix.
-        - making `join()` cooperative.
-
-    Calling this method breaks `os.waitpid()`: on Unix, `join()` is based on
-    libev child watchers, making libev reap children in the moment they die.
-    `os.waitpid()` will throw ECHILD, cf. http://linux.die.net/man/2/waitid.
-
-    Args:
-        `target`: user-given function to be called with `kwargs`
-        `name`: `multiprocessing.Process.name`
-        `daemon`: `multiprocessing.Process.daemon`
-        `args`: tuple defining positional arguments provided to `target`
-        `kwargs`: dictionary defining keyword arguments provided to `target`
-
-    Returns:
-        `_GProcess` instance (inherits from `multiprocessing.Process`)
-    """
-    if not isinstance(args, tuple):
-        raise TypeError, '`args` must be tuple.'
-    if not isinstance(kwargs, dict):
-        raise TypeError, '`kwargs` must be dictionary.'
-    log.debug("Run target %s in child process ..." % target)
-    allargs = itertools.chain(args, kwargs.values())
-    childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
-    if WINDOWS:
-        for h in _all_handles:
-            h._pre_createprocess_windows()
-    p = _GProcess(
-        target=_child,
-        name=name,
-        kwargs={"target": target,
-                "all_handles": _all_handles,
-                "args": args,
-                "kwargs": kwargs})
-    if daemon is not None:
-        p.daemon = daemon
-    p.start()
-    if WINDOWS:
-        for h in _all_handles:
-            h._post_createprocess_windows()
-    # Close those file handlers in parent that are not further required.
-    for h in childhandles:
-        log.debug("Invalidate %s in parent." % h)
-        h.close()
-    return p
-
 
 class _GProcess(multiprocessing.Process):
     """
     Implements adjustments to multiprocessing's Process class.
 
-    On POSIX, adjust the `join()` implementation to the gevent context, as we
-    cannot rely on `multiprocessing.Process.is_alive()` and
+    On Unix, we  cannot rely on `multiprocessing.Process.is_alive()` and
     `multiprocessing.Process._popen.wait()` to tell the truth about the state
     for children of children:
         In the initial process, gevent makes libev's default event loop not
-    reap dead children. In children however, after re-initialization of the
+    reap dead children. In children, however, after initialization of the
     libev default event loop, dead children (grandchildren of the initial
     process) become reaped immediately by the event loop.
         This makes `os.waitpid(grandchild_pid)` throw an ECHILD error ("process
     specified by pid does not exist or is not a child of the calling process").
-    This leads to multiprocessing's `_popen.wait()` returning None, meaning
+    This leads to multiprocessing's `_popen.wait()` returning `None`, meaning
     'alive' even for child processes that finished before.
         Immediate child reaping by libev could be rectified via re-installing
     the default signal handler with `signal(signal.SIGCHLD, signal.SIG_DFL)`.
     However, doing so would render libev's child watchers useless.
-        Instead, for each _GProcess, a libev child watcher is explicitly
-    started in the modified `start()` method below. The modified `join()` method
-    is adjusted to this libev-watcher-based child monitoring.
+        Instead, for each `_GProcess`, a libev child watcher is explicitly
+    started in the modified `start()` method below. The modified `join()`
+    method is adjusted to this libev-watcher-based child monitoring.
     `multiprocessing.Process.join()` is entirely surpassed, but resembled.
-    `os.waitpid()` is broken in any generation after the first _GProcess
-    has been started.
+    `os.waitpid()` is broken in all process generations after the first
+    `_GProcess` has been started.
 
-    On Windows, cooperative `join` is realized via frequent non-blocking calls
-    to `Process.is_alive()` and the original join method.
+    On Windows, cooperative `join()` is realized via frequent non-blocking
+    calls to `Process.is_alive()` and the original `join()` method.
     """
     if not WINDOWS:
         def start(self):
@@ -257,7 +236,8 @@ class _GProcess(multiprocessing.Process):
             self._returnevent = gevent.event.Event()
             # Start grabbing SIGCHLD in libev event loop.
             hub.loop.install_sigchld()
-            # Run new process (fork on POSIX, CreateProcess on Windows).
+            # Run new process (based on `fork()` on POSIX-compliant systems,
+            # and on `CreateProcess()` on Windows).
             super(_GProcess, self).start()
             # The occurrence of SIGCHLD is recorded asynchronously in libev.
             # This guarantees proper behaviour even if the child watcher is
@@ -297,7 +277,7 @@ class _GProcess(multiprocessing.Process):
         if not WINDOWS:
             # Resemble multiprocessing's join() method while replacing
             # `self._popen.wait(timeout)` with
-            # `self._gresult.wait(timeout)`
+            # `self._returnevent.wait(timeout)`
             self._returnevent.wait(timeout)
             if self._popen.returncode is not None:
                 multiprocessing.process._current_process._children.discard(
@@ -305,19 +285,10 @@ class _GProcess(multiprocessing.Process):
             return
         with gevent.Timeout(timeout, False):
             while self.is_alive():
-                gevent.sleep(0.05)
+                gevent.sleep(0.005)
         # Clean up after child as designed by Process class (non-blocking).
         super(_GProcess, self).join(timeout=0)
 
-
-class GPipeError(Exception):
-    pass
-
-class GPipeClosed(GPipeError):
-    pass
-
-class GPipeLocked(GPipeError):
-    pass
 
 class _GPipeHandle(object):
     def __init__(self):
@@ -329,8 +300,9 @@ class _GPipeHandle(object):
 
     def _make_nonblocking(self):
         if hasattr(gevent.os, 'make_nonblocking'):
-            # On POSIX, file descriptor flags are inherited after forking,
-            # i.e. it is sufficient to make them nonblocking once (in parent).
+            # On POSIX-compliant systems, the file descriptor flags are
+            # inherited after forking, i.e. it is sufficient to make them
+            # nonblocking once (in parent).
             gevent.os.make_nonblocking(self._fd)
 
     def close(self):
@@ -342,7 +314,8 @@ class _GPipeHandle(object):
         global _all_handles
         self._validate_process()
         if not self._lock.acquire(blocking=False):
-            raise GPipeLocked("Can't close: handle locked for I/O operation.")
+            raise GPipeLocked(
+                "Can't close handle %s: locked for I/O operation." % self)
         log.debug("Invalidating %s ..." % self)
         self._closed = True
         if self._fd is not None:
@@ -390,7 +363,7 @@ class _GPipeHandle(object):
         `multiprocessing.forking.duplicate` is available since the introduction
         of the multiprocessing module in Python 2.6 up to the development
         version of Python 3.4 as of 2012-10-20. The code below is influenced by
-        multiprocessing's forking.py.
+        multiprocessing's forking module.
         """
         if WINDOWS:
             from multiprocessing.forking import duplicate
@@ -420,7 +393,7 @@ class _GPipeHandle(object):
             # Closed before, which is fine.
             pass
         except GPipeLocked:
-            # Used outside of context, which is not fine.
+            # Locked for I/O outside of context, which is not fine.
             raise
 
     def __str__(self):
@@ -457,10 +430,11 @@ class _GPipeReader(_GPipeHandle):
         return readbuf
 
     def get(self):
-        """Receive and return (un)picklelable object from pipe.
+        """Receive and return object from pipe.
 
-        Blocks cooperatively until message is available.
-        TODO: timeout option"""
+        Blocks gevent-cooperatively until message is available.
+        TODO:
+            timeout option"""
         self._validate_process()
         with self._lock:
             msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
@@ -477,7 +451,7 @@ class _GPipeWriter(_GPipeHandle):
     def _write(self, bindata):
         """Write `bindata` to pipe in a gevent-cooperative manner.
 
-        POSIX notes (http://linux.die.net/man/7/pipe:):
+        POSIX-compliant system notes (http://linux.die.net/man/7/pipe:):
             - Since Linux 2.6.11, the pipe capacity is 65536 bytes
             - Relevant for large messages (O_NONBLOCK enabled,
               n > PIPE_BUF (4096 Byte, usually)):
@@ -505,3 +479,43 @@ class _GPipeWriter(_GPipeHandle):
             self._write(struct.pack("!i", len(bindata)))
             self._write(bindata)
 
+
+class _HandlePairContext(tuple):
+    def __init__(self, htuple):
+        super(_HandlePairContext, self).__init__(htuple)
+
+    def __enter__(self):
+        for h in self:
+            h.__enter__()
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        for h in self:
+            h.__exit__(exc_type, exc_value, traceback)
+
+
+class GPipeError(Exception):
+    pass
+
+
+class GPipeClosed(GPipeError):
+    pass
+
+
+class GPipeLocked(GPipeError):
+    pass
+
+
+# Define non-blocking read and write functions
+if hasattr(gevent.os, 'nb_write'):
+    # POSIX system -> use actual non-blocking I/O
+    _READ_NB = gevent.os.nb_read
+    _WRITE_NB = gevent.os.nb_write
+else:
+    # Windows -> imitate non-blocking I/O based on gevent threadpool
+    _READ_NB = gevent.os.tp_read
+    _WRITE_NB = gevent.os.tp_write
+
+
+# Define container for keeping track of valid `_GPipeHandle`s.
+_all_handles = []

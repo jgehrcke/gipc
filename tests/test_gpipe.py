@@ -41,6 +41,8 @@ from py.test import raises
 #log.setLevel(logging.DEBUG)
 
 LONG = 999999
+SHORTTIME = 0.01
+ALMOSTZERO = 0.00001
 
 class TestComm():
     """
@@ -157,7 +159,7 @@ class TestComm():
     def test_readclose(self):
         g = gevent.spawn(lambda r: r.get(), self.rh)
         self._greenlets_to_be_killed.append(g)
-        gevent.sleep(0.01)
+        gevent.sleep(SHORTTIME)
         with raises(GPipeError):
             self.rh.close()
 
@@ -209,7 +211,7 @@ class TestProcess():
 
     def test_join_timeout(self):
         p = gpipe.start_process(gevent.sleep, args=(0.1, ))
-        p.join(timeout=0.00001)
+        p.join(ALMOSTZERO)
         assert p.is_alive()
         p.join()
 
@@ -223,7 +225,7 @@ class TestProcess():
 
 
 def p_child_a():
-    gevent.sleep(0.01)
+    gevent.sleep(SHORTTIME)
 
 
 def p_child_b():
