@@ -69,9 +69,9 @@ else:
 _all_handles = []
 
 
-class ContextTuple(tuple):
+class HandlerPairContext(tuple):
     def __init__(self, handlertuple):
-        super(ContextTuple, self).__init__(handlertuple)
+        super(HandlerPairContext, self).__init__(handlertuple)
         self.handlertuple = handlertuple
 
     def __enter__(self):
@@ -85,17 +85,7 @@ class ContextTuple(tuple):
 
 
 class Pipe(object):
-    def __new__(cls):
-        r, w = os.pipe()
-        reader = _GPipeReader(r)
-        writer = _GPipeWriter(w)
-        _all_handles.append(reader)
-        _all_handles.append(writer)
-        return ContextTuple((reader, writer))
-
-
-def pipe():
-    """Create pipe as well as handles for reading and writing.
+    """Creates new pipe as well as read and write handles.
 
     Based on os.pipe().
     os.pipe() implementation on Windows:
@@ -109,14 +99,15 @@ def pipe():
       - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
 
     Returns:
-        (reader, writer) tuple (both instances of `_GPipeHandle`).
+        (reader, writer) tuple, both instances of `_GPipeHandle`.
     """
-    r, w = os.pipe()
-    reader = _GPipeReader(r)
-    writer = _GPipeWriter(w)
-    _all_handles.append(reader)
-    _all_handles.append(writer)
-    return reader, writer
+    def __new__(cls):
+        r, w = os.pipe()
+        reader = _GPipeReader(r)
+        writer = _GPipeWriter(w)
+        _all_handles.append(reader)
+        _all_handles.append(writer)
+        return HandlerPairContext((reader, writer))
 
 
 def _child(target, all_handles, args, kwargs):

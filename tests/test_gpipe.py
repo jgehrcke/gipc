@@ -23,7 +23,7 @@ import multiprocessing
 import gevent
 
 sys.path.insert(0, os.path.abspath('..'))
-from gpipe import pipe, GPipeError
+from gpipe import Pipe, GPipeError
 import gpipe
 
 
@@ -53,7 +53,7 @@ class TestComm():
         o.teardown()
     """
     def setup(self):
-        self.rh, self.wh = pipe()
+        self.rh, self.wh = Pipe()
         self._greenlets_to_be_killed = []
 
     def teardown(self):
@@ -250,8 +250,8 @@ def p_child_e3():
 
 class TestIPC():
     def setup(self):
-        self.rh, self.wh = pipe()
-        self.rh2, self.wh2 = pipe()
+        self.rh, self.wh = Pipe()
+        self.rh2, self.wh2 = Pipe()
         self._greenlets_to_be_killed = []
 
     def teardown(self):
@@ -349,7 +349,7 @@ def ipc_child_b(r1, r2, m1, m2):
 def ipc_child_c(r1, r2, m1, m2):
     assert r1.get() == m1
     # Test messaging between greenlets in child.
-    local_reader, local_writer = pipe()
+    local_reader, local_writer = Pipe()
     testmsg = [1] * LONG
     gw = gevent.spawn(lambda w: w.put(testmsg), local_writer)
     gr = gevent.spawn(lambda r: r.get(), local_reader)
