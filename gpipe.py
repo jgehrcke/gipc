@@ -291,6 +291,10 @@ class _GProcess(multiprocessing.Process):
 
 
 class _GPipeHandle(object):
+    """
+    Care about destructor?
+    http://eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/
+    """
     def __init__(self):
         self._id = os.urandom(3).encode("hex")
         self._legit_pid = os.getpid()
