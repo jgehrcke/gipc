@@ -69,6 +69,31 @@ else:
 _all_handles = []
 
 
+class ContextTuple(tuple):
+    def __init__(self, handlertuple):
+        super(ContextTuple, self).__init__(handlertuple)
+        self.handlertuple = handlertuple
+
+    def __enter__(self):
+        for h in self.handlertuple:
+            h.__enter__()
+        return self.handlertuple
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        for h in self.handlertuple:
+            h.__exit__(exc_type, exc_value, traceback)
+
+
+class Pipe(object):
+    def __new__(cls):
+        r, w = os.pipe()
+        reader = _GPipeReader(r)
+        writer = _GPipeWriter(w)
+        _all_handles.append(reader)
+        _all_handles.append(writer)
+        return ContextTuple((reader, writer))
+
+
 def pipe():
     """Create pipe as well as handles for reading and writing.
 
@@ -297,6 +322,11 @@ class _GProcess(multiprocessing.Process):
 class GPipeError(Exception):
     pass
 
+class GPipeClosed(GPipeError):
+    pass
+
+class GPipeLocked(GPipeError):
+    pass
 
 class _GPipeHandle(object):
     def __init__(self):
@@ -321,7 +351,7 @@ class _GPipeHandle(object):
         global _all_handles
         self._validate_process()
         if not self._lock.acquire(blocking=False):
-            raise GPipeError("Can't close: handle locked for I/O operation.")
+            raise GPipeLocked("Can't close: handle locked for I/O operation.")
         log.debug("Invalidating %s ..." % self)
         self._closed = True
         if self._fd is not None:
@@ -345,7 +375,7 @@ class _GPipeHandle(object):
         Has little performance impact, as getpid() system call ist very fast.
         """
         if self._closed:
-            raise GPipeError(
+            raise GPipeClosed(
                 "GPipeHandle has been closed before.")
         if os.getpid() != self._legit_pid:
             raise GPipeError(
@@ -388,6 +418,19 @@ class _GPipeHandle(object):
             # Get C file descriptor from Windows file handle.
             self._fd = msvcrt.open_osfhandle(self._ihfd, self._fd_flag)
             del self._ihfd
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        try:
+            self.close()
+        except GPipeClosed:
+            # Closed before, which is fine.
+            pass
+        except GPipeLocked:
+            # Used outside of context, which is not fine.
+            raise
 
     def __str__(self):
         return self.__repr__()
