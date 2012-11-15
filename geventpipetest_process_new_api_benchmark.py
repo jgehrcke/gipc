@@ -116,12 +116,11 @@ def main():
 def benchmark(N):
     condition = Condition()
     result = None
-    reader, writer = gpipe.pipe()
+    reader, writer = gpipe.Pipe()
     condition.acquire()
     p = gpipe.start_process(
-        writer,
         writer_process,
-        kwargs={'condition': condition, 'N': N})
+        kwargs={'writer': writer, 'condition': condition, 'N': N})
     condition.wait()
     condition.release()
     t = TIMER()

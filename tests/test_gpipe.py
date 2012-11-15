@@ -432,6 +432,58 @@ class TestContextManager():
         w.close()
         assert not len(gpipe._all_handles)
 
+    def test_close_in_context(self):
+        with Pipe() as (r, w):
+            w.put('')
+            r.get()
+            r.close()
+            w.close()
+
+    def test_lock_out_of_context(self):
+        r, w = Pipe()
+        g = gevent.spawn(lambda r: r.get(), r)
+        gevent.sleep(SHORTTIME)
+        with raises(GPipeLocked):
+            with r:
+                pass
+                # The context manager can't close `r`, as it is locked in `g`.
+        g.kill()
+        r.close()
+        w.close()
+
+
+class TestGetTimeout():
+    def teardown(self):
+        if gpipe._all_handles:
+            raise Exception("Cleanup was not successful.")
+
+    def test_simpletimeout_expires(self):
+        with Pipe() as (r, w):
+            t = gevent.Timeout(SHORTTIME)
+            try:
+                r.get(timeout=t)
+                assert False
+            except gevent.Timeout, raised_timeout:
+                if not t is raised_timeout:
+                    raise
+                assert True
+
+    def test_simpletimeout_expires_contextmanager(self):
+        with Pipe() as (r, w):
+            with gevent.Timeout(SHORTTIME, False) as t:
+                r.get(timeout=t)
+                assert False
+        assert True
+
+    def test_simpletimeout_doesnt_expire(self):
+        with Pipe() as (r, w):
+            with gevent.Timeout(SHORTTIME, False) as t:
+                w.put('')
+                r.get(timeout=t)
+                return
+        assert False
+
+
 
 if __name__ == "__main__":
     pass

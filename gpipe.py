@@ -394,7 +394,8 @@ class _GPipeHandle(object):
             pass
         except GPipeLocked:
             # Locked for I/O outside of context, which is not fine.
-            raise
+            raise GPipeLocked((
+                "Context manager can't close handle %s. It's locked for I/O " "operation out of context." % self))
 
     def __str__(self):
         return self.__repr__()
@@ -411,13 +412,34 @@ class _GPipeReader(_GPipeHandle):
         self._fd = pipe_read_fd
         self._fd_flag = os.O_RDONLY
         _GPipeHandle.__init__(self)
+        self._newmessage_lengthreceived = False
+        self._timeout = None
 
     def _recv_in_buffer(self, n):
         """Cooperatively read `n` bytes from file descriptor to buffer."""
         readbuf = io.BytesIO()
         remaining = n
         while remaining > 0:
-            chunk = _READ_NB(self._fd, remaining)
+            try:
+                chunk = _READ_NB(self._fd, remaining)
+            except gevent.Timeout, raised_timeout:
+                if raised_timeout is not self._timeout:
+                    # `self._timeout` wasn't the one that expired. Re-raise.
+                    raise
+                # Continue receiving the current message (don't raise the
+                # timeout exception) if a message fragment has already been
+                # received.
+                if not self._newmessage_lengthreceived:
+                    try:
+                        received
+                    except NameError:
+                        # There was no previous while iteration.
+                        try:
+                            chunk
+                        except NameError:
+                            # In the first iteration nothing was received.
+                            # We can safely raise the timeout exception.
+                            raise self._timeout
             received = len(chunk)
             if received == 0:
                 if remaining == n:
@@ -429,17 +451,26 @@ class _GPipeReader(_GPipeHandle):
             remaining -= received
         return readbuf
 
-    def get(self):
+    def get(self, timeout=None):
         """Receive and return object from pipe.
 
         Blocks gevent-cooperatively until message is available.
-        TODO:
-            timeout option"""
+        """
         self._validate_process()
+        if timeout:
+            if not timeout.pending:
+                timeout.start()
+            self._timeout = timeout
         with self._lock:
             msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
+            self._newmessage_lengthreceived = True
             bindata = self._recv_in_buffer(msize).getvalue()
-            return pickle.loads(bindata)
+        # Clean up after timeout.
+        if timeout:
+            timeout.cancel()
+            self._newmessage_lengthreceived = False
+            self._timeout = None
+        return pickle.loads(bindata)
 
 
 class _GPipeWriter(_GPipeHandle):
