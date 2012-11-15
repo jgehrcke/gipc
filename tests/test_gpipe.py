@@ -173,11 +173,14 @@ class TestProcess():
     def test_is_alive_true(self):
         p = gpipe.start_process(p_child_a)
         assert p.is_alive()
+        p.join()
+        assert p.exitcode == 0
 
     def test_is_alive_false(self):
         p = gpipe.start_process(p_child_a)
         p.join()
         assert not p.is_alive()
+        assert p.exitcode == 0
 
     def test_exitcode_0(self):
         p = gpipe.start_process(p_child_a)
@@ -198,6 +201,7 @@ class TestProcess():
         p = gpipe.start_process(p_child_a)
         p.join()
         assert p.pid is not None
+        assert p.exitcode == 0
 
     def test_terminate(self):
         p = gpipe.start_process(gevent.sleep, args=(1,))
@@ -214,6 +218,7 @@ class TestProcess():
         p.join(ALMOSTZERO)
         assert p.is_alive()
         p.join()
+        assert p.exitcode == 0
 
     def test_typecheck(self):
         with raises(TypeError):
@@ -242,7 +247,7 @@ def p_child_e():
 
 
 def p_child_e2():
-    ii = gpipe.start_process(cp_hild_e3)
+    ii = gpipe.start_process(p_child_e3)
     ii.join()
 
 
@@ -287,6 +292,7 @@ class TestIPC():
         p = gpipe.start_process(ipc_readchild, args=(self.rh, m))
         self.wh.put(m)
         p.join()
+        assert p.exitcode == 0
 
     def test_twochannels_singlemsg(self):
         m1 = "OK"
@@ -295,6 +301,7 @@ class TestIPC():
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
+        assert p.exitcode == 0
 
     def test_childparentcomm_withinchildcomm(self):
         m1 = "OK"
@@ -304,6 +311,7 @@ class TestIPC():
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
+        assert p.exitcode == 0
 
     def test_childchildcomm(self):
         m = {("KLADUSCH",): "foo"}
@@ -311,17 +319,21 @@ class TestIPC():
         pw = gpipe.start_process(ipc_writechild, args=(self.wh, m))
         pr.join()
         pw.join()
+        assert pr.exitcode == 0
+        assert pw.exitcode == 0
 
     def test_handler_after_transfer_to_child(self):
         p = gpipe.start_process(ipc_child_boring_reader, args=(self.rh,))
         with raises(GPipeError):
             self.rh.close()
         p.join()
+        assert p.exitcode == 0
 
     def test_handler_in_nonregistered_process(self):
         p = multiprocessing.Process(target=ipc_child_d, args=(self.rh, ))
         p.start()
         p.join()
+        assert p.exitcode == 0
         self.rh.close()
 
     def test_child_in_child_in_child_comm(self):
@@ -329,7 +341,7 @@ class TestIPC():
         p = gpipe.start_process(ipc_child_f, args=(self.wh, m))
         p.join()
         assert m == self.rh.get()
-
+        assert p.exitcode == 0
 
 def ipc_readchild(r, m):
     assert r.get() == m
@@ -365,11 +377,8 @@ def ipc_child_c(r1, r2, m1, m2):
 
 
 def ipc_child_d(r):
-    try:
+    with raises(GPipeError):
         r.close()
-    except GPipeClosed:
-        return
-    assert False
 
 
 def ipc_child_f(w, m):
@@ -406,6 +415,7 @@ class TestContextManager():
         r, w = Pipe()
         with w as foo:
             foo.put('')
+        print foo._fd
         assert len(gpipe._all_handles) == 1
         with raises(GPipeClosed):
             w.close()
