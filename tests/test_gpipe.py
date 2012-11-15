@@ -387,5 +387,41 @@ def ipc_child_f3(w, m):
     w.close()
 
 
+class TestContextManager():
+    def teardown(self):
+        if gpipe._all_handles:
+            raise Exception("Cleanup was not successful.")
+
+    def test_both(self):
+        with Pipe() as (r, w):
+            w.put('')
+            r.get()
+        assert not len(gpipe._all_handles)
+        r, w = Pipe()
+        assert len(gpipe._all_handles) == 2
+        r.close()
+        w.close()
+
+    def test_single_reader(self):
+        r, w = Pipe()
+        with w as foo:
+            foo.put('')
+        assert len(gpipe._all_handles) == 1
+        with raises(GPipeClosed):
+            w.close()
+        r.close()
+        assert not len(gpipe._all_handles)
+
+    def test_single_writer(self):
+        r, w = Pipe()
+        with r as foo:
+            pass
+        assert len(gpipe._all_handles) == 1
+        with raises(GPipeClosed):
+            r.close()
+        w.close()
+        assert not len(gpipe._all_handles)
+
+
 if __name__ == "__main__":
     pass
