@@ -23,7 +23,7 @@ import multiprocessing
 import gevent
 
 sys.path.insert(0, os.path.abspath('..'))
-from gpipe import Pipe, GPipeError
+from gpipe import Pipe, GPipeError, GPipeClosed, GPipeLocked
 import gpipe
 
 
@@ -143,24 +143,24 @@ class TestComm():
 
     def test_twoclose(self):
         self.wh.close()
-        with raises(GPipeError):
+        with raises(GPipeClosed):
             self.wh.close()
 
     def test_closewrite(self):
         self.wh.close()
-        with raises(GPipeError):
+        with raises(GPipeClosed):
             self.wh.put('')
 
     def test_closeread(self):
         self.rh.close()
-        with raises(GPipeError):
+        with raises(GPipeClosed):
             self.rh.get()
 
     def test_readclose(self):
         g = gevent.spawn(lambda r: r.get(), self.rh)
         self._greenlets_to_be_killed.append(g)
         gevent.sleep(SHORTTIME)
-        with raises(GPipeError):
+        with raises(GPipeLocked):
             self.rh.close()
 
     def test_closewrite_read(self):
@@ -367,7 +367,7 @@ def ipc_child_c(r1, r2, m1, m2):
 def ipc_child_d(r):
     try:
         r.close()
-    except GPipeError:
+    except GPipeClosed:
         return
     assert False
 

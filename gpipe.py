@@ -197,7 +197,7 @@ def _child(target, all_handles, args, kwargs):
         try:
             # The user or a child of this child might already have closen it.
             h.close()
-        except GPipeError:
+        except GPipeClosed:
             pass
 
 
