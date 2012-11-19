@@ -549,8 +549,8 @@ class TestUsecases():
         too long.
         """
         with Pipe() as (r, w):
-            pw = gpipe.start_process(usecase_child_b, args=(w, ))
             pr = gpipe.start_process(usecase_child_c, args=(r, ))
+            pw = gpipe.start_process(usecase_child_b, args=(w, ))
             pw.join()
             pr.join()
             assert pw.exitcode == 0
