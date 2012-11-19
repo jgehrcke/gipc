@@ -37,12 +37,12 @@ from py.test import raises
 # Nose is great and all, but can run tests in alphabetical order only.
 # from nose.tools import raises
 
-#import logging
-#logging.basicConfig(
-   #format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
-   #datefmt='%H:%M:%S')
-#log = logging.getLogger()
-#log.setLevel(logging.DEBUG)
+import logging
+logging.basicConfig(
+   format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
+   datefmt='%H:%M:%S')
+log = logging.getLogger()
+log.setLevel(logging.DEBUG)
 
 LONG = 999999
 SHORTTIME = 0.01
@@ -474,6 +474,17 @@ class TestContextManager():
         gevent.sleep(-1)
         r.close()
         w.close()
+
+    def test_lock_out_of_context_2(self):
+        with Pipe() as (r, w):
+            # Fill up pipe and try to write even more, makes `put` block.
+            gw = gevent.spawn(lambda w: w.put("A" * 99999), w)
+            gevent.sleep(SHORTTIME)
+
+    def test_lock_out_of_context_3(self):
+        with Pipe() as (r, w):
+            gr = gevent.spawn(lambda r: r.get(), r)
+            gevent.sleep(SHORTTIME)
 
 
 class TestGetTimeout():

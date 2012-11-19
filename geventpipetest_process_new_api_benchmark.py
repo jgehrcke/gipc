@@ -65,34 +65,41 @@ else:
     TIMER = time.time
 
 
-MSG = 'A' * 59999
-REPETITIONS = 3
-
-
 def main():
+    msg = 'A' * 59999
+    repetitions = 3
+
+    log.info("Throughput benchmark")
+    log.info("Determining N ...")
+    benchmark_manager(msg, repetitions)
+
+    msg = "a"
+    log.info("Transmission benchmark")
+    log.info("Determining N ...")
+    benchmark_manager(msg, repetitions)
+
+
+def benchmark_manager(msg, repetitions):
     elapsed = 0
     N = 1
-
-    log.info("Determining N ...")
-
     # Find N with which benchmark lasts between 1 and two seconds
     while elapsed < 1:
         N *= 2
-        N, elapsed = benchmark(N)
+        N, elapsed = benchmark(N, msg)
 
     log.info("N = %s" % N)
-    log.info("Running %s benchmarks ..." % REPETITIONS)
+    log.info("Running %s benchmarks ..." % repetitions)
     elapsed_values = []
     # Repeat benchmark with last N value, collect data
-    for _ in xrange(REPETITIONS):
-        N, elapsed = benchmark(N)
+    for _ in xrange(repetitions):
+        N, elapsed = benchmark(N, msg)
         elapsed_values.append(elapsed)
         # Evaluate
         mpertime = N/elapsed
-        datasize_mb = float(len(MSG)*N)/1024/1024
+        datasize_mb = float(len(msg)*N)/1024/1024
         datarate_mb = datasize_mb/elapsed
         log.info(" Single benchmark result:")
-        log.info("  --> N: %s, MSG length: %s" % (N, len(MSG)))
+        log.info("  --> N: %s, MSG length: %s" % (N, len(msg)))
         log.info("  --> Read duration: %.3f s" % elapsed)
         log.info("  --> Average msg tx rate: %.3f msgs/s" % mpertime)
         log.info("  --> Payload transfer rate: %.3f MB/s" % datarate_mb)
@@ -113,33 +120,36 @@ def main():
         (datarate_mb_mean, datarate_mb_err))
 
 
-def benchmark(N):
+def benchmark(N, msg):
     condition = Condition()
     result = None
-    reader, writer = gpipe.Pipe()
-    condition.acquire()
-    p = gpipe.start_process(
-        writer_process,
-        kwargs={'writer': writer, 'condition': condition, 'N': N})
-    condition.wait()
-    condition.release()
-    t = TIMER()
-    while result != 'stop':
-        result = reader.get()
-    elapsed = TIMER() - t
-    p.join()
-    reader.close()
-    #writer.close()
+    with gpipe.Pipe() as (reader, writer):
+        condition.acquire()
+        p = gpipe.start_process(
+            writer_process,
+            kwargs={
+                'writer': writer,
+                'condition': condition,
+                'N': N,
+                'msg': msg})
+        condition.wait()
+        condition.release()
+        t = TIMER()
+        while result != 'stop':
+            result = reader.get()
+        elapsed = TIMER() - t
+        p.join()
     return N, elapsed
 
 
-def writer_process(writer, condition, N):
-    condition.acquire()
-    condition.notify()
-    condition.release()
-    for i in xrange(N):
-        writer.put(MSG)
-    writer.put('stop')
+def writer_process(writer, condition, N, msg):
+    with writer:
+        condition.acquire()
+        condition.notify()
+        condition.release()
+        for i in xrange(N):
+            writer.put(msg)
+        writer.put('stop')
 
 
 if __name__ == "__main__":

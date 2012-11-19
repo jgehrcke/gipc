@@ -398,6 +398,9 @@ class _GPipeHandle(object):
             pass
         except GPipeLocked:
             # Locked for I/O outside of context, which is not fine.
+
+            log.debug("ALL HANDLES: %s" % _all_handles)
+
             raise GPipeLocked((
                 "Context manager can't close handle %s. It's locked for I/O " "operation out of context." % self))
 
@@ -533,6 +536,9 @@ class _HandlePairContext(tuple):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
+        # TODO: exit must be called for both handles, i.e. an exception during
+        # exit of first must be buffered, exit for second must be performed,
+        # exception must be re-raised.
         for h in self:
             h.__exit__(exc_type, exc_value, traceback)
 
