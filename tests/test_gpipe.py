@@ -22,7 +22,6 @@ import signal
 import multiprocessing
 import random
 
-WINDOWS = sys.platform == "win32"
 import gevent
 import gevent.queue
 sys.path.insert(0, os.path.abspath('..'))
@@ -30,10 +29,12 @@ from gpipe import Pipe, GPipeError, GPipeClosed, GPipeLocked
 import gpipe
 
 
-# py.test runs tests by order of definition. Useful for running simple,
+WINDOWS = sys.platform == "win32"
+
+# py.test runs tests by order of definition. This is useful for running simple,
 # fundamental tests first and more complex tests later.
 from py.test import raises
-# Nose is great and all, but runs tests alphabetically. Can't be changed.
+# Nose is great and all, but can run tests in alphabetical order only.
 # from nose.tools import raises
 
 #import logging
@@ -496,14 +497,12 @@ class TestGetTimeout():
             except gevent.Timeout, raised_timeout:
                 if not t is raised_timeout:
                     raise
-                assert True
 
     def test_simpletimeout_expires_contextmanager(self):
         with Pipe() as (r, w):
             with gevent.Timeout(SHORTTIME, False) as t:
                 r.get(timeout=t)
                 assert False
-        assert True
 
     def test_simpletimeout_doesnt_expire(self):
         with Pipe() as (r, w):
@@ -649,7 +648,6 @@ def usecase_child_c(reader):
         sys.exit(0)
     reader.close()
     sys.exit(5)
-
 
 
 if __name__ == "__main__":
