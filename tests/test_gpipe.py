@@ -38,8 +38,8 @@ from py.test import raises
 
 #import logging
 #logging.basicConfig(
-#    format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
-#    datefmt='%H:%M:%S')
+   #format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
+   #datefmt='%H:%M:%S')
 #log = logging.getLogger()
 #log.setLevel(logging.DEBUG)
 
@@ -62,18 +62,15 @@ class TestComm():
         self._greenlets_to_be_killed = []
 
     def teardown(self):
-        # Make sure to not leak file descriptors
-        try:
-            self.rh.close()
-            os.close(self.rh._fd)
-        except:
-            pass
-        try:
-            self.wh.close()
-            os.close(self.wh._fd)
-        except:
-            pass
-        gpipe._all_handles = []
+        # Make sure to not leak file descriptors.
+        if gpipe._all_handles:
+            for h in gpipe._all_handles[:]:
+                try:
+                    h.close()
+                    os.close(h._fd)
+                except (OSError, GPipeError, TypeError):
+                    pass
+            gpipe._all_handles = []
         for g in self._greenlets_to_be_killed:
             g.kill()
 
@@ -276,28 +273,15 @@ class TestIPC():
         self._greenlets_to_be_killed = []
 
     def teardown(self):
-        # Make sure to not leak file descriptors
-        try:
-            self.rh.close()
-            os.close(self.rh._fd)
-        except:
-            pass
-        try:
-            self.wh.close()
-            os.close(self.wh._fd)
-        except:
-            pass
-        try:
-            self.rh2.close()
-            os.close(self.rh2._fd)
-        except:
-            pass
-        try:
-            self.wh2.close()
-            os.close(self.wh2._fd)
-        except:
-            pass
-        gpipe._all_handles = []
+        # Make sure to not leak file descriptors.
+        if gpipe._all_handles:
+            for h in gpipe._all_handles[:]:
+                try:
+                    h.close()
+                    os.close(h._fd)
+                except (OSError, GPipeError, TypeError):
+                    pass
+            gpipe._all_handles = []
         for g in self._greenlets_to_be_killed:
             g.kill()
 
@@ -357,6 +341,7 @@ class TestIPC():
         assert m == self.rh.get()
         assert p.exitcode == 0
 
+
 def ipc_readchild(r, m):
     assert r.get() == m
 
@@ -386,7 +371,7 @@ def ipc_child_c(r1, r2, m1, m2):
     gw.join()
     local_reader.close()
     local_writer.close()
-    # Receive second message from parent
+    # Receive second message from parent.
     assert r2.get() == m2
 
 
@@ -413,6 +398,13 @@ def ipc_child_f3(w, m):
 class TestContextManager():
     def teardown(self):
         if gpipe._all_handles:
+            for h in gpipe._all_handles[:]:
+                try:
+                    h.close()
+                    os.close(h._fd)
+                except (OSError, GPipeError, TypeError):
+                    pass
+            gpipe._all_handles = []
             raise Exception("Cleanup was not successful.")
 
     def test_all_handles_length(self):
@@ -486,6 +478,13 @@ class TestContextManager():
 class TestGetTimeout():
     def teardown(self):
         if gpipe._all_handles:
+            for h in gpipe._all_handles[:]:
+                try:
+                    h.close()
+                    os.close(h._fd)
+                except (OSError, GPipeError, TypeError):
+                    pass
+            gpipe._all_handles = []
             raise Exception("Cleanup was not successful.")
 
     def test_simpletimeout_expires(self):
@@ -518,6 +517,13 @@ class TestGetTimeout():
 class TestUsecases():
     def teardown(self):
         if gpipe._all_handles:
+            for h in gpipe._all_handles[:]:
+                try:
+                    h.close()
+                    os.close(h._fd)
+                except (OSError, GPipeError, TypeError):
+                    pass
+            gpipe._all_handles = []
             raise Exception("Cleanup was not successful.")
 
     def test_whatever_1(self):
@@ -556,7 +562,7 @@ class TestUsecases():
         sendlist -> sendqueue(greenlet, parent)
         sendqueue -> forthpipe to child (greenlet, parent)
         forthpipe -> recvqueue (greenlet, child)
-        recvqueue -> backpipe (greenlet, child)
+        recvqueue -> backpipe to parent (greenlet, child)
         backpipe -> recvlist (greenlet, parent)
         assert sendlist == recvlist
         """
@@ -634,6 +640,7 @@ def usecase_child_b(writer):
         except OSError:
             # Read end already closed.
             pass
+
 
 def usecase_child_c(reader):
     with gevent.Timeout(SHORTTIME, False) as t:
