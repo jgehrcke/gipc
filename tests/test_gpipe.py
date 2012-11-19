@@ -475,6 +475,10 @@ class TestContextManager():
                 pass
                 # The context manager can't close `r`, as it is locked in `g`.
         g.kill(block=False)
+        # Ensure killing via 'context switch', i.e. yield control to other
+        # coroutines (otherwise the subsequent close attempt will fail with
+        # `GPipeLocked` error).
+        gevent.sleep(-1)
         r.close()
         w.close()
 
