@@ -459,7 +459,7 @@ class TestContextManager():
             r.close()
             w.close()
 
-    def test_lock_out_of_context(self):
+    def test_lock_out_of_context_single(self):
         r, w = Pipe()
         g = gevent.spawn(lambda r: r.get(), r)
         gevent.sleep(SHORTTIME)
@@ -475,16 +475,31 @@ class TestContextManager():
         r.close()
         w.close()
 
-    def test_lock_out_of_context_2(self):
-        with Pipe() as (r, w):
-            # Fill up pipe and try to write even more, makes `put` block.
-            gw = gevent.spawn(lambda w: w.put("A" * 99999), w)
-            gevent.sleep(SHORTTIME)
-
-    def test_lock_out_of_context_3(self):
-        with Pipe() as (r, w):
-            gr = gevent.spawn(lambda r: r.get(), r)
-            gevent.sleep(SHORTTIME)
+    def test_lock_out_of_context_pair(self):
+        with raises(GPipeLocked):
+            with Pipe() as (r, w):
+                # Fill up pipe and try to write more than pipe can hold
+                # (makes `put` block when there is no reader).
+                gw = gevent.spawn(lambda w: w.put("A" * 9999999), w)
+                gevent.sleep(SHORTTIME)
+                # Context manager tries to close reader first, succeeds,
+                # and fails during closing writer.
+        gw.kill(block=False)
+        gevent.sleep(-1)
+        w.close()
+        
+    def test_lock_out_of_context_pair_2(self):
+        with raises(GPipeLocked):
+            with Pipe() as (r, w):
+                gr = gevent.spawn(lambda r: r.get(), r)
+                gevent.sleep(SHORTTIME)
+                # Context manager tries to close reader first, fails,
+                # and must close writer nevertheless.
+        # When writer gets closed, an EOFError should have been raised
+        # in `gr`.
+        with raises(EOFError):
+            e = gr.get()
+        r.close()
 
 
 class TestGetTimeout():
