@@ -538,20 +538,20 @@ class _HandlePairContext(tuple):
     def __exit__(self, exc_type, exc_value, traceback):
         """
         Call `__exit__()` for both, read and write handles, in any case,
-        as expected by a context manager. If an exception occurs during
-        reader exit, store it, exit writer and raise it afterwards. If
+        as expected by a context manager. Exit writer first, as `os.close()`
+        on reader might block on Windows otherwise. If an exception occurs
+        during writer exit, store it, exit reader and raise it afterwards. If
         an exception is raised during both, reader and writer exit, only
-        raise the writer exit exception.
+        raise the reader exit exception.
         """
-        reader_exit_exception = None
+        writer_exit_exception = None
         try:
-            self.reader.__exit__(exc_type, exc_value, traceback)
+            self.writer.__exit__(exc_type, exc_value, traceback)
         except:
-            reader_exit_exception = sys.exc_info()
-        self.writer.__exit__(exc_type, exc_value, traceback)
-        log.debug("ALL HANDLES: %s" % _all_handles)
-        if reader_exit_exception:
-            raise reader_exit_exception[1], None, reader_exit_exception[2]
+            writer_exit_exception = sys.exc_info()
+        self.reader.__exit__(exc_type, exc_value, traceback)
+        if writer_exit_exception:
+            raise writer_exit_exception[1], None, writer_exit_exception[2]
 
 
 class GPipeError(Exception):

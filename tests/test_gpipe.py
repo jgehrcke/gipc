@@ -37,12 +37,12 @@ from py.test import raises
 # Nose is great and all, but can run tests in alphabetical order only.
 # from nose.tools import raises
 
-import logging
-logging.basicConfig(
-   format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
-   datefmt='%H:%M:%S')
-log = logging.getLogger()
-log.setLevel(logging.DEBUG)
+#import logging
+#logging.basicConfig(
+#   format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
+#   datefmt='%H:%M:%S')
+#log = logging.getLogger()
+#log.setLevel(logging.DEBUG)
 
 LONG = 999999
 SHORTTIME = 0.01
@@ -472,18 +472,21 @@ class TestContextManager():
         # coroutines (otherwise the subsequent close attempt will fail with
         # `GPipeLocked` error).
         gevent.sleep(-1)
-        r.close()
+        # Close writer first. otherwise, `os.close(r._fd)` would block on Win.
         w.close()
+        r.close()
 
     def test_lock_out_of_context_pair(self):
         with raises(GPipeLocked):
             with Pipe() as (r, w):
                 # Fill up pipe and try to write more than pipe can hold
                 # (makes `put` block when there is no reader).
+                # Buffer is quite large on Windows.
                 gw = gevent.spawn(lambda w: w.put("A" * 9999999), w)
                 gevent.sleep(SHORTTIME)
-                # Context manager tries to close reader first, succeeds,
-                # and fails during closing writer.
+                # Context manager tries to close writer first, fails,
+                # and must close reader nevertheless.
+        # Kill greenlet (free lock on writer) and close writer.
         gw.kill(block=False)
         gevent.sleep(-1)
         w.close()
@@ -493,12 +496,10 @@ class TestContextManager():
             with Pipe() as (r, w):
                 gr = gevent.spawn(lambda r: r.get(), r)
                 gevent.sleep(SHORTTIME)
-                # Context manager tries to close reader first, fails,
-                # and must close writer nevertheless.
-        # When writer gets closed, an EOFError should have been raised
-        # in `gr`.
-        with raises(EOFError):
-            e = gr.get()
+                # Context manager tries to close writer first, succeeds,
+                # and fails during closing reader.
+        gr.kill(block=False)
+        gevent.sleep(-1)        
         r.close()
 
 
@@ -553,15 +554,18 @@ class TestUsecases():
 
     def test_whatever_1(self):
         """
-        From a writing child, fire into the pipe. In a greenlet in the parent, receive one of these messages and return it to the main greenlet.
+        From a writing child, fire into the pipe. In a greenlet in the parent,
+        receive one of these messages and return it to the main greenlet.
         Terminate the child process.
         """
         with Pipe() as (r, w):
             p = gpipe.start_process(usecase_child_a, args=(w, ))
-            gevent.sleep(SHORTTIME)
+            # Wait for process to send first message:
+            r.get()
             def readgreenlet(reader):
-                with gevent.Timeout(SHORTTIME, False) as t:
+                with gevent.Timeout(SHORTTIME) as t:
                     return reader.get(timeout=t)
+            # Second message must be available immediately now.
             g = gevent.spawn(readgreenlet, r)
             assert g.get() == "SPLASH"
             p.terminate()
@@ -573,13 +577,18 @@ class TestUsecases():
         Send two messages between two child processes. The second message takes
         too long.
         """
-        with Pipe() as (r, w):
-            pr = gpipe.start_process(usecase_child_c, args=(r, ))
-            pw = gpipe.start_process(usecase_child_b, args=(w, ))
-            pw.join()
-            pr.join()
-            assert pw.exitcode == 0
-            assert pr.exitcode == 5
+        # First pipe for sync.
+        with Pipe() as (syncreader, syncwriter):
+            # Second pipe for communication.
+            with Pipe() as (r, w):
+                # Send messages
+                pw = gpipe.start_process(usecase_child_b, args=(w, syncreader))
+                # Receive messages
+                pr = gpipe.start_process(usecase_child_c, args=(r, syncwriter))
+                pw.join()
+                pr.join()
+                assert pw.exitcode == 0
+                assert pr.exitcode == 5
 
     def test_whatever_3(self):
         """
@@ -656,23 +665,26 @@ def usecase_child_a(writer):
             gevent.sleep(ALMOSTZERO)
 
 
-def usecase_child_b(writer):
+def usecase_child_b(writer, syncreader):
+    with syncreader:
+        # Wait for partner process to start up.
+        syncreader.get()
     with writer:
         writer.put("CHICKEN")
-        gevent.sleep(SHORTTIME*2)
-        try:
-            writer.put("CHICKENPUREE")
-        except OSError:
-            # Read end already closed.
-            pass
+        # Keep the write end open for another short while.
+        gevent.sleep(SHORTTIME*3)
 
 
-def usecase_child_c(reader):
-    with gevent.Timeout(SHORTTIME, False) as t:
-        assert reader.get(timeout=t) == "CHICKEN"
-        reader.get(timeout=t)
-        sys.exit(0)
-    reader.close()
+def usecase_child_c(reader, syncwriter):
+    with syncwriter:
+        # Tell partner process that we are up and running!
+        syncwriter.put("nothing")
+    with reader:
+        with gevent.Timeout(SHORTTIME, False) as t:
+            assert reader.get(timeout=t) == "CHICKEN"
+            # No more messages expected to come :-(
+            reader.get(timeout=t)
+            sys.exit(0)
     sys.exit(5)
 
 
