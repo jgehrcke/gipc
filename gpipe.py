@@ -398,11 +398,9 @@ class _GPipeHandle(object):
             pass
         except GPipeLocked:
             # Locked for I/O outside of context, which is not fine.
-
-            log.debug("ALL HANDLES: %s" % _all_handles)
-
             raise GPipeLocked((
-                "Context manager can't close handle %s. It's locked for I/O " "operation out of context." % self))
+                "Context manager can't close handle %s. It's locked for I/O "
+                "operation out of context." % self))
 
     def __str__(self):
         return self.__repr__()
@@ -527,8 +525,10 @@ class _GPipeWriter(_GPipeHandle):
 
 
 class _HandlePairContext(tuple):
-    def __init__(self, htuple):
-        super(_HandlePairContext, self).__init__(htuple)
+    def __init__(self, (reader, writer)):
+        self.reader = reader
+        self.writer = writer
+        super(_HandlePairContext, self).__init__((reader, writer))
 
     def __enter__(self):
         for h in self:
@@ -536,11 +536,22 @@ class _HandlePairContext(tuple):
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
-        # TODO: exit must be called for both handles, i.e. an exception during
-        # exit of first must be buffered, exit for second must be performed,
-        # exception must be re-raised.
-        for h in self:
-            h.__exit__(exc_type, exc_value, traceback)
+        """
+        Call `__exit__()` for both, read and write handles, in any case,
+        as expected by a context manager. If an exception occurs during
+        reader exit, store it, exit writer and raise it afterwards. If
+        an exception is raised during both, reader and writer exit, only
+        raise the writer exit exception.
+        """
+        reader_exit_exception = None
+        try:
+            self.reader.__exit__(exc_type, exc_value, traceback)
+        except:
+            reader_exit_exception = sys.exc_info()
+        self.writer.__exit__(exc_type, exc_value, traceback)
+        log.debug("ALL HANDLES: %s" % _all_handles)
+        if reader_exit_exception:
+            raise reader_exit_exception[1], None, reader_exit_exception[2]
 
 
 class GPipeError(Exception):
