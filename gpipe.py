@@ -52,34 +52,34 @@ log = logging.getLogger("gpipe")
 
 
 class Pipe(object):
-    """Creates a new pipe as well as one readhandle and one writehandle.
+    """Creates a new pipe as well as one read handle and one write handle.
 
     Returns:
         (reader, writer) tuple, both instances of `_GPipeHandle`.
 
-    The handles are context manager-aware. They are closed on context exit.
-    All of the following examples work:
+    `_GPipeHandle`s are context manager-compatible: they are closed on context
+    exit. Examples:
 
     with Pipe() as (reader, writer):
         do_something()
 
     reader, writer = Pipe()
-    with reader as r:
+    with reader:
         do_something()
 
-    with writer:
+    with writer as w:
         do_something()
 
-    Transport layer based on os.pipe().
-    os.pipe() implementation on Windows (http://bit.ly/RDuKUm):
-      - CreatePipe(&read, &write, NULL, 0)
-      - anonymous pipe, system handles buffer size.
-      - anonymous pipes are implemented using a named pipe with a unique name.
-      - asynchronous (overlapped) read and write operations are not supported.
-    os.pipe() implementation on Unix (http://linux.die.net/man/7/pipe):
-      - based on pipe()
-      - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
+    The transport layer is based on os.pipe().
     """
+    # os.pipe() implementation on Windows (http://bit.ly/RDuKUm):
+    #   - CreatePipe(&read, &write, NULL, 0)
+    #   - anonymous pipe, system handles buffer size.
+    #   - anonymous pipes are implemented using a named pipe with a unique name.
+    #   - asynchronous (overlapped) read and write operations are not supported.
+    # os.pipe() implementation on Unix (http://linux.die.net/man/7/pipe):
+    #   - based on pipe()
+    #   - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
     def __new__(cls):
         r, w = os.pipe()
         reader = _GPipeReader(r)
@@ -90,24 +90,9 @@ class Pipe(object):
 
 
 def start_process(target, name=None, args=(), kwargs={}, daemon=None):
-    """Spawn child process with the intention to use `_GPipeHandle`s
-    provided via `args`/`kwargs` within the child process. Execute
-    target(*args, **kwargs) in the child process.
-
-    Process creation is based on multiprocessing.Process(). When working with
-    gevent and gevent-messagepipe, instead of calling Process() on your own,
-    it is highly recommended to create child processes via this method.
-    It takes care of
-        - closing dispensable file descriptors after child process creation.
-        - proper file descriptor inheritance on Windows.
-        - re-initialization of the default gevent event loop in the child
-          process (no greenlet spawned in the parent will run in the child)
-          on POSIX-compliant systems.
-        - providing cooperative Process methods (such as `join()`).
-
-    Calling this method breaks `os.waitpid()` on Unix: `join()` is based on
-    libev child watchers, making libev reap children in the moment they die.
-    `os.waitpid()` will throw ECHILD, cf. http://linux.die.net/man/2/waitid.
+    """Spawn child process and execute function target(*args, **kwargs). 
+    Any existing `_GPipeHandle`s can be handed over to the child process via
+    `args` and/or `kwargs`.
 
     Args:
         `target`: user-given function to be called as target(*args, **kwargs)
@@ -117,13 +102,26 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
         `kwargs`: dictionary defining keyword arguments provided to `target`
 
     Returns:
-        `_GProcess` instance (inherits from `multiprocessing.Process`)
+        `_GProcess` instance (inherits from `multiprocessing.Process`)    
+    
+    Process creation is based on multiprocessing.Process(). When working with
+    gevent and gevent-messagepipe, instead of calling Process() on your own,
+    it is highly recommended to create child processes via this method.
+    It takes care of
+        - closing dispensable file descriptors after child process creation.
+        - proper file descriptor inheritance on Windows.
+        - re-initialization of the event loop in the child process.
+        - providing cooperative Process methods (such as `join()`).
+
+    Calling this method breaks `os.waitpid()` on Unix: `join()` is based on
+    libev child watchers, making libev reap children in the moment they die.
+    `os.waitpid()` will throw ECHILD, cf. http://linux.die.net/man/2/waitid.
     """
     if not isinstance(args, tuple):
         raise TypeError, '`args` must be tuple.'
     if not isinstance(kwargs, dict):
         raise TypeError, '`kwargs` must be dictionary.'
-    log.debug("Run target %s in child process ..." % target)
+    log.debug("Invoke target `%s` in child process." % target)
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
     if WINDOWS:
@@ -142,7 +140,7 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
     if WINDOWS:
         for h in _all_handles:
             h._post_createprocess_windows()
-    # Close those file handlers in parent that are not further required.
+    # Close dispensable file handles in parent.
     for h in childhandles:
         log.debug("Invalidate %s in parent." % h)
         h.close()
@@ -150,21 +148,18 @@ def start_process(target, name=None, args=(), kwargs={}, daemon=None):
 
 
 def _child(target, all_handles, args, kwargs):
-    """Runs in child process. Sanitizes situation in child process and
-    executes user-given function.
-
-    `target`: user-given function to be called with `kwargs`
-    `childhandles`: GPipeHandles that are intented to be used in child.
+    """Wrapper that runs in child process. Sanitizes situation and executes
+    user-given function.
 
     After fork on POSIX-compliant systems, gevent's state is inherited by the
     child which may lead to undesired and undefined behavior, such as
     greenlets running in both, the parent and the child. Therefore, on Unix,
     gevent's state is entirely reset before running the user-given function.
     """
-    log.debug("_child start. target: %s" % target)
+    log.debug("_child start. target: `%s`" % target)
     # The value of a global variable set in the parent process is not
-    # propagated to the child processes on Windows (as is on Unix via fork()).
-    # Restore global `_all_handles` (required on Win, does not harm elsewhere).
+    # propagated to children on Windows (as is on Unix via fork()). Therefore,
+    # restore global `_all_handles` (required on Win, does not harm elsewhere).
     global _all_handles
     _all_handles = all_handles
     if not WINDOWS:
@@ -182,7 +177,7 @@ def _child(target, all_handles, args, kwargs):
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
     # Register inherited handles for current process.
-    # Close file descriptors that are not intended for further usage.
+    # Close those that are not intended for further usage.
     for h in _all_handles[:]:
         h._set_legit_process()
         if WINDOWS:
@@ -191,7 +186,7 @@ def _child(target, all_handles, args, kwargs):
             log.debug("Invalidate %s in child." % h)
             h.close()
             continue
-        log.debug("Valid in child: %s" % h)
+        log.debug("Handle `%s` is valid in child." % h)
     target(*args, **kwargs)
     for h in childhandles:
         try:
@@ -199,7 +194,6 @@ def _child(target, all_handles, args, kwargs):
             h.close()
         except GPipeClosed:
             pass
-
 
 
 class _GProcess(multiprocessing.Process):
