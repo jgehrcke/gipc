@@ -449,6 +449,7 @@ class _GPipeReader(_GPipeHandle):
                             # In the first iteration nothing was received.
                             # The timeout exception can safely be raised.
                             raise self._timeout
+                continue
             received = len(chunk)
             if received == 0:
                 if remaining == n:
