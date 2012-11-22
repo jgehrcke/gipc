@@ -25,7 +25,7 @@ import random
 import gevent
 import gevent.queue
 sys.path.insert(0, os.path.abspath('..'))
-from gpipe import pipe, GPipeError, GPipeClosed, GPipeLocked
+from gpipe import pipe, GIPCError, GIPCClosed, GIPCLocked
 import gpipe
 
 
@@ -69,7 +69,7 @@ class TestComm():
                 try:
                     h.close()
                     os.close(h._fd)
-                except (OSError, GPipeError, TypeError):
+                except (OSError, GIPCError, TypeError):
                     pass
             gpipe._all_handles = []
         for g in self._greenlets_to_be_killed:
@@ -144,24 +144,24 @@ class TestComm():
 
     def test_twoclose(self):
         self.wh.close()
-        with raises(GPipeClosed):
+        with raises(GIPCClosed):
             self.wh.close()
 
     def test_closewrite(self):
         self.wh.close()
-        with raises(GPipeClosed):
+        with raises(GIPCClosed):
             self.wh.put('')
 
     def test_closeread(self):
         self.rh.close()
-        with raises(GPipeClosed):
+        with raises(GIPCClosed):
             self.rh.get()
 
     def test_readclose(self):
         g = gevent.spawn(lambda r: r.get(), self.rh)
         self._greenlets_to_be_killed.append(g)
         gevent.sleep(SHORTTIME)
-        with raises(GPipeLocked):
+        with raises(GIPCLocked):
             self.rh.close()
 
     def test_closewrite_read(self):
@@ -280,7 +280,7 @@ class TestIPC():
                 try:
                     h.close()
                     os.close(h._fd)
-                except (OSError, GPipeError, TypeError):
+                except (OSError, GIPCError, TypeError):
                     pass
             gpipe._all_handles = []
         for g in self._greenlets_to_be_killed:
@@ -323,7 +323,7 @@ class TestIPC():
 
     def test_handler_after_transfer_to_child(self):
         p = gpipe.start_process(ipc_child_boring_reader, args=(self.rh,))
-        with raises(GPipeError):
+        with raises(GIPCError):
             self.rh.close()
         p.join()
         assert p.exitcode == 0
@@ -377,7 +377,7 @@ def ipc_child_c(r1, r2, m1, m2):
 
 
 def ipc_child_d(r):
-    with raises(GPipeError):
+    with raises(GIPCError):
         r.close()
 
 
@@ -403,7 +403,7 @@ class TestContextManager():
                 try:
                     h.close()
                     os.close(h._fd)
-                except (OSError, GPipeError, TypeError):
+                except (OSError, GIPCError, TypeError):
                     pass
             gpipe._all_handles = []
             raise Exception("Cleanup was not successful.")
@@ -434,7 +434,7 @@ class TestContextManager():
         with raises(OSError):
             os.close(fd)
         assert len(gpipe._all_handles) == 1
-        with raises(GPipeClosed):
+        with raises(GIPCClosed):
             w.close()
         r.close()
         assert not len(gpipe._all_handles)
@@ -447,7 +447,7 @@ class TestContextManager():
         with raises(OSError):
             os.close(fd)
         assert len(gpipe._all_handles) == 1
-        with raises(GPipeClosed):
+        with raises(GIPCClosed):
             r.close()
         w.close()
         assert not len(gpipe._all_handles)
@@ -463,21 +463,21 @@ class TestContextManager():
         r, w = pipe()
         g = gevent.spawn(lambda r: r.get(), r)
         gevent.sleep(SHORTTIME)
-        with raises(GPipeLocked):
+        with raises(GIPCLocked):
             with r:
                 pass
                 # The context manager can't close `r`, as it is locked in `g`.
         g.kill(block=False)
         # Ensure killing via 'context switch', i.e. yield control to other
         # coroutines (otherwise the subsequent close attempt will fail with
-        # `GPipeLocked` error).
+        # `GIPCLocked` error).
         gevent.sleep(-1)
         # Close writer first. otherwise, `os.close(r._fd)` would block on Win.
         w.close()
         r.close()
 
     def test_lock_out_of_context_pair(self):
-        with raises(GPipeLocked):
+        with raises(GIPCLocked):
             with pipe() as (r, w):
                 # Fill up pipe and try to write more than pipe can hold
                 # (makes `put` block when there is no reader).
@@ -492,7 +492,7 @@ class TestContextManager():
         w.close()
 
     def test_lock_out_of_context_pair_2(self):
-        with raises(GPipeLocked):
+        with raises(GIPCLocked):
             with pipe() as (r, w):
                 gr = gevent.spawn(lambda r: r.get(), r)
                 gevent.sleep(SHORTTIME)
@@ -510,7 +510,7 @@ class TestGetTimeout():
                 try:
                     h.close()
                     os.close(h._fd)
-                except (OSError, GPipeError, TypeError):
+                except (OSError, GIPCError, TypeError):
                     pass
             gpipe._all_handles = []
             raise Exception("Cleanup was not successful.")
@@ -547,7 +547,7 @@ class TestUsecases():
                 try:
                     h.close()
                     os.close(h._fd)
-                except (OSError, GPipeError, TypeError):
+                except (OSError, GIPCError, TypeError):
                     pass
             gpipe._all_handles = []
             raise Exception("Cleanup was not successful.")

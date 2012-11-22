@@ -51,20 +51,20 @@ import gevent.event
 log = logging.getLogger("gpipe")
 
 
-class GPipeError(Exception):
+class GIPCError(Exception):
     """Is raised upon general errors. All other exception types derive from
     this one.
     """
     pass
 
 
-class GPipeClosed(GPipeError):
+class GIPCClosed(GIPCError):
     """Is raised upon operation on closed handle.
     """
     pass
 
 
-class GPipeLocked(GPipeError):
+class GIPCLocked(GIPCError):
     """Is raised upon attempt to close a handle which is currently locked for
     I/O.
     """
@@ -80,9 +80,9 @@ def pipe():
 
     :returns:
         ``(reader, writer)`` tuple. Both items are instances of
-        :class:`_GPipeHandle`.
+        :class:`_GIPCHandle`.
 
-    :class:`_GPipeHandle` instances are recommended to be used with Python's
+    :class:`_GIPCHandle` instances are recommended to be used with Python's
     context manager in the following ways::
 
         with pipe() as (r, w):
@@ -110,8 +110,8 @@ def pipe():
     #   - based on pipe()
     #   - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
     r, w = os.pipe()
-    reader = _GPipeReader(r)
-    writer = _GPipeWriter(w)
+    reader = _GIPCReader(r)
+    writer = _GIPCWriter(w)
     _all_handles.append(reader)
     _all_handles.append(writer)
     return _HandlePairContext((reader, writer))
@@ -119,7 +119,7 @@ def pipe():
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     """Spawn child process and execute function ``target(*args, **kwargs)``.
-    Any existing :class:`_GPipeHandle` can be handed over to the child process
+    Any existing :class:`_GIPCHandle` can be handed over to the child process
     via ``args`` and/or ``kwargs``.
 
     :arg target:
@@ -162,7 +162,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         raise TypeError, '`kwargs` must be dictionary.'
     log.debug("Invoke target `%s` in child process." % target)
     allargs = itertools.chain(args, kwargs.values())
-    childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
+    childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
     if WINDOWS:
         for h in _all_handles:
             h._pre_createprocess_windows()
@@ -214,7 +214,7 @@ def _child(target, all_handles, args, kwargs):
         h = gevent.get_hub(default=True)
         assert h.loop.default, 'Could not create libev default event loop.'
     allargs = itertools.chain(args, kwargs.values())
-    childhandles = [a for a in allargs if isinstance(a, _GPipeHandle)]
+    childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
     # Register inherited handles for current process. Close those that are not
     # intended for further usage.
     for h in _all_handles[:]:
@@ -231,7 +231,7 @@ def _child(target, all_handles, args, kwargs):
         try:
             # The user or a child of this child might already have closen it.
             h.close()
-        except GPipeClosed:
+        except GIPCClosed:
             pass
 
 
@@ -324,10 +324,10 @@ class _GProcess(multiprocessing.Process):
         super(_GProcess, self).join(timeout=0)
 
 
-class _GPipeHandle(object):
+class _GIPCHandle(object):
     """
-    The ``_GPipeHandle`` class implements common features of read and write
-    handles. ``_GPipeHandle`` instances are created via :func:`pipe`.
+    The ``_GIPCHandle`` class implements common features of read and write
+    handles. ``_GIPCHandle`` instances are created via :func:`pipe`.
 
     .. todo::
 
@@ -353,14 +353,14 @@ class _GPipeHandle(object):
         usage. Is called on context exit.
 
         Raises:
-            - :exc:`GPipeError`
-            - :exc:`GPipeClosed`
-            - :exc:`GPipeLocked`
+            - :exc:`GIPCError`
+            - :exc:`GIPCClosed`
+            - :exc:`GIPCLocked`
         """
         global _all_handles
         self._validate()
         if not self._lock.acquire(blocking=False):
-            raise GPipeLocked(
+            raise GIPCLocked(
                 "Can't close handle %s: locked for I/O operation." % self)
         log.debug("Invalidating %s ..." % self)
         self._closed = True
@@ -386,11 +386,11 @@ class _GPipeHandle(object):
         performance impact.
         """
         if self._closed:
-            raise GPipeClosed(
-                "GPipeHandle has been closed before.")
+            raise GIPCClosed(
+                "GIPCHandle has been closed before.")
         if os.getpid() != self._legit_pid:
-            raise GPipeError(
-                "GPipeHandle %s not registered for current process %s." % (
+            raise GIPCError(
+                "GIPCHandle %s not registered for current process %s." % (
                 self, os.getpid()))
 
     def _pre_createprocess_windows(self):
@@ -435,12 +435,12 @@ class _GPipeHandle(object):
     def __exit__(self, exc_type, exc_value, traceback):
         try:
             self.close()
-        except GPipeClosed:
+        except GIPCClosed:
             # Closed before, which is fine.
             pass
-        except GPipeLocked:
+        except GIPCLocked:
             # Locked for I/O outside of context, which is not fine.
-            raise GPipeLocked((
+            raise GIPCLocked((
                 "Context manager can't close handle %s. It's locked for I/O "
                 "operation out of context." % self))
 
@@ -454,15 +454,15 @@ class _GPipeHandle(object):
         return "<%s_%s fd: %s>" % (self.__class__.__name__, self._id, fd)
 
 
-class _GPipeReader(_GPipeHandle):
+class _GIPCReader(_GIPCHandle):
     """
-    A ``_GPipeReader`` instance manages the read end of a pipe. It is created
+    A ``_GIPCReader`` instance manages the read end of a pipe. It is created
     via :func:`pipe`.
     """
     def __init__(self, pipe_read_fd):
         self._fd = pipe_read_fd
         self._fd_flag = os.O_RDONLY
-        _GPipeHandle.__init__(self)
+        _GIPCHandle.__init__(self)
         self._newmessage_lengthreceived = False
         self._timeout = None
 
@@ -512,8 +512,8 @@ class _GPipeReader(_GPipeHandle):
         :returns: a Python object.
 
         Raises:
-            - :exc:`GPipeError`
-            - :exc:`GPipeClosed`
+            - :exc:`GIPCError`
+            - :exc:`GIPCClosed`
             - :exc:`pickle.UnpicklingError`
 
         Recommended usage for silent timeout control::
@@ -539,15 +539,15 @@ class _GPipeReader(_GPipeHandle):
         return pickle.loads(bindata)
 
 
-class _GPipeWriter(_GPipeHandle):
+class _GIPCWriter(_GIPCHandle):
     """
-    A ``_GPipeWriter`` instance manages the write end of a pipe. It is created
+    A ``_GIPCWriter`` instance manages the write end of a pipe. It is created
     via :func:`pipe`.
     """
     def __init__(self, pipe_write_fd):
         self._fd = pipe_write_fd
         self._fd_flag = os.O_WRONLY
-        _GPipeHandle.__init__(self)
+        _GIPCHandle.__init__(self)
 
     def _write(self, bindata):
         """Write `bindata` to pipe in a gevent-cooperative manner.
@@ -579,8 +579,8 @@ class _GPipeWriter(_GPipeHandle):
         :arg o: a pickleable Python object.
 
         Raises:
-            - :exc:`GPipeError`
-            - :exc:`GPipeClosed`
+            - :exc:`GIPCError`
+            - :exc:`GIPCClosed`
             - :exc:`pickle.PicklingError`
 
         """
@@ -633,5 +633,5 @@ else:
     _WRITE_NB = gevent.os.tp_write
 
 
-# Define container for keeping track of valid `_GPipeHandle`s.
+# Define container for keeping track of valid `_GIPCHandle`s.
 _all_handles = []
