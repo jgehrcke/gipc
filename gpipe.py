@@ -52,27 +52,38 @@ log = logging.getLogger("gpipe")
 
 
 class GPipeError(Exception):
+    """Is raised upon general errors. All other exception types derive from
+    this one.
+    """
     pass
 
 
 class GPipeClosed(GPipeError):
+    """Is raised upon operation on closed handle.
+    """
     pass
 
 
 class GPipeLocked(GPipeError):
+    """Is raised upon attempt to close a handle which is currently locked for
+    I/O.
+    """
     pass
 
 
 def pipe():
-    """Creates new pipe and returns its corresponding read handle and write
-    handle.
+    """Creates a new pipe and returns its corresponding read and write
+    handles. Those allow for sending and receiving pickleable objects through
+    the pipe in a gevent-cooperative manner. A handle-pair can transmit
+    data between greenlets within one process or across processes created via
+    :func:`start_process`.
 
-    Returns:
+    :returns:
+        ``(reader, writer)`` tuple. Both items are instances of
+        :class:`_GPipeHandle`.
 
-        ``(reader, writer)`` tuple, both are instances of ``_GPipeHandle``.
-
-    ``_GPipeHandle`` instances are recommended to be used with Python's context
-    manager as they are closed on context exit. Usage examples::
+    :class:`_GPipeHandle` instances are recommended to be used with Python's
+    context manager in the following ways::
 
         with pipe() as (r, w):
             do_something(r, w)
@@ -87,7 +98,8 @@ def pipe():
         with writer as w:
             do_something(w)
 
-    The transport layer is based on os.pipe().
+    The transport layer is based on ``os.pipe()`` (i.e. ``CreatePipe()`` on
+    Windows and ``pipe()`` on POSIX-compliant systems).
     """
     # os.pipe() implementation on Windows (http://bit.ly/RDuKUm):
     #   - CreatePipe(&read, &write, NULL, 0)
@@ -106,32 +118,43 @@ def pipe():
 
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
-    """Spawn child process and execute function target(*args, **kwargs).
-    Existing `_GPipeHandle`(s) can be handed over to the child process via
-    `args` and/or `kwargs`.
+    """Spawn child process and execute function ``target(*args, **kwargs)``.
+    Any existing :class:`_GPipeHandle` can be handed over to the child process
+    via ``args`` and/or ``kwargs``.
 
-    Args:
-        `target`: function to be called as target(*args, **kwargs)
-        `name`: `multiprocessing.Process.name`
-        `daemon`: `multiprocessing.Process.daemon`
-        `args`: tuple defining positional arguments provided to `target`
-        `kwargs`: dictionary defining keyword arguments provided to `target`
+    :arg target:
+        Function to be called in child as ``target(*args, **kwargs)``.
 
-    Returns:
-        `_GProcess` instance (inherits from `multiprocessing.Process`)
+    :arg args:
+        Tuple defining positional arguments provided to ``target``.
 
-    Process creation is based on multiprocessing.Process(). When working with
-    gevent, instead of calling Process() on your own, it is highly recommended
-    to create child processes via this method. It takes care of
+    :arg kwargs:
+        Dictionary defining keyword arguments provided to ``target``.
+
+    :arg name:
+        Forwarded to ``multiprocessing.Process.name``.
+
+    :arg daemon:
+        Forwarded to ``multiprocessing.Process.daemon``.
+
+    :returns:
+        ``_GProcess`` instance (inherits from ``multiprocessing.Process`` and
+        re-implements some of its methods in a gevent-cooperative fashion).
+
+    Process creation is based on ``multiprocessing.Process()``. When working
+    with gevent, instead of calling ``Process()`` directly, it is highly
+    recommended to create child processes via :func:`start_process`. It takes
+    care of
+
         - closing dispensable file descriptors after child process creation.
         - proper file descriptor inheritance on Windows.
         - re-initialization of the event loop in the child process.
-        - providing cooperative Process methods (such as `join()`).
+        - providing cooperative Process methods (such as ``join()``).
 
-    Calling this method breaks `os.waitpid()` on Unix: child monitoring is
-    based on libev child watchers, leading to libev reap children in the moment
-    they die. Applied to such a child, `os.waitpid()` will throw ECHILD,
-    cf. http://linux.die.net/man/2/waitid.
+    Calling this method breaks ``os.waitpid()`` on Unix: spawning the first
+    child activates libev child watchers, leading to libev reap children in the
+    moment they die. Applied to such a child, ``os.waitpid()`` throws
+    ``ECHILD`` (cf. http://linux.die.net/man/2/waitid).
     """
     if not isinstance(args, tuple):
         raise TypeError, '`args` must be tuple.'
@@ -303,8 +326,8 @@ class _GProcess(multiprocessing.Process):
 
 class _GPipeHandle(object):
     """
-    Manages one pipe end. Implements what both, read and write end, have in
-    common.
+    The ``_GPipeHandle`` class implements common features of read and write
+    handles. ``_GPipeHandle`` instances are created via :func:`pipe`.
 
     .. todo::
 
@@ -326,7 +349,13 @@ class _GPipeHandle(object):
             gevent.os.make_nonblocking(self._fd)
 
     def close(self):
-        """Close file descriptor and de-register handle for further usage.
+        """Close underlying file descriptor and de-register handle for further
+        usage. Is called on context exit.
+
+        Raises:
+            - :exc:`GPipeError`
+            - :exc:`GPipeClosed`
+            - :exc:`GPipeLocked`
         """
         global _all_handles
         self._validate()
@@ -426,6 +455,10 @@ class _GPipeHandle(object):
 
 
 class _GPipeReader(_GPipeHandle):
+    """
+    A ``_GPipeReader`` instance manages the read end of a pipe. It is created
+    via :func:`pipe`.
+    """
     def __init__(self, pipe_read_fd):
         self._fd = pipe_read_fd
         self._fd_flag = os.O_RDONLY
@@ -471,15 +504,23 @@ class _GPipeReader(_GPipeHandle):
         return readbuf
 
     def get(self, timeout=None):
-        """Receive and return object from pipe. Block gevent-cooperatively
-        until message is available.
+        """Receive and return an object from the pipe. Block
+        gevent-cooperatively until object is available or timeout expires.
 
-        Args:
-            `timeout`: a `gevent.Timeout` instance, either started or not
-                       started. Recommended usage:
+        :arg timeout: ``None`` (default) or a ``gevent.Timeout`` instance.
 
-                        with gevent.Timeout(TIME_SECONDS, False) as t:
-                            reader.get(timeout=t)
+        :returns: a Python object.
+
+        Raises:
+            - :exc:`GPipeError`
+            - :exc:`GPipeClosed`
+            - :exc:`pickle.UnpicklingError`
+
+        Recommended usage for silent timeout control::
+
+            with gevent.Timeout(TIME_SECONDS, False) as t:
+                reader.get(timeout=t)
+
         """
         self._validate()
         if timeout:
@@ -499,6 +540,10 @@ class _GPipeReader(_GPipeHandle):
 
 
 class _GPipeWriter(_GPipeHandle):
+    """
+    A ``_GPipeWriter`` instance manages the write end of a pipe. It is created
+    via :func:`pipe`.
+    """
     def __init__(self, pipe_write_fd):
         self._fd = pipe_write_fd
         self._fd_flag = os.O_WRONLY
@@ -528,7 +573,17 @@ class _GPipeWriter(_GPipeHandle):
             bindata = bindata[-diff:]
 
     def put(self, o):
-        """Put pickleable object into the pipe. Block cooperatively."""
+        """Pickle object ``o`` and write it to the pipe. Block
+        gevent-cooperatively until all data is written.
+
+        :arg o: a pickleable Python object.
+
+        Raises:
+            - :exc:`GPipeError`
+            - :exc:`GPipeClosed`
+            - :exc:`pickle.PicklingError`
+
+        """
         self._validate()
         with self._lock:
             bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
