@@ -15,7 +15,7 @@
 #   limitations under the License.
 
 """
-TODO:
+.. todo::
     - implement 'polling' get() based on some kind of fd polling.
       Should raise some kind of WouldBlockException if no data available.
       Difficult (impossible?) to identify complete messages in advance.
@@ -63,24 +63,29 @@ class GPipeLocked(GPipeError):
     pass
 
 
-class Pipe(object):
-    """Creates a new pipe as well as one read handle and one write handle.
+def pipe():
+    """Creates new pipe and returns its corresponding read handle and write
+    handle.
 
     Returns:
-        (reader, writer) tuple, both instances of `_GPipeHandle`.
 
-    `_GPipeHandle`s are context manager-compatible: they are closed on context
-    exit. Examples:
+        ``(reader, writer)`` tuple, both are instances of ``_GPipeHandle``.
 
-    with Pipe() as (reader, writer):
-        do_something()
+    ``_GPipeHandle`` instances are recommended to be used with Python's context
+    manager as they are closed on context exit. Usage examples::
 
-    reader, writer = Pipe()
-    with reader:
-        do_something()
+        with pipe() as (r, w):
+            do_something(r, w)
 
-    with writer as w:
-        do_something()
+    ::
+
+        reader, writer = pipe()
+
+        with reader:
+            do_something(reader)
+
+        with writer as w:
+            do_something(w)
 
     The transport layer is based on os.pipe().
     """
@@ -92,13 +97,12 @@ class Pipe(object):
     # os.pipe() implementation on Unix (http://linux.die.net/man/7/pipe):
     #   - based on pipe()
     #   - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
-    def __new__(cls):
-        r, w = os.pipe()
-        reader = _GPipeReader(r)
-        writer = _GPipeWriter(w)
-        _all_handles.append(reader)
-        _all_handles.append(writer)
-        return _HandlePairContext((reader, writer))
+    r, w = os.pipe()
+    reader = _GPipeReader(r)
+    writer = _GPipeWriter(w)
+    _all_handles.append(reader)
+    _all_handles.append(writer)
+    return _HandlePairContext((reader, writer))
 
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
@@ -299,8 +303,13 @@ class _GProcess(multiprocessing.Process):
 
 class _GPipeHandle(object):
     """
-    Care about destructor?
-    http://eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/
+    Manages one pipe end. Implements what both, read and write end, have in
+    common.
+
+    .. todo::
+
+        Care about destructor?
+        http://eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/
     """
     def __init__(self):
         self._id = os.urandom(3).encode("hex")
