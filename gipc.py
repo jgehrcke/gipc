@@ -48,7 +48,7 @@ import gevent.lock
 import gevent.event
 
 
-log = logging.getLogger("gpipe")
+log = logging.getLogger("gipc")
 
 
 class GIPCError(Exception):
