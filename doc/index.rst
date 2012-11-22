@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-GIPC
-====
+GIPC: Pipe-based inter-process communication for gevent
+=======================================================
 
 .. toctree::
    :maxdepth: 2
@@ -16,21 +16,21 @@ GIPC API
 Creating a pipe and its handle-pair
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: gpipe
+.. automodule:: gipc
    :members: pipe
 
 
 Handling handles
 ^^^^^^^^^^^^^^^^
 
-.. autoclass:: gpipe._GPipeHandle()
+.. autoclass:: gipc._GIPCHandle()
     :members: close
 
-.. autoclass:: gpipe._GPipeWriter()
+.. autoclass:: gipc._GIPCWriter()
     :show-inheritance:
     :members: put
 
-.. autoclass:: gpipe._GPipeReader()
+.. autoclass:: gipc._GIPCReader()
     :show-inheritance:
     :members: get
 
@@ -38,18 +38,18 @@ Handling handles
 Spawning child processes
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-.. automodule:: gpipe
+.. automodule:: gipc
     :members: start_process
 
 
 Exception types
 ^^^^^^^^^^^^^^^
 
-.. autoexception:: gpipe.GPipeError
+.. autoexception:: gipc.GIPCError
 
-.. autoexception:: gpipe.GPipeLocked
+.. autoexception:: gipc.GIPCLocked
 
-.. autoexception:: gpipe.GPipeClosed
+.. autoexception:: gipc.GIPCClosed
 
 
 .. Indices and tables
