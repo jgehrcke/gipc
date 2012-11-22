@@ -25,7 +25,7 @@ import random
 import gevent
 import gevent.queue
 sys.path.insert(0, os.path.abspath('..'))
-from gpipe import Pipe, GPipeError, GPipeClosed, GPipeLocked
+from gpipe import pipe, GPipeError, GPipeClosed, GPipeLocked
 import gpipe
 
 
@@ -51,7 +51,7 @@ ALMOSTZERO = 0.00001
 class TestComm():
     """
     Flow for each test_method:
-    o = TestPipe()
+    o = TestClass()
     o.setup()
     try:
         o.test_method()
@@ -59,7 +59,7 @@ class TestComm():
         o.teardown()
     """
     def setup(self):
-        self.rh, self.wh = Pipe()
+        self.rh, self.wh = pipe()
         self._greenlets_to_be_killed = []
 
     def teardown(self):
@@ -269,8 +269,8 @@ def p_child_e3():
 
 class TestIPC():
     def setup(self):
-        self.rh, self.wh = Pipe()
-        self.rh2, self.wh2 = Pipe()
+        self.rh, self.wh = pipe()
+        self.rh2, self.wh2 = pipe()
         self._greenlets_to_be_killed = []
 
     def teardown(self):
@@ -363,7 +363,7 @@ def ipc_child_b(r1, r2, m1, m2):
 def ipc_child_c(r1, r2, m1, m2):
     assert r1.get() == m1
     # Test messaging between greenlets in child.
-    local_reader, local_writer = Pipe()
+    local_reader, local_writer = pipe()
     testmsg = [1] * LONG
     gw = gevent.spawn(lambda w: w.put(testmsg), local_writer)
     gr = gevent.spawn(lambda r: r.get(), local_reader)
@@ -409,13 +409,13 @@ class TestContextManager():
             raise Exception("Cleanup was not successful.")
 
     def test_all_handles_length(self):
-        r, w = Pipe()
+        r, w = pipe()
         assert len(gpipe._all_handles) == 2
         r.close()
         w.close()
 
     def test_combi(self):
-        with Pipe() as (r, w):
+        with pipe() as (r, w):
             fd1 = r._fd
             fd2 = w._fd
         # Make sure the C file descriptors are closed.
@@ -427,7 +427,7 @@ class TestContextManager():
         assert not len(gpipe._all_handles)
 
     def test_single_reader(self):
-        r, w = Pipe()
+        r, w = pipe()
         with w as foo:
             fd = foo._fd
         # Make sure the C file descriptor is closed.
@@ -440,7 +440,7 @@ class TestContextManager():
         assert not len(gpipe._all_handles)
 
     def test_single_writer(self):
-        r, w = Pipe()
+        r, w = pipe()
         with r as foo:
             fd = foo._fd
         # Make sure the C file descriptor is closed.
@@ -453,14 +453,14 @@ class TestContextManager():
         assert not len(gpipe._all_handles)
 
     def test_close_in_context(self):
-        with Pipe() as (r, w):
+        with pipe() as (r, w):
             w.put('')
             r.get()
             r.close()
             w.close()
 
     def test_lock_out_of_context_single(self):
-        r, w = Pipe()
+        r, w = pipe()
         g = gevent.spawn(lambda r: r.get(), r)
         gevent.sleep(SHORTTIME)
         with raises(GPipeLocked):
@@ -478,7 +478,7 @@ class TestContextManager():
 
     def test_lock_out_of_context_pair(self):
         with raises(GPipeLocked):
-            with Pipe() as (r, w):
+            with pipe() as (r, w):
                 # Fill up pipe and try to write more than pipe can hold
                 # (makes `put` block when there is no reader).
                 # Buffer is quite large on Windows.
@@ -490,16 +490,16 @@ class TestContextManager():
         gw.kill(block=False)
         gevent.sleep(-1)
         w.close()
-        
+
     def test_lock_out_of_context_pair_2(self):
         with raises(GPipeLocked):
-            with Pipe() as (r, w):
+            with pipe() as (r, w):
                 gr = gevent.spawn(lambda r: r.get(), r)
                 gevent.sleep(SHORTTIME)
                 # Context manager tries to close writer first, succeeds,
                 # and fails during closing reader.
         gr.kill(block=False)
-        gevent.sleep(-1)        
+        gevent.sleep(-1)
         r.close()
 
 
@@ -516,7 +516,7 @@ class TestGetTimeout():
             raise Exception("Cleanup was not successful.")
 
     def test_simpletimeout_expires(self):
-        with Pipe() as (r, w):
+        with pipe() as (r, w):
             t = gevent.Timeout(SHORTTIME)
             try:
                 r.get(timeout=t)
@@ -526,13 +526,13 @@ class TestGetTimeout():
                     raise
 
     def test_simpletimeout_expires_contextmanager(self):
-        with Pipe() as (r, w):
+        with pipe() as (r, w):
             with gevent.Timeout(SHORTTIME, False) as t:
                 r.get(timeout=t)
                 assert False
 
     def test_simpletimeout_doesnt_expire(self):
-        with Pipe() as (r, w):
+        with pipe() as (r, w):
             with gevent.Timeout(SHORTTIME, False) as t:
                 w.put('')
                 r.get(timeout=t)
@@ -558,7 +558,7 @@ class TestUsecases():
         receive one of these messages and return it to the main greenlet.
         Terminate the child process.
         """
-        with Pipe() as (r, w):
+        with pipe() as (r, w):
             p = gpipe.start_process(usecase_child_a, args=(w, ))
             # Wait for process to send first message:
             r.get()
@@ -578,9 +578,9 @@ class TestUsecases():
         too long.
         """
         # First pipe for sync.
-        with Pipe() as (syncreader, syncwriter):
+        with pipe() as (syncreader, syncwriter):
             # Second pipe for communication.
-            with Pipe() as (r, w):
+            with pipe() as (r, w):
                 # Send messages
                 pw = gpipe.start_process(usecase_child_b, args=(w, syncreader))
                 # Receive messages
@@ -623,8 +623,8 @@ class TestUsecases():
                     break
             return recvlist
 
-        with Pipe() as (forthr, forthw):
-            with Pipe() as (backr, backw):
+        with pipe() as (forthr, forthw):
+            with pipe() as (backr, backw):
                 p = gpipe.start_process(usecase_child_d, args=(forthr, backw))
                 g1 = gevent.spawn(g_from_list_to_sendq)
                 g2 = gevent.spawn(g_from_q_to_forthpipe, forthw)
