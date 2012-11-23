@@ -575,7 +575,7 @@ class TestUsecases():
             m = r.get()
             log.debug("message after sharp timeout: %r" % m)
             #assert g.get() == "SPLASH"
-            
+
             p.terminate()
             p.join()
             assert p.exitcode == -signal.SIGTERM
@@ -683,7 +683,7 @@ def usecase_child_b(writer, syncreader):
     with writer:
         writer.put("CHICKEN")
         # Keep the write end open for another short while.
-        gevent.sleep(SHORTTIME*3)
+        gevent.sleep(SHORTTIME*2)
 
 
 def usecase_child_c(reader, syncwriter):
@@ -699,7 +699,7 @@ def usecase_child_c(reader, syncwriter):
             reader.get(timeout=t)
             # Unexpected termination:
             sys.exit(0)
-    # Expected termination:        
+    # Expected termination:
     sys.exit(5)
 
 
