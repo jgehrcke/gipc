@@ -472,8 +472,13 @@ class _GIPCReader(_GIPCHandle):
         remaining = n
         while remaining > 0:
             try:
+                log.debug("Call read.....")
                 chunk = _READ_NB(self._fd, remaining)
+                log.debug("chunk received: %r" % chunk)
+                # This can swallow bytes on Windows (when Timeout occurs 
+                # just within the threadpool machinery)
             except gevent.Timeout, raised_timeout:
+                log.debug("timeout occurred: %r" % raised_timeout)            
                 if raised_timeout is not self._timeout:
                     # `self._timeout` wasn't the one that expired. Re-raise.
                     raise
@@ -481,16 +486,19 @@ class _GIPCReader(_GIPCHandle):
                 # timeout exception) if a message fragment has already been
                 # received.
                 if not self._newmessage_lengthreceived:
+                    log.debug("length was not received.")
                     try:
                         received
                     except NameError:
                         # There was no previous while iteration.
                         try:
                             chunk
+                            log.debug("chunk received: %r" % chunk)
                         except NameError:
                             # In the first iteration nothing was received.
                             # The timeout exception can safely be raised.
                             raise self._timeout
+                log.debug("continue")              
                 continue
             received = len(chunk)
             if received == 0:
@@ -528,13 +536,19 @@ class _GIPCReader(_GIPCHandle):
                 timeout.start()
             self._timeout = timeout
         with self._lock:
+            log.debug("go in get() with timeout %r" % timeout)
             msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
+            log.debug("got length %s" % msize)
             self._newmessage_lengthreceived = True
+            log.debug("SET TO TRUE")            
             bindata = self._recv_in_buffer(msize).getvalue()
+            log.debug("bindata: %r" % bindata)
+            self._newmessage_lengthreceived = False
+            log.debug("SET TO FALSE")
         # Clean up after timeout.
+        log.debug("timeout before cleanup: %r. bool: %s" % (timeout, bool(timeout)))
         if timeout:
             timeout.cancel()
-            self._newmessage_lengthreceived = False
             self._timeout = None
         return pickle.loads(bindata)
 
