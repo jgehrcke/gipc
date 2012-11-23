@@ -475,10 +475,10 @@ class _GIPCReader(_GIPCHandle):
                 log.debug("Call read.....")
                 chunk = _READ_NB(self._fd, remaining)
                 log.debug("chunk received: %r" % chunk)
-                # This can swallow bytes on Windows (when Timeout occurs 
+                # This can swallow bytes on Windows (when Timeout occurs
                 # just within the threadpool machinery)
             except gevent.Timeout, raised_timeout:
-                log.debug("timeout occurred: %r" % raised_timeout)            
+                log.debug("timeout occurred: %r" % raised_timeout)
                 if raised_timeout is not self._timeout:
                     # `self._timeout` wasn't the one that expired. Re-raise.
                     raise
@@ -498,7 +498,7 @@ class _GIPCReader(_GIPCHandle):
                             # In the first iteration nothing was received.
                             # The timeout exception can safely be raised.
                             raise self._timeout
-                log.debug("continue")              
+                log.debug("continue")
                 continue
             received = len(chunk)
             if received == 0:
@@ -540,7 +540,7 @@ class _GIPCReader(_GIPCHandle):
             msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
             log.debug("got length %s" % msize)
             self._newmessage_lengthreceived = True
-            log.debug("SET TO TRUE")            
+            log.debug("SET TO TRUE")
             bindata = self._recv_in_buffer(msize).getvalue()
             log.debug("bindata: %r" % bindata)
             self._newmessage_lengthreceived = False
