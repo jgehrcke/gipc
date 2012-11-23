@@ -37,12 +37,12 @@ from py.test import raises
 # Nose is great and all, but can run tests in alphabetical order only.
 # from nose.tools import raises
 
-#import logging
-#logging.basicConfig(
-#   format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
-#   datefmt='%H:%M:%S')
-#log = logging.getLogger()
-#log.setLevel(logging.DEBUG)
+import logging
+logging.basicConfig(
+  format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
+  datefmt='%H:%M:%S')
+log = logging.getLogger()
+log.setLevel(logging.DEBUG)
 
 LONG = 999999
 SHORTTIME = 0.01
@@ -562,12 +562,20 @@ class TestUsecases():
             p = gipc.start_process(usecase_child_a, args=(w, ))
             # Wait for process to send first message:
             r.get()
+            log.debug("FIRST MESSAGE RECEIVED")
             def readgreenlet(reader):
-                with gevent.Timeout(SHORTTIME) as t:
-                    return reader.get(timeout=t)
+                with gevent.Timeout(ALMOSTZERO, False) as t:
+                    log.debug("HELLO FROM CONTEXT MANAGER TIMEOUT")
+                    m = reader.get(timeout=t)
+                    log.debug("Received: %s" % m)
+                    return m
             # Second message must be available immediately now.
             g = gevent.spawn(readgreenlet, r)
-            assert g.get() == "SPLASH"
+            log.debug("g is: %r" % g.get())
+            m = r.get()
+            log.debug("message after sharp timeout: %r" % m)
+            #assert g.get() == "SPLASH"
+            
             p.terminate()
             p.join()
             assert p.exitcode == -signal.SIGTERM
@@ -660,15 +668,18 @@ def usecase_child_d(forthreader, backwriter):
 
 def usecase_child_a(writer):
     with writer:
+        log.debug("BUMMBAUM")
         while True:
             writer.put("SPLASH")
-            gevent.sleep(ALMOSTZERO)
+            log.debug("wrotemessage.")
+            gevent.sleep(ALMOSTZERO*5)
 
 
 def usecase_child_b(writer, syncreader):
     with syncreader:
         # Wait for partner process to start up.
-        syncreader.get()
+        assert syncreader.get() == 'SYN'
+        writer.put('SYNACK')
     with writer:
         writer.put("CHICKEN")
         # Keep the write end open for another short while.
@@ -678,13 +689,17 @@ def usecase_child_b(writer, syncreader):
 def usecase_child_c(reader, syncwriter):
     with syncwriter:
         # Tell partner process that we are up and running!
-        syncwriter.put("nothing")
+        syncwriter.put("SYN")
+        # Wait for confirmation.
+        assert reader.get() == 'SYNACK'
     with reader:
         with gevent.Timeout(SHORTTIME, False) as t:
             assert reader.get(timeout=t) == "CHICKEN"
-            # No more messages expected to come :-(
+            # No more messages expected to come within timeout.
             reader.get(timeout=t)
+            # Unexpected termination:
             sys.exit(0)
+    # Expected termination:        
     sys.exit(5)
 
 
