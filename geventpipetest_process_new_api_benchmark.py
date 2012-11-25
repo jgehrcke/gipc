@@ -49,7 +49,7 @@ import time
 from multiprocessing import Process, Condition
 import gevent
 import gevent.hub
-import gpipe
+import gipc
 import numpy
 import math
 
@@ -123,9 +123,9 @@ def benchmark_manager(msg, repetitions):
 def benchmark(N, msg):
     condition = Condition()
     result = None
-    with gpipe.Pipe() as (reader, writer):
+    with gipc.pipe() as (reader, writer):
         condition.acquire()
-        p = gpipe.start_process(
+        p = gipc.start_process(
             writer_process,
             kwargs={
                 'writer': writer,
