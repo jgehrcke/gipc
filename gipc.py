@@ -33,7 +33,9 @@
         "If no bytes arrive within the time specified by ReadTotalTimeoutConstant,
         ReadFile times out."
       - use http://docs.python.org/2/library/ctypes.html for win32 API
-    
+    - put() timeout. Relevant in case of filled up pipes. However, put()
+      duration cannot be controlled if write is blocking (due to filled pipe)
+      after partial msg write 
 """
 
 import os
@@ -609,8 +611,8 @@ class _GIPCReader(_GIPCHandle):
             self._validate()
             with self._lock:
                 if timeout:
-                    h = gevent.get_hub()
                     # Wait for ready-to-read event.
+                    h = gevent.get_hub()
                     h.wait(h.loop.io(self._fd, 1))
                     timeout.cancel()
                 msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
