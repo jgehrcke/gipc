@@ -517,7 +517,7 @@ class TestGetTimeout():
 
     def test_simpletimeout_expires(self):
         with pipe() as (r, w):
-            t = gevent.Timeout(SHORTTIME)
+            t = gevent.Timeout.start_new(SHORTTIME)
             try:
                 r.get(timeout=t)
                 assert False
