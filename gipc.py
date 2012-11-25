@@ -571,7 +571,6 @@ class _GIPCReader(_GIPCHandle):
             remaining = n
             while remaining > 0:
                 chunk = _READ_NB(self._fd, remaining)
-                log.debug("chunk received: %r" % chunk)
                 received = len(chunk)
                 if received == 0:
                     if remaining == n:
