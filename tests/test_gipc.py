@@ -557,25 +557,20 @@ class TestUsecases():
         From a writing child, fire into the pipe. In a greenlet in the parent,
         receive one of these messages and return it to the main greenlet.
         Terminate the child process.
+        Looks like a timeout of 0.01 s does not reliably lead to success.
         """
         with pipe() as (r, w):
+            def readgreenlet(reader):
+                with gevent.Timeout(SHORTTIME*5, False) as t:
+                    m = reader.get(timeout=t)
+                    return m
             p = gipc.start_process(usecase_child_a, args=(w, ))
             # Wait for process to send first message:
             r.get()
-            log.debug("FIRST MESSAGE RECEIVED")
-            def readgreenlet(reader):
-                with gevent.Timeout(ALMOSTZERO, False) as t:
-                    log.debug("HELLO FROM CONTEXT MANAGER TIMEOUT")
-                    m = reader.get(timeout=t)
-                    log.debug("Received: %s" % m)
-                    return m
             # Second message must be available immediately now.
             g = gevent.spawn(readgreenlet, r)
-            log.debug("g is: %r" % g.get())
             m = r.get()
-            log.debug("message after sharp timeout: %r" % m)
-            #assert g.get() == "SPLASH"
-
+            assert g.get() == "SPLASH"
             p.terminate()
             p.join()
             assert p.exitcode == -signal.SIGTERM
@@ -668,11 +663,9 @@ def usecase_child_d(forthreader, backwriter):
 
 def usecase_child_a(writer):
     with writer:
-        log.debug("BUMMBAUM")
         while True:
             writer.put("SPLASH")
-            log.debug("wrotemessage.")
-            gevent.sleep(ALMOSTZERO*5)
+            gevent.sleep(ALMOSTZERO)
 
 
 def usecase_child_b(writer, syncreader):
