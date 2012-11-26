@@ -577,8 +577,7 @@ class TestUsecases():
 
     def test_whatever_2(self):
         """
-        Send two messages between two child processes. The second message takes
-        too long.
+        Time-synchronize two child processes.
         """
         # First pipe for sync.
         with pipe() as (syncreader, syncwriter):
@@ -675,8 +674,6 @@ def usecase_child_b(writer, syncreader):
         writer.put('SYNACK')
     with writer:
         writer.put("CHICKEN")
-        # Keep the write end open for another short while.
-        gevent.sleep(SHORTTIME*2)
 
 
 def usecase_child_c(reader, syncwriter):
@@ -686,13 +683,13 @@ def usecase_child_c(reader, syncwriter):
         # Wait for confirmation.
         assert reader.get() == 'SYNACK'
     with reader:
+        # Processes are synchronized. CHICKEN must be incoming within no time.
         with gevent.Timeout(SHORTTIME, False) as t:
             assert reader.get(timeout=t) == "CHICKEN"
-            # No more messages expected to come within timeout.
-            reader.get(timeout=t)
-            # Unexpected termination:
-            sys.exit(0)
-    # Expected termination:
+        # Timeout is invalidated.
+        # The write end becomes closed right now.
+        with raises(EOFError):
+            reader.get()
     sys.exit(5)
 
 
