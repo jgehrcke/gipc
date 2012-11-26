@@ -66,7 +66,7 @@ else:
 
 
 def main():
-    msg = 'A' * 59999
+    msg = 'A' * 64000
     repetitions = 3
 
     log.info("Throughput benchmark")
