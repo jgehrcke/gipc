@@ -32,7 +32,7 @@ WINDOWS = sys.platform == "win32"
 
 # py.test runs tests by order of definition. This is useful for running simple,
 # fundamental tests first and more complex tests later.
-from py.test import raises
+from py.test import raises, mark
 # Nose is great and all, but can run tests in alphabetical order only.
 # from nose.tools import raises
 
@@ -502,7 +502,7 @@ class TestContextManager():
         r.close()
 
 
-@pytest.mark.skipif(WINDOWS)
+@mark.skipif('WINDOWS')
 class TestGetTimeout():
     def teardown(self):
         if gipc._all_handles:
@@ -552,7 +552,7 @@ class TestUsecases():
             gipc._all_handles = []
             raise Exception("Cleanup was not successful.")
 
-    @pytest.mark.skipif(WINDOWS)
+    @mark.skipif('WINDOWS')
     def test_whatever_1(self):
         """
         From a writing child, fire into the pipe. In a greenlet in the parent,
@@ -576,7 +576,7 @@ class TestUsecases():
             p.join()
             assert p.exitcode == -signal.SIGTERM
 
-    @pytest.mark.skipif(WINDOWS)
+    @mark.skipif('WINDOWS')
     def test_whatever_2(self):
         """
         Time-synchronize two child processes.
