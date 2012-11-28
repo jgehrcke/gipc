@@ -33,6 +33,8 @@
         - async IO, peeknamedpipe, ReadfileEx, SetCommTimeouts, CancelIO
         - use pywin32 or http://docs.python.org/2/library/ctypes.html
         - problem: circumvent blocking Win32 calls (hand control to gevent)
+        - async IO without blocking any thread: IOCP
+          http://msdn.microsoft.com/en-us/library/aa365198%28VS.85%29.aspx
 """
 
 import os
@@ -519,8 +521,10 @@ class _GIPCReader(_GIPCHandle):
 
         .. warning::
 
-            The timeout control is currently not available on Windows. An
-            ``OSError`` is expected to be raised in case you set a timeout.
+            The timeout control is currently not available on Windows,
+            because Windows select() can't be applied to pipe handles.
+            An ``OSError`` is expected to be raised in case you set a
+            timeout.
         """
         self._validate()
         with self._lock:
