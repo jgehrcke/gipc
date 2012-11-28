@@ -39,7 +39,7 @@ win32 = ctypes.windll.kernel32
 LPDWORD = ctypes.POINTER(DWORD)
 LPCTSTR = ctypes.c_wchar_p
 
-NULL = LPDWORD()
+NULLREF = LPDWORD()
 
 
 class _OVERLAPPED(ctypes.Structure):

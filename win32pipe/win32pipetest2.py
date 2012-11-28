@@ -87,7 +87,7 @@ Returns pair of connection objects at either end of a pipe
         win.FILE_FLAG_OVERLAPPED, 0)
 
     win.SetNamedPipeHandleState(
-        handle2, win.PIPE_READMODE_MESSAGE_REF, win.NULL, win.NULL)
+        handle2, win.PIPE_READMODE_MESSAGE_REF, None, None)
     log.debug("Have set new read mode..")
 
     # Wait for client-connect-event (blocking)
