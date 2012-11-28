@@ -16,22 +16,23 @@
 
 """
 .. todo::
-    - Implement poll/peek on read end.
-      (It's impossible to identify complete messages in advance, but within
-       the framework only complete messages are sent.)
+
+    - Implement poll/peek on read end. (It's impossible to identify complete
+        messages in advance, but within the framework only complete messages
+        are sent.)
     - Can gevent's FileObjectPosix be of any use?
     - Review buffer-implementation, consider, buffer(), memoryview(), ..
     - hub.cancel_wait() (cf. gevent sockets) in close instead of lock check?
     - Ensure portability between Python 2 and 3
     - put() timeout? Relevant in case of filled up pipes. However, put()
-      duration cannot be controlled if write is blocking *after* partial
-      msg write. Doesn't make sense I think.
+        duration cannot be controlled if write is blocking *after* partial
+        msg write. Doesn't make sense I think.
 
     - pipe implementation on Windows based on NamedPipes with overlapping IO
-      could give useful control:
-      - async IO, peeknamedpipe, ReadfileEx, SetCommTimeouts, CancelIO
-      - use pywin32 or http://docs.python.org/2/library/ctypes.html
-      - problem: circumvent blocking Win32 calls (hand control to gevent)
+        could give useful control:
+        - async IO, peeknamedpipe, ReadfileEx, SetCommTimeouts, CancelIO
+        - use pywin32 or http://docs.python.org/2/library/ctypes.html
+        - problem: circumvent blocking Win32 calls (hand control to gevent)
 """
 
 import os
@@ -158,7 +159,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         - closing dispensable file descriptors after child process creation.
         - proper file descriptor inheritance on Windows.
         - re-initialization of the event loop in the child process.
-        - providing cooperative Process methods (such as ``join()``).
+        - providing cooperative process methods (such as ``join()``).
 
     Calling this method breaks ``os.waitpid()`` on Unix: spawning the first
     child activates libev child watchers, leading to libev reap children in the
@@ -497,11 +498,11 @@ class _GIPCReader(_GIPCHandle):
         """Receive and return an object from the pipe. Block
         gevent-cooperatively until object is available or timeout expires.
 
-        :arg timeout: ``None`` (default) or a ``gevent.Timeout`` instance.
-        Must be started to take effect. The timeout is cancelled when the
-        first byte of a new message arrives (i.e. providing a timeout does
-        not guarantee that the method completes within the given amount of
-        time).
+        :arg timeout: ``None`` (default) or a ``gevent.Timeout``
+            instance. The timeout must be started to take effect and is
+            cancelled when the first byte of a new message arrives (i.e.
+            providing a timeout does not guarantee that the method completes
+            within the timeout interval).
 
         :returns: a Python object.
 
@@ -516,11 +517,10 @@ class _GIPCReader(_GIPCHandle):
             with gevent.Timeout(TIME_SECONDS, False) as t:
                 reader.get(timeout=t)
 
-        ..warning:
+        .. warning::
 
-            The timeout feature is not available on Windows. An ``OSError`` is
-            expected to be raised.
-
+            The timeout control is currently not available on Windows. An
+            ``OSError`` is expected to be raised in case you set a timeout.
         """
         self._validate()
         with self._lock:
