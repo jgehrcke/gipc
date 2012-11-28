@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-GIPC: Pipe-based inter-process communication for gevent
-=======================================================
+GIPC: Multiprocessing and IPC for gevent
+========================================
 
 .. toctree::
    :maxdepth: 2
