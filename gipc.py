@@ -16,26 +16,22 @@
 
 """
 .. todo::
-    - implement 'polling' get() based on some kind of fd polling.
-      Should raise some kind of WouldBlockException if no data available.
-      Difficult (impossible?) to identify complete messages in advance.
-    - check if the gevent FileObjectPosix can be of any use
-    - review buffer-implementation, consider, buffer(), memoryview(), ..
-    - ensure portability between Python 2 and 3
+    - Implement poll/peek on read end.
+      (It's impossible to identify complete messages in advance, but within
+       the framework only complete messages are sent.)
+    - Can gevent's FileObjectPosix be of any use?
+    - Review buffer-implementation, consider, buffer(), memoryview(), ..
     - hub.cancel_wait() (cf. gevent sockets) in close instead of lock check?
-    
-    - get() timeout on unix based on IO watcher
-    - pipe implementation on windows based on NamedPipe with overlapping IO
-      gives useful control:
-      - async IO: http://msdn.microsoft.com/en-us/library/windows/desktop/aa365683%28v=vs.85%29.aspx
-      - peeknamedpipe: http://msdn.microsoft.com/en-us/library/windows/desktop/aa365779%28v=vs.85%29.aspx
-      - timeout control via SetCommTimeouts, COMMTIMEOUTS, CancelIo:
-        "If no bytes arrive within the time specified by ReadTotalTimeoutConstant,
-        ReadFile times out."
-      - use http://docs.python.org/2/library/ctypes.html for win32 API
-    - put() timeout. Relevant in case of filled up pipes. However, put()
-      duration cannot be controlled if write is blocking (due to filled pipe)
-      after partial msg write 
+    - Ensure portability between Python 2 and 3
+    - put() timeout? Relevant in case of filled up pipes. However, put()
+      duration cannot be controlled if write is blocking *after* partial
+      msg write. Doesn't make sense I think.
+
+    - pipe implementation on Windows based on NamedPipes with overlapping IO
+      could give useful control:
+      - async IO, peeknamedpipe, ReadfileEx, SetCommTimeouts, CancelIO
+      - use pywin32 or http://docs.python.org/2/library/ctypes.html
+      - problem: circumvent blocking Win32 calls (hand control to gevent)
 """
 
 import os
@@ -345,7 +341,8 @@ class _GIPCHandle(object):
     .. todo::
 
         Care about destructor?
-        http://eli.thegreenplace.net/2009/06/12/safely-using-destructors-in-python/
+        http://eli.thegreenplace.net/2009/06/12/
+        safely-using-destructors-in-python/
     """
     def __init__(self):
         self._id = os.urandom(3).encode("hex")
@@ -484,35 +481,7 @@ class _GIPCReader(_GIPCHandle):
         readbuf = io.BytesIO()
         remaining = n
         while remaining > 0:
-            try:
-                log.debug("Call read.....")
-                chunk = _READ_NB(self._fd, remaining)
-                log.debug("chunk received: %r" % chunk)
-                # This can swallow bytes on Windows (when Timeout occurs
-                # just within the threadpool machinery)
-            except gevent.Timeout, raised_timeout:
-                log.debug("timeout occurred: %r" % raised_timeout)
-                if raised_timeout is not self._timeout:
-                    # `self._timeout` wasn't the one that expired. Re-raise.
-                    raise
-                # Continue receiving the current message (don't raise the
-                # timeout exception) if a message fragment has already been
-                # received.
-                if not self._newmessage_lengthreceived:
-                    log.debug("length was not received.")
-                    try:
-                        received
-                    except NameError:
-                        # There was no previous while iteration.
-                        try:
-                            chunk
-                            log.debug("chunk received: %r" % chunk)
-                        except NameError:
-                            # In the first iteration nothing was received.
-                            # The timeout exception can safely be raised.
-                            raise self._timeout
-                log.debug("continue")
-                continue
+            chunk = _READ_NB(self._fd, remaining)
             received = len(chunk)
             if received == 0:
                 if remaining == n:
@@ -523,17 +492,21 @@ class _GIPCReader(_GIPCHandle):
             readbuf.write(chunk)
             remaining -= received
         return readbuf
-        
-        
+
     def get(self, timeout=None):
         """Receive and return an object from the pipe. Block
         gevent-cooperatively until object is available or timeout expires.
 
         :arg timeout: ``None`` (default) or a ``gevent.Timeout`` instance.
+        Must be started to take effect. The timeout is cancelled when the
+        first byte of a new message arrives (i.e. providing a timeout does
+        not guarantee that the method completes within the given amount of
+        time).
 
         :returns: a Python object.
 
         Raises:
+            - :exc:`gevent.Timeout` (if provided)
             - :exc:`GIPCError`
             - :exc:`GIPCClosed`
             - :exc:`pickle.UnpicklingError`
@@ -543,85 +516,26 @@ class _GIPCReader(_GIPCHandle):
             with gevent.Timeout(TIME_SECONDS, False) as t:
                 reader.get(timeout=t)
 
+        ..warning:
+
+            The timeout feature is not available on Windows. An ``OSError`` is
+            expected to be raised.
+
         """
         self._validate()
-        if timeout:
-            if not timeout.pending:
-                timeout.start()
-            self._timeout = timeout
         with self._lock:
-            log.debug("go in get() with timeout %r" % timeout)
+            if timeout:
+                # Wait for ready-to-read event.
+                h = gevent.get_hub()
+                h.wait(h.loop.io(self._fd, 1))
+                timeout.cancel()
             msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
-            log.debug("got length %s" % msize)
             self._newmessage_lengthreceived = True
-            log.debug("SET TO TRUE")
             bindata = self._recv_in_buffer(msize).getvalue()
-            log.debug("bindata: %r" % bindata)
             self._newmessage_lengthreceived = False
-            log.debug("SET TO FALSE")
-        # Clean up after timeout.
-        log.debug("timeout before cleanup: %r. bool: %s" % (timeout, bool(timeout)))
-        if timeout:
-            timeout.cancel()
-            self._timeout = None
         return pickle.loads(bindata)
 
-    if not WINDOWS:
-        def _recv_in_buffer(self, n):
-            """Cooperatively read `n` bytes from file descriptor to buffer."""
-            readbuf = io.BytesIO()
-            remaining = n
-            while remaining > 0:
-                chunk = _READ_NB(self._fd, remaining)
-                received = len(chunk)
-                if received == 0:
-                    if remaining == n:
-                        raise EOFError(
-                            "Most likely, the other pipe end is closed.")
-                    else:
-                        raise IOError("Message interrupted by EOF.")
-                readbuf.write(chunk)
-                remaining -= received
-            return readbuf    
-    
-        def get(self, timeout=None):
-            """Receive and return an object from the pipe. Block
-            gevent-cooperatively until object is available or timeout expires.
 
-            :arg timeout: ``None`` (default) or a ``gevent.Timeout`` instance.
-            Must be started to take effect. The timeout is cancelled when the
-            first byte of a new message arrives (i.e. providing a timeout does
-            not guarantee that the method completes within the given amount of
-            time).
-
-            :returns: a Python object.
-
-            Raises:
-                - :exc:`gevent.Timeout` (if provided)
-                - :exc:`GIPCError`
-                - :exc:`GIPCClosed`
-                - :exc:`pickle.UnpicklingError`
-
-            Recommended usage for silent timeout control::
-
-                with gevent.Timeout(TIME_SECONDS, False) as t:
-                    reader.get(timeout=t)
-
-            """
-            self._validate()
-            with self._lock:
-                if timeout:
-                    # Wait for ready-to-read event.
-                    h = gevent.get_hub()
-                    h.wait(h.loop.io(self._fd, 1))
-                    timeout.cancel()
-                msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
-                self._newmessage_lengthreceived = True
-                bindata = self._recv_in_buffer(msize).getvalue()
-                self._newmessage_lengthreceived = False
-            return pickle.loads(bindata)
-        
-        
 class _GIPCWriter(_GIPCHandle):
     """
     A ``_GIPCWriter`` instance manages the write end of a pipe. It is created
