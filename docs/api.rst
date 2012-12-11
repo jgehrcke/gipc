@@ -11,14 +11,14 @@ Creating a pipe and its handle-pair
 Handling handles
 ^^^^^^^^^^^^^^^^
 
-.. autoclass:: gipc._GIPCHandle()
+.. autoclass:: gipc.gipc._GIPCHandle()
     :members: close
 
-.. autoclass:: gipc._GIPCWriter()
+.. autoclass:: gipc.gipc._GIPCWriter()
     :show-inheritance:
     :members: put
 
-.. autoclass:: gipc._GIPCReader()
+.. autoclass:: gipc.gipc._GIPCReader()
     :show-inheritance:
     :members: get
 
