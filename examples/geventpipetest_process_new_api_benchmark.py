@@ -37,13 +37,12 @@ import os
 import sys
 import logging
 import time
-from multiprocessing import Condition
-import gevent
-sys.path.insert(0, os.path.abspath('..'))
-import gipc
 import numpy
 import math
 
+import gevent
+sys.path.insert(0, os.path.abspath('..'))
+import gipc
 
 logging.basicConfig(
     format='%(asctime)s,%(msecs)-6.1f [%(process)d]%(funcName)s# %(message)s',
@@ -51,6 +50,8 @@ logging.basicConfig(
 log = logging.getLogger()
 log = logging.getLogger()
 log.setLevel(logging.INFO)
+
+
 if sys.platform == 'win32':
     TIMER = time.clock
 else:
@@ -114,32 +115,31 @@ def benchmark_manager(msg, repetitions):
 
 
 def benchmark(N, msg):
-    condition = Condition()
     result = None
-    with gipc.pipe() as (reader, writer):
-        condition.acquire()
-        p = gipc.start_process(
-            writer_process,
-            kwargs={
-                'writer': writer,
-                'condition': condition,
-                'N': N,
-                'msg': msg})
-        condition.wait()
-        condition.release()
-        t = TIMER()
-        while result != 'stop':
-            result = reader.get()
-        elapsed = TIMER() - t
-        p.join()
+    with gipc.pipe() as (syncr, syncw):
+        with gipc.pipe() as (reader, writer):
+            p = gipc.start_process(
+                writer_process,
+                kwargs={
+                    'writer': writer,
+                    'syncr': syncr,
+                    'N': N,
+                    'msg': msg})
+             # Synchronize with child process
+            syncw.put("SYN")
+            assert reader.get() == "ACK"
+            t = TIMER()
+            while result != 'stop':
+                result = reader.get()
+            elapsed = TIMER() - t
+            p.join()
     return N, elapsed
 
 
-def writer_process(writer, condition, N, msg):
+def writer_process(writer, syncr, N, msg):
     with writer:
-        condition.acquire()
-        condition.notify()
-        condition.release()
+        assert syncr.get() == "SYN"
+        writer.put("ACK")
         for i in xrange(N):
             writer.put(msg)
         writer.put('stop')
