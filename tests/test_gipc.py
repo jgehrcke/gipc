@@ -228,11 +228,11 @@ class TestProcess():
         p.join()
         assert p.exitcode == 0
 
-    def test_typecheck(self):
+    def test_typecheck_args(self):
         with raises(TypeError):
             gipc.start_process(gevent.sleep, args="peter")
 
-    def test_typecheck(self):
+    def test_typecheck_kwargs(self):
         with raises(TypeError):
             gipc.start_process(gevent.sleep, kwargs="peter")
 
