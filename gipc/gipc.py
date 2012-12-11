@@ -92,9 +92,9 @@ def pipe():
 
     :returns:
         ``(reader, writer)`` tuple. Both items are instances of
-        :class:`_GIPCHandle`.
+        :class:`gipc._GIPCHandle`.
 
-    :class:`_GIPCHandle` instances are recommended to be used with Python's
+    :class:`gipc._GIPCHandle` instances are recommended to be used with Python's
     context manager in the following ways::
 
         with pipe() as (r, w):
@@ -131,7 +131,7 @@ def pipe():
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     """Spawn child process and execute function ``target(*args, **kwargs)``.
-    Any existing :class:`_GIPCHandle` can be handed over to the child process
+    Any existing :class:`gipc._GIPCHandle` can be handed over to the child process
     via ``args`` and/or ``kwargs``.
 
     :arg target:
@@ -522,7 +522,7 @@ class _GIPCReader(_GIPCHandle):
         .. warning::
 
             The timeout control is currently not available on Windows,
-            because Windows select() can't be applied to pipe handles.
+            because Windows can't apply select() to pipe handles.
             An ``OSError`` is expected to be raised in case you set a
             timeout.
         """

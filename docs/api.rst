@@ -1,5 +1,12 @@
-API
----
+gipc API
+--------
+
+Spawning child processes
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+.. automodule:: gipc
+    :members: start_process
+
 
 Creating a pipe and its handle-pair
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -21,13 +28,6 @@ Handling handles
 .. autoclass:: gipc.gipc._GIPCReader()
     :show-inheritance:
     :members: get
-
-
-Spawning child processes
-^^^^^^^^^^^^^^^^^^^^^^^^
-
-.. automodule:: gipc
-    :members: start_process
 
 
 Exception types

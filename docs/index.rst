@@ -10,6 +10,7 @@ GIPC: Multiprocessing and IPC for gevent
     :maxdepth: 2
 
     intro
+    examples
     api
 
 
