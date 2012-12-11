@@ -636,3 +636,14 @@ else:
 
 # Define container for keeping track of valid `_GIPCHandle`s.
 _all_handles = []
+
+
+def get_all_handles():
+    return _all_handles[:]
+
+
+def set_all_handles(handles):
+    global _all_handles
+    _all_handles = handles
+
+
