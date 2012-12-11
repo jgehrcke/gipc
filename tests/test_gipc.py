@@ -25,8 +25,8 @@ import random
 import gevent
 import gevent.queue
 sys.path.insert(0, os.path.abspath('..'))
-from gipc import pipe, GIPCError, GIPCClosed, GIPCLocked
-import gipc
+from gipc import (start_process, pipe, GIPCError, GIPCClosed, GIPCLocked,
+                  get_all_handles, set_all_handles)
 
 WINDOWS = sys.platform == "win32"
 
@@ -63,14 +63,14 @@ class TestComm():
 
     def teardown(self):
         # Make sure to not leak file descriptors.
-        if gipc._all_handles:
-            for h in gipc._all_handles[:]:
+        if get_all_handles():
+            for h in get_all_handles():
                 try:
                     h.close()
                     os.close(h._fd)
                 except (OSError, GIPCError, TypeError):
                     pass
-            gipc._all_handles = []
+            set_all_handles([])
         for g in self._greenlets_to_be_killed:
             g.kill()
 
@@ -176,24 +176,24 @@ class TestComm():
 
 class TestProcess():
     def test_is_alive_true(self):
-        p = gipc.start_process(p_child_a)
+        p = start_process(p_child_a)
         assert p.is_alive()
         p.join()
         assert p.exitcode == 0
 
     def test_is_alive_false(self):
-        p = gipc.start_process(p_child_a)
+        p = start_process(p_child_a)
         p.join()
         assert not p.is_alive()
         assert p.exitcode == 0
 
     def test_exitcode_0(self):
-        p = gipc.start_process(p_child_a)
+        p = start_process(p_child_a)
         p.join()
         assert p.exitcode == 0
 
     def test_exitcode_sigkill(self):
-        p = gipc.start_process(p_child_b)
+        p = start_process(p_child_b)
         p.join()
         if not WINDOWS:
             assert p.exitcode == -signal.SIGKILL
@@ -201,28 +201,28 @@ class TestProcess():
             assert p.exitcode == 1
 
     def test_exitcode_1(self):
-        p = gipc.start_process(p_child_c)
+        p = start_process(p_child_c)
         p.join()
         assert p.exitcode == 1
 
     def test_pid(self):
-        p = gipc.start_process(p_child_a)
+        p = start_process(p_child_a)
         p.join()
         assert p.pid is not None
         assert p.exitcode == 0
 
     def test_terminate(self):
-        p = gipc.start_process(gevent.sleep, args=(1,))
+        p = start_process(gevent.sleep, args=(1,))
         p.terminate()
         p.join()
         assert p.exitcode == -signal.SIGTERM
 
     def test_child_in_child_in_child(self):
-        p = gipc.start_process(p_child_e)
+        p = start_process(p_child_e)
         p.join()
 
     def test_join_timeout(self):
-        p = gipc.start_process(gevent.sleep, args=(0.1, ))
+        p = start_process(gevent.sleep, args=(0.1, ))
         p.join(ALMOSTZERO)
         assert p.is_alive()
         p.join()
@@ -230,11 +230,11 @@ class TestProcess():
 
     def test_typecheck_args(self):
         with raises(TypeError):
-            gipc.start_process(gevent.sleep, args="peter")
+            start_process(gevent.sleep, args="peter")
 
     def test_typecheck_kwargs(self):
         with raises(TypeError):
-            gipc.start_process(gevent.sleep, kwargs="peter")
+            start_process(gevent.sleep, kwargs="peter")
 
 
 def p_child_a():
@@ -253,12 +253,12 @@ def p_child_c():
 
 
 def p_child_e():
-    i = gipc.start_process(p_child_e2)
+    i = start_process(p_child_e2)
     i.join()
 
 
 def p_child_e2():
-    ii = gipc.start_process(p_child_e3)
+    ii = start_process(p_child_e3)
     ii.join()
 
 
@@ -274,20 +274,20 @@ class TestIPC():
 
     def teardown(self):
         # Make sure to not leak file descriptors.
-        if gipc._all_handles:
-            for h in gipc._all_handles[:]:
+        if get_all_handles():
+            for h in get_all_handles():
                 try:
                     h.close()
                     os.close(h._fd)
                 except (OSError, GIPCError, TypeError):
                     pass
-            gipc._all_handles = []
+            set_all_handles([])
         for g in self._greenlets_to_be_killed:
             g.kill()
 
     def test_singlemsg_long_list(self):
         m = [1] * LONG
-        p = gipc.start_process(ipc_readchild, args=(self.rh, m))
+        p = start_process(ipc_readchild, args=(self.rh, m))
         self.wh.put(m)
         p.join()
         assert p.exitcode == 0
@@ -295,7 +295,7 @@ class TestIPC():
     def test_twochannels_singlemsg(self):
         m1 = "OK"
         m2 = "FOO"
-        p = gipc.start_process(ipc_child_b, args=(self.rh, self.rh2, m1, m2))
+        p = start_process(ipc_child_b, args=(self.rh, self.rh2, m1, m2))
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
@@ -304,7 +304,7 @@ class TestIPC():
     def test_childparentcomm_withinchildcomm(self):
         m1 = "OK"
         m2 = "FOO"
-        p = gipc.start_process(
+        p = start_process(
             target=ipc_child_c, args=(self.rh, self.rh2, m1, m2))
         self.wh.put(m1)
         self.wh2.put(m2)
@@ -313,15 +313,15 @@ class TestIPC():
 
     def test_childchildcomm(self):
         m = {("KLADUSCH",): "foo"}
-        pr = gipc.start_process(ipc_readchild, args=(self.rh, m))
-        pw = gipc.start_process(ipc_writechild, args=(self.wh, m))
+        pr = start_process(ipc_readchild, args=(self.rh, m))
+        pw = start_process(ipc_writechild, args=(self.wh, m))
         pr.join()
         pw.join()
         assert pr.exitcode == 0
         assert pw.exitcode == 0
 
     def test_handler_after_transfer_to_child(self):
-        p = gipc.start_process(ipc_child_boring_reader, args=(self.rh,))
+        p = start_process(ipc_child_boring_reader, args=(self.rh,))
         with raises(GIPCError):
             self.rh.close()
         p.join()
@@ -336,7 +336,7 @@ class TestIPC():
 
     def test_child_in_child_in_child_comm(self):
         m = "RATZEPENG"
-        p = gipc.start_process(ipc_child_f, args=(self.wh, m))
+        p = start_process(ipc_child_f, args=(self.wh, m))
         p.join()
         assert m == self.rh.get()
         assert p.exitcode == 0
@@ -381,12 +381,12 @@ def ipc_child_d(r):
 
 
 def ipc_child_f(w, m):
-    i = gipc.start_process(ipc_child_f2, args=(w, m))
+    i = start_process(ipc_child_f2, args=(w, m))
     i.join()
 
 
 def ipc_child_f2(w, m):
-    ii = gipc.start_process(ipc_child_f3, args=(w, m))
+    ii = start_process(ipc_child_f3, args=(w, m))
     ii.join()
 
 
@@ -397,19 +397,19 @@ def ipc_child_f3(w, m):
 
 class TestContextManager():
     def teardown(self):
-        if gipc._all_handles:
-            for h in gipc._all_handles[:]:
+        if get_all_handles():
+            for h in get_all_handles():
                 try:
                     h.close()
                     os.close(h._fd)
                 except (OSError, GIPCError, TypeError):
                     pass
-            gipc._all_handles = []
+            set_all_handles([])
             raise Exception("Cleanup was not successful.")
 
-    def test_all_handles_length(self):
+    def testt_all_handles_length(self):
         r, w = pipe()
-        assert len(gipc._all_handles) == 2
+        assert len(get_all_handles()) == 2
         r.close()
         w.close()
 
@@ -423,7 +423,7 @@ class TestContextManager():
         with raises(OSError):
             os.close(fd2)
         # Make sure the module's self-cleanup works properly.
-        assert not len(gipc._all_handles)
+        assert not len(get_all_handles())
 
     def test_single_reader(self):
         r, w = pipe()
@@ -432,11 +432,11 @@ class TestContextManager():
         # Make sure the C file descriptor is closed.
         with raises(OSError):
             os.close(fd)
-        assert len(gipc._all_handles) == 1
+        assert len(get_all_handles()) == 1
         with raises(GIPCClosed):
             w.close()
         r.close()
-        assert not len(gipc._all_handles)
+        assert not len(get_all_handles())
 
     def test_single_writer(self):
         r, w = pipe()
@@ -445,11 +445,11 @@ class TestContextManager():
         # Make sure the C file descriptor is closed.
         with raises(OSError):
             os.close(fd)
-        assert len(gipc._all_handles) == 1
+        assert len(get_all_handles()) == 1
         with raises(GIPCClosed):
             r.close()
         w.close()
-        assert not len(gipc._all_handles)
+        assert not len(get_all_handles())
 
     def test_close_in_context(self):
         with pipe() as (r, w):
@@ -505,14 +505,14 @@ class TestContextManager():
 @mark.skipif('WINDOWS')
 class TestGetTimeout():
     def teardown(self):
-        if gipc._all_handles:
-            for h in gipc._all_handles[:]:
+        if get_all_handles():
+            for h in get_all_handles():
                 try:
                     h.close()
                     os.close(h._fd)
                 except (OSError, GIPCError, TypeError):
                     pass
-            gipc._all_handles = []
+            set_all_handles([])
             raise Exception("Cleanup was not successful.")
 
     def test_simpletimeout_expires(self):
@@ -542,14 +542,14 @@ class TestGetTimeout():
 
 class TestUsecases():
     def teardown(self):
-        if gipc._all_handles:
-            for h in gipc._all_handles[:]:
+        if get_all_handles():
+            for h in get_all_handles():
                 try:
                     h.close()
                     os.close(h._fd)
                 except (OSError, GIPCError, TypeError):
                     pass
-            gipc._all_handles = []
+            set_all_handles([])
             raise Exception("Cleanup was not successful.")
 
     @mark.skipif('WINDOWS')
@@ -565,7 +565,7 @@ class TestUsecases():
                 with gevent.Timeout(SHORTTIME*5, False) as t:
                     m = reader.get(timeout=t)
                     return m
-            p = gipc.start_process(usecase_child_a, args=(w, ))
+            p = start_process(usecase_child_a, args=(w, ))
             # Wait for process to send first message:
             r.get()
             # Second message must be available immediately now.
@@ -586,9 +586,9 @@ class TestUsecases():
             # Second pipe for communication.
             with pipe() as (r, w):
                 # Send messages
-                pw = gipc.start_process(usecase_child_b, args=(w, syncreader))
+                pw = start_process(usecase_child_b, args=(w, syncreader))
                 # Receive messages
-                pr = gipc.start_process(usecase_child_c, args=(r, syncwriter))
+                pr = start_process(usecase_child_c, args=(r, syncwriter))
                 pw.join()
                 pr.join()
                 assert pw.exitcode == 0
@@ -629,7 +629,7 @@ class TestUsecases():
 
         with pipe() as (forthr, forthw):
             with pipe() as (backr, backw):
-                p = gipc.start_process(usecase_child_d, args=(forthr, backw))
+                p = start_process(usecase_child_d, args=(forthr, backw))
                 g1 = gevent.spawn(g_from_list_to_sendq)
                 g2 = gevent.spawn(g_from_q_to_forthpipe, forthw)
                 g3 = gevent.spawn(g_from_backpipe_to_recvlist, backr)
