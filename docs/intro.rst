@@ -24,33 +24,47 @@ simple integration of child processes in your application.
 Installation
 ------------
 
-    - download from bitbucket, install with setup.py
-    - pip from bitbucket
-    - later: pip/easy_install from pypi
+Directly via setup.py
+^^^^^^^^^^^^^^^^^^^^^
+Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_ or the latest development version from the `code repository at bitbucket <https://bitbucket.org/jgehrcke/gipc>`_. Extract the archive and invoke::
+
+    $ python setup.py install
+
+
+Via pip
+^^^^^^^
+You can use `pip <http://www.pip-installer.org>`_ for downloading and installing gipc from PyPI in one step::
+
+    $ pip install gipc
+
+For installing pip, ...
+
+pip is recommended over easy_install.
+
+You can also install the development version of gipc via pip: ...
 
 
 Requirements
 ------------
 
     - gevent > 1.0
-    - Python 2.7 required?
-    - what about Python 3?
+    - Python 2.7 (also 2.6)
+    - Python 3 support: TBD
 
 
 Notes for Windows users
 -----------------------
 
-    - currently, the timeout-feature does not work
+    - Currently, the ``get()`` timeout feature does not work
     - non-blocking I/O is faked via a threadpool (significant performance drop
-      compared to Unix)
-    - solution would be IOCP-based (cf. libuv)
+      compared to Unix), a solution would be IOCP-based (cf. libuv)
 
 
 Usage
 -----
 
-    - refer to examples
-    - refer to docs, especially API docs
+    - cf. Examples section
+    - cf. API section
 
 
 
