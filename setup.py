@@ -1,4 +1,6 @@
-from distutils.core import setup
+import distribute_setup
+distribute_setup.use_setuptools()
+from setuptools import setup
 
 setup(
     name = "gipc",
@@ -22,5 +24,5 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: System :: Hardware :: Symmetric Multi-processing",
         ],
-    install_requires=("gevent", "greenlet"),
+    install_requires=("gevent>=1.0", "greenlet"),
 )
