@@ -26,8 +26,8 @@ Introduction
 What can gipc do for you?
 =========================
 
-With ``gipc`` you can easily use ``multiprocessing`` and ``gevent`` within one
-Python application. It provides
+With ``gipc`` (pronunciation "gipsy") you can easily use child processes
+and ``gevent`` within one Python application. It provides
 
 - gevent-aware ``multiprocessing.Process``-based child processes.
 - gevent-cooperative inter-process communication.
@@ -44,7 +44,27 @@ in some way. Furthermore, blocking method calls such as ``join()`` on a
 ``multiprocessing.Process`` or the ``send()``/``recv()`` methods on a
 ``multiprocessing.Connection`` are not gevent-cooperative. ``gipc`` overcomes
 these challenges  for you in a straight-forward fashion and allows for simple
-integration of child processes in your application.
+integration of child processes in your application -- on POSIX-compliant
+systems as well as on Windows.
+
+
+Technology
+==========
+- gevent-cooperative communication in ``gipc`` is based on classical anonymous
+  pipes. A binary ``pickle`` protocol is used for transmitting
+  arbitrary pickleable objects. My test system achieved a payload transfer rate
+  of 1200 MB/s and a message transmission rate of 100.000 messages/s through
+  one pipe between two processes.
+
+- Child process creation is done via a thin wrapper around
+  ``multiprocessing.Process``. On Unix, it re-initializes the libev event loop
+  in the child before performing any other action.
+
+- On POSIX-compliant systems, child process monitoring is based on
+  libev child watchers (relevant for ``is_alive()`` and ``join()``).
+
+- Convenience features such as the context manager for pipe handles or various
+  timeout control flows are available.
 
 
 Installation
@@ -89,9 +109,17 @@ Notes for Windows users
 =======================
 
 - The ``get()`` timeout feature is not available.
-- Non-blocking I/O is faked via a threadpool (significant performance drop
-  compared to Unix).
-- A solution to both problems would be IOCP-based (cf. libuv).
+- Non-blocking I/O is faked via gevent threadpool, leading to a significant
+  messaging performance drop compared to POSIX-compliant systems.
+
+A nice solution to both problems should be IOCP-based. I'd rather not implement
+this on my own. Maybe one day gevent is
+`libuv <https://github.com/joyent/libuv>`_-backed, which would enable us to
+run the same code on Windows as on POSIX-based systems. Going with libuv would
+merge the strength of the node.js and gevent worlds. Denis seems to be
+`open <https://twitter.com/gevent/status/251870755187478529>`_ to such a
+transition and the first steps are already
+`done <https://github.com/saghul/uvent>`_.
 
 
 Usage
