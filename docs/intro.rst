@@ -24,24 +24,28 @@ simple integration of child processes in your application.
 Installation
 ------------
 
-Directly via setup.py
-^^^^^^^^^^^^^^^^^^^^^
-Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_ or the latest development version from the `code repository at bitbucket <https://bitbucket.org/jgehrcke/gipc>`_. Extract the archive and invoke::
-
-    $ python setup.py install
-
-
 Via pip
 ^^^^^^^
-You can use `pip <http://www.pip-installer.org>`_ for downloading and installing gipc from PyPI in one step::
+The latest ``gipc`` release from PyPI can be pulled and and installed via `pip <http://www.pip-installer.org>`_::
 
     $ pip install gipc
 
-For installing pip, ...
+``pip`` can also install the development version of ``gipc`` via: ...
 
-pip is recommended over easy_install.
+Note that the latter requires the most recent version of `distribute <http://packages.python.org/distribute/>`_ which can be installed by executing `distribute_setup.py <http://python-distribute.org/distribute_setup.py>`_.
 
-You can also install the development version of gipc via pip: ...
+``pip`` is recommended over easy_install``. ``pip`` installation instructions can be found `here <http://www.pip-installer.org/en/latest/installing.html>`_.
+
+
+Directly via setup.py
+^^^^^^^^^^^^^^^^^^^^^
+Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_.  Extract the archive and invoke::
+
+    $ python setup.py install
+
+The same can be done with the latest development version of ``gipc`` which can be downloaded from `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
+
+Once installed, you should be able to remove gipc manually or via ``pip uninstall gipc``.
 
 
 Requirements

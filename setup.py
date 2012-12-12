@@ -5,6 +5,7 @@ from setuptools import setup
 setup(
     name = "gipc",
     packages = ["gipc"],
+    py_modules = ["distribute_setup"],
     version = "0.1.0",
     description = "gevent-cooperative multiprocessing and inter-process communication.",
     long_description=open("README").read().decode('utf-8'),
