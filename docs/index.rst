@@ -8,7 +8,7 @@
     :maxdepth: 2
 
 ========================================
-GIPC: Multiprocessing and IPC for gevent
+gipc: multiprocessing and IPC for gevent
 ========================================
 
 This documentation applies to gipc |release|. It was built on |today|. Sections:
@@ -73,7 +73,8 @@ Installation
 Via pip
 -------
 
-The latest ``gipc`` release from PyPI can be pulled and and installed via `pip <http://www.pip-installer.org>`_::
+The latest ``gipc`` release from PyPI can be pulled and and installed via
+ `pip <http://www.pip-installer.org>`_::
 
     $ pip install gipc
 
@@ -81,19 +82,24 @@ pip can also install the development version of ``gipc`` via::
 
     $ pip install hg+https://bitbucket.org/jgehrcke/gipc
 
-Note that the latter requires the most recent version of `distribute <http://packages.python.org/distribute/>`_ which can be installed by executing `distribute_setup.py <http://python-distribute.org/distribute_setup.py>`_.
+Note that the latter requires the most recent version of 
+`distribute <http://packages.python.org/distribute/>`_ which can be installed 
+by executing `distribute_setup.py <http://python-distribute.org/distribute_setup.py>`_.
 
-pip is recommended over easy_install. pip installation instructions can be found `here <http://www.pip-installer.org/en/latest/installing.html>`_.
+pip is recommended over easy_install. pip installation instructions can be 
+found `here <http://www.pip-installer.org/en/latest/installing.html>`_.
 
 
 Directly via setup.py
 ---------------------
 
-Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_.  Extract the archive and invoke::
+Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_. 
+Extract the archive and invoke::
 
     $ python setup.py install
 
-The same can be done with the latest development version of ``gipc`` which can be downloaded from `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
+The same can be done with the latest development version of ``gipc`` which 
+can be downloaded from `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
 Once installed, you should be able to remove gipc manually or via ``pip uninstall gipc``.
 
@@ -101,7 +107,8 @@ Once installed, you should be able to remove gipc manually or via ``pip uninstal
 Requirements
 ============
 
-- gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent `here <https://github.com/SiteSupport/gevent/downloads>`_.
+- gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent 
+  `here <https://github.com/SiteSupport/gevent/downloads>`_.
 - successfully tested against Python 2.6 and 2.7
 
 
@@ -132,7 +139,11 @@ See :ref:`examples <examples>` and :ref:`API <api>` sections.
 Author, license, contact
 ========================
 
-``gipc`` is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_. Your feedback is highly appreciated. You can contact me at jgehrcke@googlemail.com.
+``gipc`` is written and maintained by 
+`Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the 
+`Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_. 
+Your feedback is highly appreciated. You can contact me at 
+jgehrcke@googlemail.com.
 
 
 .. _examples:
@@ -228,7 +239,7 @@ Time-synchronized messaging between processes
             assert syncreader.get() == "SYN"
             writer.put("ACK")
             for i in xrange(1000):
-                writer.put("A"*1000)
+                writer.put("A" * 1000)
             writer.put('STOP')
 
 
