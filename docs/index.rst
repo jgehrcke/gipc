@@ -11,9 +11,11 @@
 GIPC: Multiprocessing and IPC for gevent
 ========================================
 
-- :ref:`introduction`
-- :ref:`examples`
-- :ref:`api`
+This documentation applies to gipc |release|. It was built on |today|. Sections:
+
+    - :ref:`introduction`
+    - :ref:`examples`
+    - :ref:`api`
 
 
 .. _introduction:
