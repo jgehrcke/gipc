@@ -13,9 +13,9 @@ GIPC: Multiprocessing and IPC for gevent
 
 This documentation applies to gipc |release|. It was built on |today|. Sections:
 
-    - :ref:`introduction`
-    - :ref:`examples`
-    - :ref:`api`
+    - :ref:`Introduction (installation, requirements, contact) <introduction>`
+    - :ref:`Code examples <examples>`
+    - :ref:`API documentation <api>`
 
 
 .. _introduction:
@@ -82,8 +82,7 @@ Requirements
 ============
 
 - gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent `here <https://github.com/SiteSupport/gevent/downloads>`_.
-- Python 2.6, 2.7
-- Python 3 support: TBD
+- successfully tested against Python 2.6 and 2.7
 
 
 Notes for Windows users
@@ -98,7 +97,7 @@ Notes for Windows users
 Usage
 =====
 
-See :ref:`examples` and :ref:`api` sections.
+See :ref:`examples <examples>` and :ref:`API <api>` sections.
 
 
 
