@@ -287,8 +287,8 @@ Handling handles
     :members: get
 
 
-Processes
-=========
+Controlling child processes
+===========================
 
 .. autoclass:: gipc.gipc._GProcess()
     :show-inheritance:
