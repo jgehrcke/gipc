@@ -74,7 +74,7 @@ Once installed, you should be able to remove gipc manually or via ``pip uninstal
 
 Requirements
 ============
-    - gevent >= 1.0 (tested against gevent 1.0rc2)
+    - gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent `here <https://github.com/SiteSupport/gevent/downloads>`_.
     - Python 2.6, 2.7
     - Python 3 support: TBD
 
@@ -89,8 +89,8 @@ Notes for Windows users
 
 Usage
 =====
-    - cf. Examples section
-    - cf. API section
+
+    See :ref:`examples` and :ref:`api` sections.
 
 
 
