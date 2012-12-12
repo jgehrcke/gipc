@@ -119,11 +119,12 @@ Notes for Windows users
 - Non-blocking I/O is faked via gevent threadpool, leading to a significant
   messaging performance drop compared to POSIX-compliant systems.
 
-A nice solution to both problems should be IOCP-based. I'd rather not implement
-this on my own. Maybe one day gevent is
-`libuv <https://github.com/joyent/libuv>`_-backed, which would enable us to
-run the same code on Windows as on POSIX-based systems. Going with libuv would
-merge the strength of the node.js and gevent worlds. Denis seems to be
+The optimal solution to both problems would be IOCP-based. Maybe one day
+gevent is `libuv <https://github.com/joyent/libuv>`_-backed, which uses
+ICOP on Windows and would allow for running the same gevent code on Windows 
+as on POSIX-based systems. Furthermore, if gevent went with libuv, the
+strengths of both, the node.js and the gevent worlds woud be merged.
+Denis, the maintainer of gevent,  seems to be
 `open <https://twitter.com/gevent/status/251870755187478529>`_ to such a
 transition and the first steps are already
 `done <https://github.com/saghul/uvent>`_.
