@@ -249,32 +249,36 @@ def _child(target, all_handles, args, kwargs):
 
 class _GProcess(multiprocessing.Process):
     """
-    Implements adjustments to multiprocessing's Process class.
-
-    On Unix, we  cannot rely on `multiprocessing.Process.is_alive()` and
-    `multiprocessing.Process._popen.wait()` to tell the truth about the state
-    of children of children:
-        In the initial process, gevent makes libev's default event loop not
-    reap dead children. In children, however, after initialization of the
-    libev default event loop, dead children (grandchildren of the initial
-    process) become reaped immediately by the event loop.
-        This makes `os.waitpid(grandchild_pid)` throw an ECHILD error ("process
-    specified by pid does not exist or is not a child of the calling process").
-    This leads to multiprocessing's `_popen.wait()` returning `None`, meaning
-    'alive' -- for child processes that does not exist anymore.
-        Immediate child reaping by libev could be rectified via re-installing
-    the default signal handler with `signal(signal.SIGCHLD, signal.SIG_DFL)`.
-    However, doing so would render libev's child watchers useless.
-        Instead, for each `_GProcess`, a libev child watcher is explicitly
-    started in the modified `start()` method below. The modified `join()`
-    method is adjusted to this libev-watcher-based child monitoring.
-    `multiprocessing.Process.join()` is entirely surpassed, but resembled.
-    `os.waitpid()` is broken in all process generations after the first
-    `_GProcess` has been started.
-
-    On Windows, cooperative `join()` is realized via frequent non-blocking
-    calls to `Process.is_alive()` and the original `join()` method.
+    Implements adjustments to multiprocessing's Process class for
+    gevent-cooperativity.
     """
+    #On Unix, we  cannot rely on `multiprocessing.Process.is_alive()` and
+    #`multiprocessing.Process._popen.wait()` to tell the truth about the state
+    #of children of children:
+
+    #In the initial process, gevent makes libev's default event loop not
+    #reap dead children. In children, however, after initialization of the
+    #libev default event loop, dead children (grandchildren of the initial
+    #process) become reaped immediately by the event loop.
+
+    #This makes `os.waitpid(grandchild_pid)` throw an ECHILD error (process
+    #specified by pid does not exist or is not a child of the calling process).
+    #This leads to multiprocessing's `_popen.wait()` returning `None`, meaning
+    #'alive' -- for child processes that does not exist anymore.
+
+    #Immediate child reaping by libev could be rectified via re-installing
+    #the default signal handler with `signal(signal.SIGCHLD, signal.SIG_DFL)`.
+    #However, doing so would render libev's child watchers useless.
+
+    #Instead, for each `_GProcess`, a libev child watcher is explicitly
+    #started in the modified `start()` method below. The modified `join()`
+    #method is adjusted to this libev-watcher-based child monitoring.
+    #`multiprocessing.Process.join()` is entirely surpassed, but resembled.
+    #`os.waitpid()` is broken in all process generations after the first
+    #`_GProcess` has been started.
+
+    #On Windows, cooperative `join()` is realized via frequent non-blocking
+    #calls to `Process.is_alive()` and the original `join()` method.
     if not WINDOWS:
         def start(self):
             hub = gevent.get_hub()
@@ -316,6 +320,9 @@ class _GProcess(multiprocessing.Process):
     def join(self, timeout=None):
         """
         Wait cooperatively until child process terminates or timeout occurs.
+
+        :arg timeout: ``None`` (default) or a a time in seconds. Returns when
+            timeout expires.
         """
         assert self._parent_pid == os.getpid(), "I'm not parent of this child."
         assert self._popen is not None, 'Can only join a started process.'

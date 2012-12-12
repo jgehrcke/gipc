@@ -272,6 +272,14 @@ Handling handles
     :members: get
 
 
+Processes
+=========
+
+.. autoclass:: gipc.gipc._GProcess()
+    :show-inheritance:
+    :members: join
+
+
 Exception types
 ===============
 
