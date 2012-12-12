@@ -1,21 +1,17 @@
-import sys
-import os
-
 import gevent
-sys.path.insert(0, os.path.abspath('..'))
 import gipc
 
 
 def main():
     with gipc.pipe() as (r, w):
-    p = gipc.start_process(target=child_process, args=(r, ))
-    wg = gevent.spawn(writegreenlet, w)
-    try:
+        p = gipc.start_process(target=child_process, args=(r, ))
+        wg = gevent.spawn(writegreenlet, w)
+        try:
+            p.join()
+        except KeyboardInterrupt:
+            wg.kill(block=True)
+            p.terminate()
         p.join()
-    except KeyboardInterrupt:
-        wg.kill(block=True)
-        p.terminate()
-    p.join()
 
 
 def writegreenlet(writer):
