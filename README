@@ -1,35 +1,43 @@
 What can gipc do for you?
 =========================
-With ``gipc`` you can easily use ``multiprocessing`` and ``gevent`` within one Python application. It provides gevent-aware `multiprocessing.Process``-based child processes and gevent-cooperative inter-process communication.
+With ``gipc`` you can easily use ``multiprocessing`` and ``gevent`` within one
+Python application. It provides gevent-aware `multiprocessing.Process``-based
+child processes and gevent-cooperative inter-process communication.
 
 
 Isn't this achievable with just gevent+multiprocessing?
 =======================================================
 Yes, but it requires some care:
 On Unix, child process creation via Python's ``multiprocessing`` package in the
-context of ``gevent`` might yield an undesired event loop state in the child and
-most likely breaks your application in some way. Furthermore, blocking method calls
-such as ``join()`` on a ``multiprocessing.Process`` or the ``send()``/``recv()`` methods
-on a ``multiprocessing.Pipe`` are not gevent-cooperative. ``gipc`` hides and
-solves these problems for you in a straight-forward fashion and allows for
-simple integration of child processes in your application.
+context of ``gevent`` might yield an undesired event loop state in the child
+and most likely breaks your application in some way. Furthermore, blocking
+method calls such as ``join()`` on a ``multiprocessing.Process`` or the
+``send()``/``recv()`` methods on a ``multiprocessing.Pipe`` are not
+gevent-cooperative. ``gipc`` hides and solves these problems for you in a
+straight-forward fashion and allows for simple integration of child processes
+in your application.
 
 
 Documentation
 =============
-The documentation with API details, detailed installation instructions and requirements can be found online at http://gehrcke.de/gipc.
+The documentation with API details, detailed installation instructions and
+requirements can be found online at http://gehrcke.de/gipc.
 
 
 Availability
 ============
-Download the latest release at `PyPI <http://pypi.python.org/pypi/gipc>`_  or download/clone the development version from the mercurial repository at `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
+Download the latest release at `PyPI <http://pypi.python.org/pypi/gipc>`_  or
+download/clone the development version from the mercurial repository at
+`bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
 
 Author & license
 ================
-``gipc`` is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_.
+``gipc`` is written and maintained by`Jan-Philip Gehrcke <http://gehrcke.de>`_
+and is licensed under the `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_.
 
 
 Contact
 =======
-Your feedback is highly appreciated. You can contact me at jgehrcke@googlemail.com.
+Your feedback is highly appreciated. You can contact me at
+jgehrcke@googlemail.com.
