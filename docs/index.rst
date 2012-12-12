@@ -1,17 +1,15 @@
-.. gevent-ipc documentation master file, created by
+.. gipc documentation master file, created by
    sphinx-quickstart on Thu Nov 22 15:14:51 2012.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
-
-========================================
-GIPC: Multiprocessing and IPC for gevent
-========================================
-
 
 .. toctree::
     :hidden:
     :maxdepth: 2
 
+========================================
+GIPC: Multiprocessing and IPC for gevent
+========================================
 
 - :ref:`introduction`
 - :ref:`examples`
@@ -25,21 +23,26 @@ Introduction
 
 What can gipc do for you?
 =========================
-With ``gipc`` you can easily use ``multiprocessing`` and ``gevent`` within one Python application. It provides
 
-    - gevent-aware ``multiprocessing.Process``-based child processes.
-    - gevent-cooperative inter-process communication.
+With ``gipc`` you can easily use ``multiprocessing`` and ``gevent`` within one
+Python application. It provides
+
+- gevent-aware ``multiprocessing.Process``-based child processes.
+- gevent-cooperative inter-process communication.
+
 
 
 Isn't this achievable with just gevent+multiprocessing?
 =======================================================
-Yes, but it requires some care:
-On Unix, child process creation via Python's ``multiprocessing`` package in the
-context of ``gevent`` might yield an undesired event loop state in the child and
-most likely breaks your application in some way. Furthermore, blocking method calls
-such as ``join()`` on a ``multiprocessing.Process`` or the ``send()``/``recv()`` methods
-on a ``multiprocessing.Connection`` are not gevent-cooperative. ``gipc``overcomes these challenges  for you in a straight-forward fashion and allows for simple integration of child
-processes in your application.
+
+Yes, but it requires some care: On Unix, child process creation via Python's
+``multiprocessing`` package in the context of ``gevent`` might yield an
+undesired event loop state in the child and most likely breaks your application
+in some way. Furthermore, blocking method calls such as ``join()`` on a
+``multiprocessing.Process`` or the ``send()``/``recv()`` methods on a
+``multiprocessing.Connection`` are not gevent-cooperative. ``gipc`` overcomes
+these challenges  for you in a straight-forward fashion and allows for simple
+integration of child processes in your application.
 
 
 Installation
@@ -47,6 +50,7 @@ Installation
 
 Via pip
 -------
+
 The latest ``gipc`` release from PyPI can be pulled and and installed via `pip <http://www.pip-installer.org>`_::
 
     $ pip install gipc
@@ -62,6 +66,7 @@ pip is recommended over easy_install. pip installation instructions can be found
 
 Directly via setup.py
 ---------------------
+
 Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_.  Extract the archive and invoke::
 
     $ python setup.py install
@@ -73,28 +78,31 @@ Once installed, you should be able to remove gipc manually or via ``pip uninstal
 
 Requirements
 ============
-    - gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent `here <https://github.com/SiteSupport/gevent/downloads>`_.
-    - Python 2.6, 2.7
-    - Python 3 support: TBD
+
+- gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent `here <https://github.com/SiteSupport/gevent/downloads>`_.
+- Python 2.6, 2.7
+- Python 3 support: TBD
 
 
 Notes for Windows users
 =======================
-    - The ``get()`` timeout feature is not available.
-    - Non-blocking I/O is faked via a threadpool (significant performance drop
-      compared to Unix).
-    - A solution to both problems would be IOCP-based (cf. libuv).
+
+- The ``get()`` timeout feature is not available.
+- Non-blocking I/O is faked via a threadpool (significant performance drop
+  compared to Unix).
+- A solution to both problems would be IOCP-based (cf. libuv).
 
 
 Usage
 =====
 
-    See :ref:`examples` and :ref:`api` sections.
+See :ref:`examples` and :ref:`api` sections.
 
 
 
 Author, license, contact
 ========================
+
 ``gipc`` is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_. Your feedback is highly appreciated. You can contact me at jgehrcke@googlemail.com.
 
 
