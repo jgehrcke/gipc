@@ -150,8 +150,9 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         Forwarded to ``multiprocessing.Process.daemon``.
 
     :returns:
-        ``_GProcess`` instance (inherits from ``multiprocessing.Process`` and
-        re-implements some of its methods in a gevent-cooperative fashion).
+        :class:`gipc._GProcess` instance (inherits from
+        ``multiprocessing.Process`` and re-implements some of its methods in a
+        gevent-cooperative fashion).
 
     Process creation is based on ``multiprocessing.Process()``. When working
     with gevent, instead of calling ``Process()`` directly, it is highly
@@ -250,7 +251,8 @@ def _child(target, all_handles, args, kwargs):
 class _GProcess(multiprocessing.Process):
     """
     Implements adjustments to multiprocessing's Process class for
-    gevent-cooperativity.
+    gevent-cooperativity. Currently re-implements ``start()``, ``is_alive()``,
+    ``join()``, ``exitcode``.
     """
     #On Unix, we  cannot rely on `multiprocessing.Process.is_alive()` and
     #`multiprocessing.Process._popen.wait()` to tell the truth about the state
