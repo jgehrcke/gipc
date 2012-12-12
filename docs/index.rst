@@ -104,6 +104,12 @@ Author, license, contact
 Examples
 ########
 
+- :ref:`example1`
+- :ref:`example2`
+
+
+.. _example1:
+
 Infinite messaging from greenlet in parent to child
 ===================================================
 
@@ -150,8 +156,10 @@ After spawning ``wg``, ``p.join()`` is called immediately, i.e. the write greenl
 On ``KeyboardInterrupt``, the parent first kills the write greenlet and blocks cooperatively until it has stopped. Secondly, it tries to terminate the child process (via ``SIGTER`` on Unix) and waits for it to exit via ``p.join()``.
 
 
-Time-synchronize two processes
-==============================
+.. _example2:
+
+Time-synchronized messaging between processes
+=============================================
 
 .. code::
 
