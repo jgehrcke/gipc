@@ -33,7 +33,7 @@ With ``gipc`` you can easily use ``multiprocessing`` and ``gevent`` within one P
 
 Isn't this achievable with just gevent+multiprocessing?
 =======================================================
-It is, and this is precisely what ``gipc`` does. It just requires some care:
+Yes, but it requires some care:
 On Unix, child process creation via Python's ``multiprocessing`` package in the
 context of ``gevent`` might yield an undesired event loop state in the child and
 most likely breaks your application in some way. Furthermore, blocking method calls
@@ -91,6 +91,12 @@ Usage
 =====
     - cf. Examples section
     - cf. API section
+
+
+
+Author, license, contact
+========================
+``gipc`` is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_. Your feedback is highly appreciated. You can contact me at jgehrcke@googlemail.com.
 
 
 .. _examples:
