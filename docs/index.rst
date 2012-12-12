@@ -107,12 +107,22 @@ Examples
 Infinite messaging from greenlet in parent to child
 ===================================================
 
-Consider the following example:
-
 .. code::
 
     import gevent
     import gipc
+
+
+    def main():
+        with gipc.pipe() as (r, w):
+            p = gipc.start_process(target=child_process, args=(r, ))
+            wg = gevent.spawn(writegreenlet, w)
+            try:
+                p.join()
+            except KeyboardInterrupt:
+                wg.kill(block=True)
+                p.terminate()
+            p.join()
 
 
     def writegreenlet(writer):
@@ -126,15 +136,8 @@ Consider the following example:
             print "Child process got message from pipe:\n\t'%s'" % reader.get()
 
 
-    with gipc.pipe() as (r, w):
-        p = gipc.start_process(target=child_process, args=(r, ))
-        wg = gevent.spawn(writegreenlet, w)
-        try:
-            p.join()
-        except KeyboardInterrupt:
-            wg.kill(block=True)
-            p.terminate()
-        p.join()
+    if __name__ == "__main__":
+        main()
 
 The context manager ``with gipc.pipe() as (r, w)`` creates a pipe with read handle ``r`` and write handle ``w``. On context exit (latest) the pipe ends will be closed properly.
 
@@ -145,6 +148,49 @@ While the child process ``p`` runs, a greenlet ``wg`` has been started in the ma
 After spawning ``wg``, ``p.join()`` is called immediately, i.e. the write greenlet is executed concurrently with ``p.join()``. In this state, messages are passed between parent and child until the parent raises the ``KeyboardInterrupt`` exception.
 
 On ``KeyboardInterrupt``, the parent first kills the write greenlet and blocks cooperatively until it has stopped. Secondly, it tries to terminate the child process (via ``SIGTER`` on Unix) and waits for it to exit via ``p.join()``.
+
+
+Time-synchronize two processes
+==============================
+
+.. code::
+
+    import time
+    import gevent
+    import gipc
+
+
+    def main():
+        with gipc.pipe() as (r1, w1):
+            with gipc.pipe() as (r2, w2):
+                p = gipc.start_process(
+                    writer_process,
+                    kwargs={'writer': w2, 'syncreader': r1}
+                    )
+                result = None
+                # Synchronize with child process.
+                w1.put("SYN")
+                assert r2.get() == "ACK"
+                t = time.time()
+                while result != "STOP":
+                    result = r2.get()
+                elapsed = time.time() - t
+                p.join()
+                print "Time elapsed: %.3f s" % elapsed
+
+
+    def writer_process(writer, syncreader):
+        with writer:
+            assert syncreader.get() == "SYN"
+            writer.put("ACK")
+            for i in xrange(1000):
+                writer.put("A"*1000)
+            writer.put('STOP')
+
+
+    if __name__ == "__main__":
+        main()
+
 
 
 .. _api:
