@@ -15,6 +15,7 @@ setup(
     download_url = "http://gehrcke.de/gipc",
     keywords = ["gevent", "ipc", "multiprocessing"],
     license = "Apache License 2.0",
+    platforms = ["POSIX", "Windows"],
     classifiers = [
         "Programming Language :: Python",
         "Development Status :: 3 - Alpha",
