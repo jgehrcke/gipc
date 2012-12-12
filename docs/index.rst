@@ -26,8 +26,8 @@ Introduction
 What can gipc do for you?
 =========================
 
-With ``gipc`` (pronunciation "gipsy") you can easily use child processes
-and ``gevent`` within one Python application. It provides
+With ``gipc`` (pronunciation "gipsy") child processes and ``gevent``
+can easily be used within one Python application. ``gipc`` provides
 
 - gevent-aware ``multiprocessing.Process``-based child processes.
 - gevent-cooperative inter-process communication.
@@ -37,7 +37,7 @@ and ``gevent`` within one Python application. It provides
 Isn't this achievable with just gevent+multiprocessing?
 =======================================================
 
-Yes, but it requires some care: On Unix, child process creation via Python's
+Yes, but it requires care: On Unix, child process creation via Python's
 ``multiprocessing`` package in the context of ``gevent`` might yield an
 undesired event loop state in the child and most likely breaks your application
 in some way. Furthermore, blocking method calls such as ``join()`` on a
@@ -48,23 +48,26 @@ integration of child processes in your application -- on POSIX-compliant
 systems as well as on Windows.
 
 
-Technology
-==========
+Implementation details
+======================
 - gevent-cooperative communication in ``gipc`` is based on classical anonymous
   pipes. A binary ``pickle`` protocol is used for transmitting
   arbitrary pickleable objects. My test system achieved a payload transfer rate
   of 1200 MB/s and a message transmission rate of 100.000 messages/s through
   one pipe between two processes.
 
-- Child process creation is done via a thin wrapper around
-  ``multiprocessing.Process``. On Unix, it re-initializes the libev event loop
-  in the child before performing any other action.
+- Child process creation and invocation is done via a thin wrapper around
+  ``multiprocessing.Process``. On Unix, the libev event loop is re-initialized
+  in the child before execution of the target function.
 
-- On POSIX-compliant systems, child process monitoring is based on
-  libev child watchers (relevant for ``is_alive()`` and ``join()``).
+- On POSIX-compliant systems, gevent-aware child process monitoring is based on
+  libev child watchers (this affects ``is_alive()`` and ``join()``).
 
-- Convenience features such as the context manager for pipe handles or various
-  timeout control flows are available.
+- Convenience features such as a context manager for pipe handles or timeout
+  controls based on ``gevent.Timeout`` are available.
+
+- Any read/write operation on a pipe is ``gevent.lock.Semaphore``-protected
+  and therefore greenlet-/threadssafe and atomic.
 
 
 Installation
@@ -74,11 +77,11 @@ Via pip
 -------
 
 The latest ``gipc`` release from PyPI can be pulled and and installed via
- `pip <http://www.pip-installer.org>`_::
+`pip <http://www.pip-installer.org>`_::
 
     $ pip install gipc
 
-pip can also install the development version of ``gipc`` via::
+pip can also install the development version of ``gipc``::
 
     $ pip install hg+https://bitbucket.org/jgehrcke/gipc
 
@@ -101,7 +104,7 @@ Extract the archive and invoke::
 The same can be done with the latest development version of ``gipc`` which 
 can be downloaded from `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
-Once installed, you should be able to remove gipc manually or via ``pip uninstall gipc``.
+Once installed, you can remove gipc via ``pip uninstall gipc`` or manually.
 
 
 Requirements
@@ -109,7 +112,7 @@ Requirements
 
 - gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent 
   `here <https://github.com/SiteSupport/gevent/downloads>`_.
-- successfully tested against Python 2.6 and 2.7
+- unit tests pass on Python 2.6 and 2.7
 
 
 Notes for Windows users
@@ -121,7 +124,7 @@ Notes for Windows users
 
 The optimal solution to both problems would be IOCP-based. Maybe one day
 gevent is `libuv <https://github.com/joyent/libuv>`_-backed, which uses
-ICOP on Windows and would allow for running the same gevent code on Windows 
+IOCP on Windows and would allow for running the same gevent code on Windows 
 as on POSIX-based systems. Furthermore, if gevent went with libuv, the
 strengths of both, the node.js and the gevent worlds woud be merged.
 Denis, the maintainer of gevent,  seems to be

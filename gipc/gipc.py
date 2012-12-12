@@ -252,7 +252,7 @@ class _GProcess(multiprocessing.Process):
     """
     Implements adjustments to multiprocessing's Process class for
     gevent-cooperativity. Currently re-implements ``start()``, ``is_alive()``,
-    ``join()``, ``exitcode``.
+    ``exitcode`` on Unix and ``join()`` on Windows and Unix..
     """
     #On Unix, we  cannot rely on `multiprocessing.Process.is_alive()` and
     #`multiprocessing.Process._popen.wait()` to tell the truth about the state
@@ -323,8 +323,9 @@ class _GProcess(multiprocessing.Process):
         """
         Wait cooperatively until child process terminates or timeout occurs.
 
-        :arg timeout: ``None`` (default) or a a time in seconds. Returns when
-            timeout expires.
+        :arg timeout: ``None`` (default) or a a time in seconds. The method
+            simply returns when timeout expires. The state of the process
+            has to be identified via ``is_alive()``.
         """
         assert self._parent_pid == os.getpid(), "I'm not parent of this child."
         assert self._popen is not None, 'Can only join a started process.'
