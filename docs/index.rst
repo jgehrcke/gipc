@@ -26,11 +26,10 @@ Introduction
 What can gipc do for you?
 =========================
 
-With ``gipc`` (pronunciation "gipsy") child processes and ``gevent``
-can easily be used within one Python application. ``gipc`` provides
-
-- gevent-aware ``multiprocessing.Process``-based child processes.
-- gevent-cooperative inter-process communication.
+With ``gipc`` (pronunciation "gipsy") ``multiprocessing.Process``-based child
+processes can safely be created anywhere within your ``gevent``-powered
+application. Furthermore, ``gipc`` provides gevent-cooperative inter-process
+communication.
 
 
 
@@ -43,7 +42,7 @@ undesired event loop state in the child and most likely breaks your application
 in some way. Furthermore, blocking method calls such as ``join()`` on a
 ``multiprocessing.Process`` or the ``send()``/``recv()`` methods on a
 ``multiprocessing.Connection`` are not gevent-cooperative. ``gipc`` overcomes
-these challenges  for you in a straight-forward fashion and allows for simple
+these challenges for you in a straight-forward fashion and allows for simple
 integration of child processes in your application -- on POSIX-compliant
 systems as well as on Windows.
 
@@ -67,7 +66,7 @@ Implementation details
   controls based on ``gevent.Timeout`` are available.
 
 - Any read/write operation on a pipe is ``gevent.lock.Semaphore``-protected
-  and therefore greenlet-/threadssafe and atomic.
+  and therefore greenlet-/threadsafe and atomic.
 
 
 Installation
