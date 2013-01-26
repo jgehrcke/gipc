@@ -123,7 +123,7 @@ Notes for Windows users
 
 - The ``get()`` timeout feature is not available.
 - "Non-blocking I/O" is realized by outsourcing blocking I/O calls to threads
-  in a gevent threadpool. Compared to native non-blocking IO as is available
+  in a gevent thread pool. Compared to native non-blocking I/O as is available
   on POSIX-compliant systems, this leads to a significant messaging performance
   drop.
 
