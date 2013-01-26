@@ -49,11 +49,15 @@ systems as well as on Windows.
 
 Implementation details
 ======================
-- gevent-cooperative communication in ``gipc`` is based on classical anonymous
-  pipes. A binary ``pickle`` protocol is used for transmitting
-  arbitrary pickleable objects. My test system achieved a payload transfer rate
-  of 1200 MB/s and a message transmission rate of 100.000 messages/s through
-  one pipe between two processes.
+- ``gipc`` uses classical anonymous pipes as transport layer for
+  gevent-cooperative communication between greenlets and/or processes. A binary
+  ``pickle`` protocol is used for transmitting arbitrary objects. Reading and
+  writing on pipes is done with ``gevent``'s cooperative versions of
+  ``os.read()`` and ``os.write()`` (on POSIX-compliant systems they use
+  non-blocking I/O, on Windows a threadpool is used). On Linux, my test system
+  (Xeon E5630) achieved a payload transfer rate of 1200 MB/s and a message
+  transmission rate of 100.000 messages/s through one pipe between two
+  processes.
 
 - Child process creation and invocation is done via a thin wrapper around
   ``multiprocessing.Process``. On Unix, the libev event loop is re-initialized
@@ -84,51 +88,54 @@ pip can also install the development version of ``gipc``::
 
     $ pip install hg+https://bitbucket.org/jgehrcke/gipc
 
-Note that the latter requires the most recent version of 
-`distribute <http://packages.python.org/distribute/>`_ which can be installed 
+Note that the latter requires the most recent version of
+`distribute <http://packages.python.org/distribute/>`_ which can be installed
 by executing `distribute_setup.py <http://python-distribute.org/distribute_setup.py>`_.
 
-pip is recommended over easy_install. pip installation instructions can be 
+pip is recommended over easy_install. pip installation instructions can be
 found `here <http://www.pip-installer.org/en/latest/installing.html>`_.
 
 
 Directly via setup.py
 ---------------------
 
-Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_. 
+Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_.
 Extract the archive and invoke::
 
     $ python setup.py install
 
-The same can be done with the latest development version of ``gipc`` which 
+The same can be done with the latest development version of ``gipc`` which
 can be downloaded from `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
-Once installed, you can remove gipc via ``pip uninstall gipc`` or manually.
+Once installed, you can remove gipc manually or via ``pip uninstall gipc``.
 
 
 Requirements
 ============
 
-- gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent 
+- gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent
   `here <https://github.com/SiteSupport/gevent/downloads>`_.
-- unit tests pass on Python 2.6 and 2.7
+- unit tests pass on Python 2.6 and 2.7.
 
 
 Notes for Windows users
 =======================
 
 - The ``get()`` timeout feature is not available.
-- Non-blocking I/O is faked via gevent threadpool, leading to a significant
-  messaging performance drop compared to POSIX-compliant systems.
+- "Non-blocking I/O" is realized by outsourcing blocking I/O calls to threads
+  in a gevent threadpool. Compared to native non-blocking IO as is available
+  on POSIX-compliant systems, this leads to a significant messaging performance
+  drop.
 
-The optimal solution to both problems would be IOCP-based. Maybe one day
-gevent is `libuv <https://github.com/joyent/libuv>`_-backed, which uses
-IOCP on Windows and would allow for running the same gevent code on Windows 
-as on POSIX-based systems. Furthermore, if gevent went with libuv, the
-strengths of both, the node.js and the gevent worlds woud be merged.
-Denis, the maintainer of gevent,  seems to be
-`open <https://twitter.com/gevent/status/251870755187478529>`_ to such a
-transition and the first steps are already
+`Windows I/O Completion Ports <http://msdn.microsoft.com/en-us/library/aa365198%28VS.85%29.aspx>`
+(IOCP) could solve both issues in an elegant way. Currently, gevent is built on
+top of libev which does not support IOCP. In the future, however, gevent might
+become `libuv <https://github.com/joyent/libuv>`_-backed. libuv supports IOCP
+and would allow for running the same gevent code on Windows as on
+POSIX-compliant systems. Furthermore, if gevent went with libuv, the strengths
+of both, the node.js and the gevent worlds woud be merged. Denis Bilenko, the
+maintainer of gevent, seems to be `open <https://twitter.com/gevent/status/251870755187478529>`_
+to such a transition and the first steps are already
 `done <https://github.com/saghul/uvent>`_.
 
 
@@ -142,10 +149,10 @@ See :ref:`examples <examples>` and :ref:`API <api>` sections.
 Author, license, contact
 ========================
 
-``gipc`` is written and maintained by 
-`Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the 
-`Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_. 
-Your feedback is highly appreciated. You can contact me at 
+``gipc`` is written and maintained by
+`Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the
+`Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_.
+Your feedback is highly appreciated. You can contact me at
 jgehrcke@googlemail.com.
 
 
