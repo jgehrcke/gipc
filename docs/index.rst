@@ -127,7 +127,7 @@ Notes for Windows users
   on POSIX-compliant systems, this leads to a significant messaging performance
   drop.
 
-`Windows I/O Completion Ports <http://msdn.microsoft.com/en-us/library/aa365198%28VS.85%29.aspx>`
+`Windows I/O Completion Ports <http://msdn.microsoft.com/en-us/library/aa365198%28VS.85%29.aspx>`_
 (IOCP) could solve both issues in an elegant way. Currently, gevent is built on
 top of libev which does not support IOCP. In the future, however, gevent might
 become `libuv <https://github.com/joyent/libuv>`_-backed. libuv supports IOCP
