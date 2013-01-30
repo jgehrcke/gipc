@@ -159,9 +159,9 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     recommended to create child processes via :func:`start_process`. It takes
     care of
 
+        - re-initializing gevent and libev's event loop in the child process.
         - closing dispensable file descriptors after child process creation.
         - proper file descriptor inheritance on Windows.
-        - re-initialization of the event loop in the child process.
         - providing cooperative process methods (such as ``join()``).
 
     Calling this method breaks ``os.waitpid()`` on Unix: spawning the first
@@ -200,13 +200,13 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
 
 
 def _child(target, all_handles, args, kwargs):
-    """Wrapper function that runs in child process. Sanitizes situation and
-    executes user-given function.
+    """Wrapper function that runs in child process. Resets gevent/libev state
+    and executes user-given function.
 
     After fork on POSIX-compliant systems, gevent's state is inherited by the
     child which may lead to undesired behavior, such as greenlets running in
-    both, the parent and the child. Therefore, on Unix, gevent's state is
-    entirely reset before running the user-given function.
+    both, the parent and the child. Therefore, on Unix, gevent's and libev's
+    state is reset before running the user-given function.
     """
     log.debug("_child start. target: `%s`" % target)
     # Restore global `_all_handles` (required on Win, does not harm elsewhere).
@@ -242,7 +242,7 @@ def _child(target, all_handles, args, kwargs):
     target(*args, **kwargs)
     for h in childhandles:
         try:
-            # The user or a child of this child might already have closen it.
+            # The user or a child of this child might already have closed it.
             h.close()
         except GIPCClosed:
             pass
