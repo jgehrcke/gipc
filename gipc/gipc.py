@@ -215,16 +215,23 @@ def _child(target, all_handles, args, kwargs):
     global _all_handles
     _all_handles = all_handles
     if not WINDOWS:
-        # `gevent.reinit` calls `libev.ev_loop_fork()`, which is designed to
-        # be called after fork.
+        # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
+        # the kernel state for backends that have one. Must be called in the
+        # child before using further libev API.
         gevent.reinit()
+        log.debug("Delete current hub's threadpool.")
+        hub = gevent.get_hub()
+        del hub.threadpool
+        hub._threadpool = None
         # Destroy default event loop via `libev.ev_loop_destroy()` and delete
         # hub. This dumps all registered events and greenlets that have been
         # duplicated from the parent via fork().
-        gevent.get_hub().destroy(destroy_loop=True)
+        log.debug("Destroy hub and default loop.")
+        hub.destroy(destroy_loop=True)
         # Create a new hub and a new default event loop via
         # `libev.gevent_ev_default_loop`.
         h = gevent.get_hub(default=True)
+        log.debug("Created new hub and default event loop.")
         assert h.loop.default, 'Could not create libev default event loop.'
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]

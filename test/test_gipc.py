@@ -407,7 +407,7 @@ class TestContextManager():
             set_all_handles([])
             raise Exception("Cleanup was not successful.")
 
-    def testt_all_handles_length(self):
+    def test_all_handles_length(self):
         r, w = pipe()
         assert len(get_all_handles()) == 2
         r.close()
@@ -540,7 +540,9 @@ class TestGetTimeout():
         assert False
 
 
-class TestUsecases():
+class TestSimpleUseCases():
+    """Tests reproducing basic usage scenarios of gipc.
+    """
     def teardown(self):
         if get_all_handles():
             for h in get_all_handles():
@@ -693,6 +695,36 @@ def usecase_child_c(reader, syncwriter):
         with raises(EOFError):
             reader.get()
     sys.exit(5)
+
+
+class TestComplexUseCases():
+    """Tests with increased complexity; involving other parts of gevent
+    and reproducing common usage scenarios.
+    """
+    def teardown(self):
+            if get_all_handles():
+                for h in get_all_handles():
+                    try:
+                        h.close()
+                        os.close(h._fd)
+                    except (OSError, GIPCError, TypeError):
+                        pass
+                set_all_handles([])
+                raise Exception("Cleanup was not successful.")
+
+    def test_getaddrinfo_mp(self):
+        """This test would make gevent's hub threadpool kill upon hub
+        destruction in child block forever. Gipc resolves this by killing
+        threadpool even harder.
+        """
+        import gevent.socket as socket
+        socket.getaddrinfo("localhost", 21)
+        p = start_process(target=test_getaddrinfo_mp_child)
+        p.join()
+
+
+def test_getaddrinfo_mp_child():
+    return
 
 
 if __name__ == "__main__":
