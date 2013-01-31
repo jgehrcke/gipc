@@ -14,7 +14,7 @@
 /* -- page layout ----------------------------------------------------------- */
 
 body {
-    font-family: {{ theme_bodyfont }};
+    font-family: 'Droid Serif', serif;
     font-size: 100%;
     background-color: {{ theme_footerbgcolor }};
     color: #000;
@@ -103,8 +103,9 @@ div.documentwrapper {
 */
 {%- endif %}
 
+
 div.sphinxsidebar h3 {
-    font-family: {{ theme_headfont }};
+    font-family: 'Droid Sans', sans-serif;
     color: {{ theme_sidebartextcolor }};
     font-size: 1.4em;
     font-weight: normal;
@@ -117,7 +118,7 @@ div.sphinxsidebar h3 a {
 }
 
 div.sphinxsidebar h4 {
-    font-family: {{ theme_headfont }};
+    font-family: 'Droid Sans', sans-serif;
     color: {{ theme_sidebartextcolor }};
     font-size: 1.3em;
     font-weight: normal;
@@ -197,7 +198,7 @@ div.body h3,
 div.body h4,
 div.body h5,
 div.body h6 {
-    font-family: {{ theme_headfont }};
+    font-family: 'Droid Sans', sans-serif;
     background-color: {{ theme_headbgcolor }};
     font-weight: normal;
     color: {{ theme_headtextcolor }};
@@ -228,6 +229,7 @@ a.headerlink:hover {
 div.body p, div.body dd, div.body li {
     /*text-align: justify;*/
     line-height: 130%;
+    margin-bottom: 10px;
 }
 
 div.admonition p.admonition-title + p {
@@ -284,9 +286,9 @@ pre {
 }
 
 tt {
-    background-color: #ecf0f3;
+    //background-color: #ecf0f3;
     padding: 0 1px 0 1px;
-    font-size: 0.95em;
+    font-size: 120%;
 }
 
 th {
@@ -302,7 +304,7 @@ th {
 }
 
 .viewcode-back {
-    font-family: {{ theme_bodyfont }};
+    font-family: 'Droid Sans', sans-serif;    
 }
 
 div.viewcode-block:target {

@@ -11,44 +11,77 @@
 gipc: multiprocessing and IPC for gevent
 ========================================
 
-This documentation applies to gipc |release|. It was built on |today|. Sections:
+Table of contents:
 
-    - :ref:`Introduction (installation, requirements, contact) <introduction>`
+    - :ref:`About gipc <about>`
+        - :ref:`What can gipc do for you? <what>`
+        - :ref:`Technical notes <technotes>`
+        - :ref:`Installation and requirements <installation>`
+        - :ref:`Notes for Windows users <winnotes>`
+        - :ref:`Author, license, contact <contact>`        
     - :ref:`Code examples <examples>`
     - :ref:`API documentation <api>`
 
+This documentation applies to gipc |release|. It was built on |today|.
 
-.. _introduction:
+.. _about:
 
-Introduction
-############
+About gipc
+##########
+
+.. _what:
 
 What can gipc do for you?
 =========================
 
-With ``gipc`` (pronunciation "gipsy") ``multiprocessing.Process``-based child
-processes can safely be created anywhere within your ``gevent``-powered
-application. Furthermore, ``gipc`` provides gevent-cooperative inter-process
-communication.
+Naive usage of ``multiprocessing`` in the context of a ``gevent``-powered
+application may raise various problems and most likely breaks the application in
+some way. That is where ``gipc`` comes into play: it is developed with the
+motivation to solve these issues transparently and make using ``gevent`` in
+combination with ``multiprocessing`` a no-brainer again.
+
+**With gipc (pronunciation "gipsy") multiprocessing.Process-based child
+processes can safely be created anywhere within your gevent-powered application.
+Furthermore, gipc provides gevent-cooperative inter-process communication and
+useful helper constructs.**
+
+``gipc`` is lightweight and very simple to integrate. In the following code
+snippet, a Python object is sent from a greenlet in the main process to a child
+process::
+
+    import gevent
+    import gipc
+
+    obj = 0
+
+    def child(reader):
+        assert reader.get() == obj
+
+    if __name__ == "__main__":
+        with gipc.pipe() as (reader, writer):
+            writelet = gevent.spawn(lambda w: w.put(obj), writer)
+            readchild = gipc.start_process(child, args=(reader,))
+            writelet.join()
+            readchild.join()
 
 
+Can't I do this with just gevent+multiprocessing?
+-------------------------------------------------
 
-Isn't this achievable with just gevent+multiprocessing?
-=======================================================
+It requires care: child process creation via ``multiprocessing`` in the context
+of ``gevent`` yields an undesired event loop state in the child. Greenlets
+spawned before forking are duplicated in the child. Furthermore, blocking method
+calls such as ``join()`` on a ``multiprocessing.Process`` or the
+``send()``/``recv()`` methods on a ``multiprocessing.Connection`` are not
+gevent-cooperative. ``gipc`` overcomes these challenges for you transparently
+and in a straight-forward fashion. It allows for simple integration of child
+processes in your application -- on POSIX-compliant systems as well as on
+Windows.
 
-Yes, but it requires care: On Unix, child process creation via Python's
-``multiprocessing`` package in the context of ``gevent`` might yield an
-undesired event loop state in the child and most likely breaks your application
-in some way. Furthermore, blocking method calls such as ``join()`` on a
-``multiprocessing.Process`` or the ``send()``/``recv()`` methods on a
-``multiprocessing.Connection`` are not gevent-cooperative. ``gipc`` overcomes
-these challenges for you in a straight-forward fashion and allows for simple
-integration of child processes in your application -- on POSIX-compliant
-systems as well as on Windows.
+.. _technotes:
 
-
-Implementation details
-======================
+Technical notes
+===============
 - ``gipc`` uses classical anonymous pipes as transport layer for
   gevent-cooperative communication between greenlets and/or processes. A binary
   ``pickle`` protocol is used for transmitting arbitrary objects. Reading and
@@ -60,8 +93,8 @@ Implementation details
   processes.
 
 - Child process creation and invocation is done via a thin wrapper around
-  ``multiprocessing.Process``. On Unix, the libev event loop is re-initialized
-  in the child before execution of the target function.
+  ``multiprocessing.Process``. On Unix, the gevent's state and the libev event
+  loop are re-initialized in the child before execution of the target function.
 
 - On POSIX-compliant systems, gevent-aware child process monitoring is based on
   libev child watchers (this affects ``is_alive()`` and ``join()``).
@@ -71,13 +104,30 @@ Implementation details
 
 - Any read/write operation on a pipe is ``gevent.lock.Semaphore``-protected
   and therefore greenlet-/threadsafe and atomic.
+  
+- ``gipc`` obeys `semantic versioning 2 <http://semver.org/>`_.
 
+- Although ``gipc`` is in an early development phase, I found it to work very
+  stable already. The unit test suite aims to cover all of ``gipc``'s features
+  within a clean gevent environment. More complex application scenarios,
+  however, are not covered so far. Please let me know in which cases
+  ``gipc`` + ``gevent`` fails for you.
+
+  
+.. _installation:
 
 Installation
 ============
 
-Via pip
--------
+Requirements
+------------
+
+- gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent
+  `here <https://github.com/SiteSupport/gevent/downloads>`_.
+- unit tests pass on Python 2.6 and 2.7.
+
+Install via pip
+---------------
 
 The latest ``gipc`` release from PyPI can be pulled and and installed via
 `pip <http://www.pip-installer.org>`_::
@@ -96,8 +146,8 @@ pip is recommended over easy_install. pip installation instructions can be
 found `here <http://www.pip-installer.org/en/latest/installing.html>`_.
 
 
-Directly via setup.py
----------------------
+Install directly via setup.py
+-----------------------------
 
 Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_.
 Extract the archive and invoke::
@@ -109,19 +159,12 @@ can be downloaded from `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
 Once installed, you can remove gipc manually or via ``pip uninstall gipc``.
 
-
-Requirements
-============
-
-- gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent
-  `here <https://github.com/SiteSupport/gevent/downloads>`_.
-- unit tests pass on Python 2.6 and 2.7.
-
+.. _winnotes:
 
 Notes for Windows users
 =======================
 
-- The ``get()`` timeout feature is not available.
+- The ``_GIPCReader.get()`` timeout feature is not available.
 - "Non-blocking I/O" is realized by outsourcing blocking I/O calls to threads
   in a gevent thread pool. Compared to native non-blocking I/O as is available
   on POSIX-compliant systems, this leads to a significant messaging performance
@@ -138,13 +181,7 @@ maintainer of gevent, seems to be `open <https://twitter.com/gevent/status/25187
 to such a transition and the first steps are already
 `done <https://github.com/saghul/uvent>`_.
 
-
-Usage
-=====
-
-See :ref:`examples <examples>` and :ref:`API <api>` sections.
-
-
+.. _contact:
 
 Author, license, contact
 ========================
@@ -153,7 +190,11 @@ Author, license, contact
 `Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the
 `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_.
 Your feedback is highly appreciated. You can contact me at
-jgehrcke@googlemail.com.
+jgehrcke@googlemail.com or use the
+`Bitbucket issue tracker <https://bitbucket.org/jgehrcke/gipc/issues>`_.
+
+
+
 
 
 .. _examples:
@@ -169,6 +210,8 @@ Examples
 
 Infinite messaging from greenlet in parent to child
 ===================================================
+
+Let me explain some basic concepts by means of a simple messaging example:
 
 .. code::
 
@@ -202,15 +245,28 @@ Infinite messaging from greenlet in parent to child
     if __name__ == "__main__":
         main()
 
-The context manager ``with gipc.pipe() as (r, w)`` creates a pipe with read handle ``r`` and write handle ``w``. On context exit (latest) the pipe ends will be closed properly.
+The context manager ``with gipc.pipe() as (r, w)`` creates a pipe with read
+handle ``r`` and write handle ``w``. On context exit (latest) the pipe ends will
+be closed properly.
 
-Within the context, a child process is spawned via ``gipc.start_process()``. The read handle ``r`` is provided to the child which calls ``child_process(r)`` where an endless loop waits for messages/objects on the read end of the pipe and immediately prints those upon retrieval.
+Within the context, a child process is spawned via ``gipc.start_process()``.
+The read handle ``r`` is provided to the child process. It calls
+``child_process(r)`` where an endless loop waits for objects (messages) on the
+read end of the pipe. Upon retrieval, it immediately prints them.
 
-While the child process ``p`` runs, a greenlet ``wg`` has been started in the main process. It executes the function ``writegreenlet`` while providing ``w`` as an argument. Within this greenlet, one string per second is written into the write end of the pipe.
+While child process ``p`` is running, a greenlet ``wg`` is started in the main
+process. It executes the function ``writegreenlet`` while providing ``w`` as an
+argument. Within this greenlet, one string per second is written into the write
+end of the pipe.
 
-After spawning ``wg``, ``p.join()`` is called immediately, i.e. the write greenlet is executed concurrently with ``p.join()``. In this state, messages are passed between parent and child until the parent raises the ``KeyboardInterrupt`` exception.
+After spawning ``wg``, ``p.join()`` is called immediately, i.e. the write
+greenlet is running while ``p.join()`` waits for the child process to terminate.
+In this state, messages are passed between parent and child until the
+``KeyboardInterrupt`` exception is raised in the parent.
 
-On ``KeyboardInterrupt``, the parent first kills the write greenlet and blocks cooperatively until it has stopped. Secondly, it tries to terminate the child process (via ``SIGTER`` on Unix) and waits for it to exit via ``p.join()``.
+On ``KeyboardInterrupt``, the parent first kills the write greenlet and blocks
+cooperatively until it has stopped. Then it tries to terminate the child process
+(via ``SIGTER`` on Unix) and waits for it to exit via ``p.join()``.
 
 
 .. _example2:
