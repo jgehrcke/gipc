@@ -1,0 +1,9 @@
+Version 0.2.0 (Jan 31, 2013)
+----------------------------
+    * Remove hub's threadpool before hub destruction in child (increases
+      gevent-multiprocessing compatibility).
+
+
+Version 0.1.0 (Dec 12, 2012)
+----------------------------
+    * Initial release.

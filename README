@@ -1,28 +1,54 @@
 What can gipc do for you?
 =========================
-With ``gipc`` (pronunciation “gipsy”) child processes and gevent can
-easily be used within one Python application. ``gipc`` provides
-gevent-aware ``multiprocessing.Process``-based child processes and
-gevent-cooperative inter-process communication.
+
+Naive usage of ``multiprocessing`` in the context of a ``gevent``-powered
+application may raise various problems and most likely breaks the application in
+some way. That is where ``gipc`` comes into play: it is developed with the
+motivation to solve these issues transparently and make using ``gevent`` in
+combination with ``multiprocessing`` a no-brainer again.
+
+**With gipc (pronunciation "gipsy") multiprocessing.Process-based child
+processes can safely be created anywhere within your gevent-powered application.
+Furthermore, gipc provides gevent-cooperative inter-process communication and
+useful helper constructs.**
+
+``gipc`` is lightweight and very simple to integrate. In the following code
+snippet, a Python object is sent from a greenlet in the main process to a child
+process::
+
+    import gevent
+    import gipc
+
+    obj = 0
+
+    def child(reader):
+        assert reader.get() == obj
+
+    if __name__ == "__main__":
+        with gipc.pipe() as (reader, writer):
+            writelet = gevent.spawn(lambda w: w.put(obj), writer)
+            readchild = gipc.start_process(child, args=(reader,))
+            writelet.join()
+            readchild.join()
 
 
-Isn't this achievable with just gevent+multiprocessing?
-=======================================================
-Yes, but it requires care: On Unix, child process creation via Python's
-``multiprocessing`` package in the context of ``gevent`` might yield an
-undesired event loop state in the child and most likely breaks your application
-in some way. Furthermore, blocking method calls such as ``join()`` on a
-``multiprocessing.Process`` or the ``send()``/``recv()`` methods on a
-``multiprocessing.Connection`` are not gevent-cooperative. ``gipc`` overcomes
-these challenges  for you in a straight-forward fashion and allows for simple
-integration of child processes in your application -- on POSIX-compliant
-systems as well as on Windows.
+Can't I do this with just gevent+multiprocessing?
+-------------------------------------------------
 
+It requires care: child process creation via ``multiprocessing`` in the context
+of ``gevent`` yields an undesired event loop state in the child. Greenlets
+spawned before forking are duplicated in the child. Furthermore, blocking method
+calls such as ``join()`` on a ``multiprocessing.Process`` or the
+``send()``/``recv()`` methods on a ``multiprocessing.Connection`` are not
+gevent-cooperative. ``gipc`` overcomes these challenges for you transparently
+and in a straight-forward fashion. It allows for simple integration of child
+processes in your application -- on POSIX-compliant systems as well as on
+Windows.
 
 Documentation
 =============
-The documentation with API details, installation instructions, requirements,
-and code examples can be found at http://gehrcke.de/gipc.
+The documentation with technical notes, API details, installation instructions,
+requirements, and code examples can be found at http://gehrcke.de/gipc.
 
 
 Availability
@@ -42,5 +68,6 @@ and is licensed under the
 Contact
 =======
 Your feedback is highly appreciated. You can contact me at
-jgehrcke@googlemail.com.
+jgehrcke@googlemail.com or use the
+`Bitbucket issue tracker <https://bitbucket.org/jgehrcke/gipc/issues>`_.
 
