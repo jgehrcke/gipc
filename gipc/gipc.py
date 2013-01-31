@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-#   Copyright (C) 2012 Jan-Philip Gehrcke
+#   Copyright (C) 2012 - 2013 Jan-Philip Gehrcke
 #
 #   Licensed under the Apache License, Version 2.0 (the "License");
 #   you may not use this file except in compliance with the License.
@@ -125,8 +125,8 @@ def pipe():
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     """Spawn child process and execute function ``target(*args, **kwargs)``.
-    Any existing :class:`gipc._GIPCHandle` can be handed over to the child process
-    via ``args`` and/or ``kwargs``.
+    Any existing :class:`gipc._GIPCHandle` can be handed over to the child
+    process via ``args`` and/or ``kwargs``.
 
     :arg target:
         Function to be called in child as ``target(*args, **kwargs)``.
