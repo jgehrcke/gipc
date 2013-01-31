@@ -18,23 +18,17 @@
 .. todo::
 
     - Implement poll/peek on read end. (It's impossible to identify complete
-        messages in advance, but within the framework only complete messages
-        are sent.)
+      messages in advance, but within the framework only complete messages
+      are sent.)
     - Can gevent's FileObjectPosix be of any use?
-    - Review buffer-implementation, consider, buffer(), memoryview(), ..
+    - Review buffer-implementation, consider, buffer() and memoryview().
     - hub.cancel_wait() (cf. gevent sockets) in close instead of lock check?
-    - Ensure portability between Python 2 and 3
-    - put() timeout? Relevant in case of filled up pipes. However, put()
-        duration cannot be controlled if write is blocking *after* partial
-        msg write. Doesn't make sense I think.
-
-    - pipe implementation on Windows based on NamedPipes with overlapping IO
-        could give useful control:
-        - async IO, peeknamedpipe, ReadfileEx, SetCommTimeouts, CancelIO
-        - use pywin32 or http://docs.python.org/2/library/ctypes.html
-        - problem: circumvent blocking Win32 calls (hand control to gevent)
-        - async IO without blocking any thread: IOCP
-          http://msdn.microsoft.com/en-us/library/aa365198%28VS.85%29.aspx
+    - Work on portability between Python 2 and 3.
+    - put() timeout? Relevant in case of pipe being full. However, put()
+      duration cannot be controlled if write is blocking *after* partial
+      msg write. Doesn't make sense I think.
+    - Implementation on Windows based on NamedPipes with overlapping IO
+      could give useful control. Use libuv as backend instead of libev?
 """
 
 import os
@@ -156,7 +150,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
 
     Process creation is based on ``multiprocessing.Process()``. When working
     with gevent, instead of calling ``Process()`` directly, it is highly
-    recommended to create child processes via :func:`start_process`. It takes
+    recommended to start child processes via :func:`start_process`. It takes
     care of
 
         - re-initializing gevent and libev's event loop in the child process.
