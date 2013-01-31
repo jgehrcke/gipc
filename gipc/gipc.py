@@ -288,8 +288,7 @@ class _GProcess(multiprocessing.Process):
             self._returnevent = gevent.event.Event()
             # Start grabbing SIGCHLD in libev event loop.
             hub.loop.install_sigchld()
-            # Run new process (based on `fork()` on POSIX-compliant systems,
-            # and on `CreateProcess()` on Windows).
+            # Run new process (based on `fork()` on POSIX-compliant systems).
             super(_GProcess, self).start()
             # The occurrence of SIGCHLD is recorded asynchronously in libev.
             # This guarantees proper behaviour even if the child watcher is
@@ -301,7 +300,7 @@ class _GProcess(multiprocessing.Process):
 
         def _on_sigchld(self, watcher):
             watcher.stop()
-            # Status evaluation taken from multiprocessing.forking.
+            # Status evaluation taken from `multiprocessing.forking`.
             if os.WIFSIGNALED(watcher.rstatus):
                 self._popen.returncode = -os.WTERMSIG(watcher.rstatus)
             else:

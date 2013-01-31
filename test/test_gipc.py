@@ -720,20 +720,16 @@ class TestComplexUseCases():
         import gevent.socket as socket
         socket.getaddrinfo("localhost", 21)
         p = start_process(target=child_test_getaddrinfo_mp)
-        p.join(timeout=0.2)
-        if p.is_alive():
-            p.terminate()
-            raise RuntimeError("Child should have returned immediately.")
+        p.join(timeout=1)
+        assert p.exitcode == 0
 
     def test_threadpool_resolver_mp(self):
         h = gevent.get_hub()
         t = h.threadpool
         r = h.resolver
         p = start_process(target=child_test_threadpool_resolver_mp)
-        p.join(timeout=0.2)
-        if p.is_alive():
-            p.terminate()
-            raise RuntimeError("Child should have returned immediately.")
+        p.join(timeout=1)
+        assert p.exitcode == 0
 
 
 def child_test_threadpool_resolver_mp():
