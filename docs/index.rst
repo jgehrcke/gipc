@@ -3,6 +3,7 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+
 .. toctree::
     :hidden:
     :maxdepth: 2
@@ -11,23 +12,32 @@
 gipc: multiprocessing and IPC for gevent
 ========================================
 
-Table of contents:
+**Table of contents:**
 
     - :ref:`About gipc <about>`
         - :ref:`What can gipc do for you? <what>`
+        - :ref:`Usage <usage>`
         - :ref:`Technical notes <technotes>`
         - :ref:`Installation and requirements <installation>`
         - :ref:`Notes for Windows users <winnotes>`
-        - :ref:`Author, license, contact <contact>`        
+        - :ref:`Author, license, contact <contact>`
     - :ref:`Code examples <examples>`
     - :ref:`API documentation <api>`
+        - :ref:`Spawning child processes <api_spawn>`
+        - :ref:`Creating a pipe and its handle-pair <api_pipe_create>`
+        - :ref:`Handling handles <api_handles>`
+        - :ref:`Controlling child processes <api_control_childs>`
+        - :ref:`Exception types <api_exceptions>`
+
 
 This documentation applies to gipc |release|. It was built on |today|.
+
 
 .. _about:
 
 About gipc
 ##########
+
 
 .. _what:
 
@@ -35,10 +45,10 @@ What can gipc do for you?
 =========================
 
 Naive usage of ``multiprocessing`` in the context of a ``gevent``-powered
-application may raise various problems and most likely breaks the application in
-some way. That is where ``gipc`` comes into play: it is developed with the
-motivation to solve these issues transparently and make using ``gevent`` in
-combination with ``multiprocessing`` a no-brainer again.
+application may raise various problems and most likely breaks the application
+in some way. ``gipc`` is developed with the motivation to solve these issues
+transparently and make using ``gevent`` in combination with the basics of
+``multiprocessing`` -- process creation and IPC -- a no-brainer again.
 
 **With gipc (pronunciation "gipsy") multiprocessing.Process-based child
 processes can safely be created anywhere within your gevent-powered application.
@@ -64,19 +74,43 @@ process::
             writelet.join()
             readchild.join()
 
+Although very simple, this code would have malicious side effects if used with
+the canonical ``p = multiprocessing.Process(); p.start()`` instead of
+``gipc.start_process()``.
 
-Can't I do this with just gevent+multiprocessing?
--------------------------------------------------
 
-It requires care: child process creation via ``multiprocessing`` in the context
-of ``gevent`` yields an undesired event loop state in the child. Greenlets
-spawned before forking are duplicated in the child. Furthermore, blocking method
-calls such as ``join()`` on a ``multiprocessing.Process`` or the
-``send()``/``recv()`` methods on a ``multiprocessing.Connection`` are not
-gevent-cooperative. ``gipc`` overcomes these challenges for you transparently
-and in a straight-forward fashion. It allows for simple integration of child
-processes in your application -- on POSIX-compliant systems as well as on
-Windows.
+.. _usage:
+
+Usage
+=====
+
+``gipc``'s interface is small and the usage is pretty simple. Make yourself
+comfortable with ``gipc.start_process()`` and ``gipc.pipe()`` by going through
+the :ref:`examples <examples>` and the :ref:`API <api>` section.
+
+
+What are the challenges and what is gipc's approach?
+----------------------------------------------------
+
+Depending on the operating system, child process creation via
+``multiprocessing`` in the context of ``gevent`` might yield a malicious event
+loop state in the child. Furthermore, greenlets spawned before forking are
+duplicated in the child. In addition, blocking method calls such as ``join()``
+on a ``multiprocessing.Process`` or the ``send()``/``recv()`` methods on a
+``multiprocessing.Connection`` are not gevent-cooperative. ``gipc`` overcomes
+these challenges for you transparently and in a straight-forward fashion.
+It allows for simple integration of child processes in your application -- on
+POSIX-compliant systems as well as on Windows.
+
+
+Can't I just use gevent+multiprocessing?
+----------------------------------------
+
+A solid application based on ``gevent`` and ``multiprocessing`` requires a lot
+of care and dealing with special cases. ``gipc`` is only a thin wrapper and
+provides the latter. Of course you can do this yourself. Feel free to have a
+look at gipc's code.
+
 
 .. _technotes:
 
@@ -104,7 +138,7 @@ Technical notes
 
 - Any read/write operation on a pipe is ``gevent.lock.Semaphore``-protected
   and therefore greenlet-/threadsafe and atomic.
-  
+
 - ``gipc`` obeys `semantic versioning 2 <http://semver.org/>`_.
 
 - Although ``gipc`` is in an early development phase, I found it to work very
@@ -113,7 +147,7 @@ Technical notes
   however, are not covered so far. Please let me know in which cases
   ``gipc`` + ``gevent`` fails for you.
 
-  
+
 .. _installation:
 
 Installation
@@ -159,6 +193,7 @@ can be downloaded from `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
 Once installed, you can remove gipc manually or via ``pip uninstall gipc``.
 
+
 .. _winnotes:
 
 Notes for Windows users
@@ -181,6 +216,7 @@ maintainer of gevent, seems to be `open <https://twitter.com/gevent/status/25187
 to such a transition and the first steps are already
 `done <https://github.com/saghul/uvent>`_.
 
+
 .. _contact:
 
 Author, license, contact
@@ -194,24 +230,22 @@ jgehrcke@googlemail.com or use the
 `Bitbucket issue tracker <https://bitbucket.org/jgehrcke/gipc/issues>`_.
 
 
-
-
-
 .. _examples:
 
 Examples
 ########
 
-- :ref:`example1`
-- :ref:`example2`
+- :ref:`gipc.pipe()-based IPC <exampleipc>`
+- :ref:`Serving multiple clients (in child) from one server (in parent) <exampleserverclient>`
+- :ref:`Time-synchronization between processes <examplesync>`
 
 
-.. _example1:
+.. _exampleipc:
 
-Infinite messaging from greenlet in parent to child
-===================================================
+gipc.pipe()-based messaging from greenlet in parent to child
+============================================================
 
-Let me explain some basic concepts by means of a simple messaging example:
+Some basic concepts are explained by means of this simple messaging example:
 
 .. code::
 
@@ -251,17 +285,17 @@ be closed properly.
 
 Within the context, a child process is spawned via ``gipc.start_process()``.
 The read handle ``r`` is provided to the child process. It calls
-``child_process(r)`` where an endless loop waits for objects (messages) on the
-read end of the pipe. Upon retrieval, it immediately prints them.
+``child_process(r)`` where an endless loop waits for objects on the read end of
+the pipe. Upon retrieval, it immediately prints them.
 
 While child process ``p`` is running, a greenlet ``wg`` is started in the main
-process. It executes the function ``writegreenlet`` while providing ``w`` as an
-argument. Within this greenlet, one string per second is written into the write
-end of the pipe.
+process. It executes the function ``writegreenlet`` while providing
+``gipc._GIPCWriter`` ``w`` as an argument. Within this greenlet, one string per
+second is written to the write end of the pipe.
 
 After spawning ``wg``, ``p.join()`` is called immediately, i.e. the write
 greenlet is running while ``p.join()`` waits for the child process to terminate.
-In this state, messages are passed between parent and child until the
+In this state, messages are passed between parent and child until a
 ``KeyboardInterrupt`` exception is raised in the parent.
 
 On ``KeyboardInterrupt``, the parent first kills the write greenlet and blocks
@@ -269,10 +303,104 @@ cooperatively until it has stopped. Then it tries to terminate the child process
 (via ``SIGTER`` on Unix) and waits for it to exit via ``p.join()``.
 
 
-.. _example2:
+.. _exampleserverclient:
 
-Time-synchronized messaging between processes
-=============================================
+Serving multiple clients (in child) from one server (in parent)
+===============================================================
+
+This example implements TCP communication between a server in the parent
+process and multiple clients in a child process:
+
+1)  gevent's ``StreamServer`` is started in a greenlet within the initial
+    (parent) process. For each connecting client, it receives one
+    newline-terminated message and echoes it back.
+
+2)  A child process is started using gipc. Its starting point is the function
+    ``clientprocess``. There, N TCP clients are started concurrently from N
+    greenlets.
+
+3)  Each client sends one message, validates the echo response and terminates.
+
+4)  The child process terminates.
+
+5)  After the child process is joined in the parent, the server is killed.
+
+6)  The server greenlet is joined.
+
+Output on my test machine:
+1000 clients served within 0.54 s.
+
+.. code::
+
+    import gevent
+    from gevent.server import StreamServer
+    from gevent import socket
+    import gipc
+    import time
+
+
+    PORT = 1337
+    N_CLIENTS = 1000
+    MSG = "HELLO\n"
+
+
+    def serve(sock, addr):
+        f = sock.makefile()
+        f.write(f.readline())
+        f.flush()
+        f.close()
+
+
+    def server():
+        ss = StreamServer(('localhost', PORT), serve).serve_forever()
+
+
+    def clientprocess():
+        t1 = time.time()
+        clients = [gevent.spawn(client) for _ in xrange(N_CLIENTS)]
+        gevent.joinall(clients)
+        duration = time.time()-t1
+        print "%s clients served within %.2f s." % (N_CLIENTS, duration)
+
+
+    def client():
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.connect(('localhost', PORT))
+        f = sock.makefile()
+        f.write(MSG)
+        f.flush()
+        assert f.readline() == MSG
+        f.close()
+
+
+    if __name__ == "__main__":
+        s = gevent.spawn(server)
+        c = gipc.start_process(clientprocess)
+        c.join()
+        s.kill()
+        s.join()
+
+
+.. _examplesync:
+
+Time-synchronization between processes
+======================================
+
+Child process creation may take a significant amount of time, especially on
+Windows. This time is not predictable.
+
+Often, the code in the parent should only proceed in the moment
+the child and the code in the child have reached a certain state.
+Applications must not rely on a child process "probably being up and running by
+now" or on "sufficient" constant waiting times. The proper way to tackle this
+is a bi-directional synchronization mechanism:
+
+- Process A sends a synchronization request to process B and waits for an
+  acknowledgement response. It proceeds upon retrieval.
+- Process B sends the acknowledgement in the moment it retrieves the sync
+  request and proceeds.
+
+This concept can easily be implemented using two ``gipc.pipe()s``:
 
 .. code::
 
@@ -292,6 +420,7 @@ Time-synchronized messaging between processes
                 # Synchronize with child process.
                 w1.put("SYN")
                 assert r2.get() == "ACK"
+                # SYNC
                 t = time.time()
                 while result != "STOP":
                     result = r2.get()
@@ -304,6 +433,7 @@ Time-synchronized messaging between processes
         with writer:
             assert syncreader.get() == "SYN"
             writer.put("ACK")
+            # SYNC
             for i in xrange(1000):
                 writer.put("A" * 1000)
             writer.put('STOP')
@@ -312,6 +442,8 @@ Time-synchronized messaging between processes
     if __name__ == "__main__":
         main()
 
+The code blocks marked with ``# SYNC`` in parent and child are entered
+quasi-simultaneously.
 
 
 .. _api:
@@ -319,6 +451,14 @@ Time-synchronized messaging between processes
 gipc API
 ########
 
+- :ref:`Spawning child processes <api_spawn>`
+- :ref:`Creating a pipe and its handle-pair <api_pipe_create>`
+- :ref:`Handling handles <api_handles>`
+- :ref:`Controlling child processes <api_control_childs>`
+- :ref:`Exception types <api_exceptions>`
+
+
+.. _api_spawn:
 
 Spawning child processes
 ========================
@@ -327,12 +467,16 @@ Spawning child processes
     :members: start_process
 
 
+.. _api_pipe_create:
+
 Creating a pipe and its handle-pair
 ===================================
 
 .. automodule:: gipc
    :members: pipe
 
+
+.. _api_handles:
 
 Handling handles
 ================
@@ -349,6 +493,8 @@ Handling handles
     :members: get
 
 
+.. _api_control_childs:
+
 Controlling child processes
 ===========================
 
@@ -356,6 +502,8 @@ Controlling child processes
     :show-inheritance:
     :members: join
 
+
+.. _api_exceptions:
 
 Exception types
 ===============
