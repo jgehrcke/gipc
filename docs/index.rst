@@ -55,8 +55,8 @@ processes can safely be created anywhere within your gevent-powered application.
 Furthermore, gipc provides gevent-cooperative inter-process communication and
 useful helper constructs.**
 
-``gipc`` is lightweight and very simple to integrate. In the following code
-snippet, a Python object is sent from a greenlet in the main process to a child
+``gipc`` is lightweight and simple to integrate. In the following code snippet,
+a Python object is sent from a greenlet in the main process to a child
 process::
 
     import gevent
@@ -74,19 +74,9 @@ process::
             writelet.join()
             readchild.join()
 
-Although very simple, this code would have malicious side effects if used with
+Although quite simple, this code would have malicious side effects if used with
 the canonical ``p = multiprocessing.Process(); p.start()`` instead of
 ``gipc.start_process()``.
-
-
-.. _usage:
-
-Usage
-=====
-
-``gipc``'s interface is small and the usage is pretty simple. Make yourself
-comfortable with ``gipc.start_process()`` and ``gipc.pipe()`` by going through
-the :ref:`examples <examples>` and the :ref:`API <api>` section.
 
 
 What are the challenges and what is gipc's approach?
@@ -106,10 +96,20 @@ POSIX-compliant systems as well as on Windows.
 Can't I just use gevent+multiprocessing?
 ----------------------------------------
 
-A solid application based on ``gevent`` and ``multiprocessing`` requires a lot
-of care and dealing with special cases. ``gipc`` is only a thin wrapper and
-provides the latter. Of course you can do this yourself. Feel free to have a
-look at gipc's code.
+A solid application based on ``gevent`` and ``multiprocessing`` requires care
+and dealing with special cases. ``gipc`` is only a thin wrapper and provides
+the latter. Of course you can do this yourself. Feel free to have a look at
+gipc's code.
+
+
+.. _usage:
+
+Usage
+=====
+
+``gipc``'s interface is small and the usage is pretty simple. Make yourself
+comfortable with ``gipc.start_process()`` and ``gipc.pipe()`` by going through
+the :ref:`examples <examples>` and the :ref:`API <api>` section.
 
 
 .. _technotes:
@@ -158,7 +158,7 @@ Requirements
 
 - gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent
   `here <https://github.com/SiteSupport/gevent/downloads>`_.
-- unit tests pass on Python 2.6 and 2.7.
+- The unit tests are ensured to pass on Python 2.6 and 2.7.
 
 Install via pip
 ---------------
@@ -327,9 +327,6 @@ process and multiple clients in a child process:
 
 6)  The server greenlet is joined.
 
-Output on my test machine:
-1000 clients served within 0.54 s.
-
 .. code::
 
     import gevent
@@ -380,6 +377,7 @@ Output on my test machine:
         s.kill()
         s.join()
 
+Output on my test machine: ``1000 clients served within 0.54 s``.
 
 .. _examplesync:
 

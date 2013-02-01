@@ -158,9 +158,9 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         - proper file descriptor inheritance on Windows.
         - providing cooperative process methods (such as ``join()``).
 
-    Calling this method breaks ``os.waitpid()`` on Unix: spawning the first
-    child activates libev child watchers, leading to libev reap children in the
-    moment they die. Applied to such a child, ``os.waitpid()`` throws
+    Calling :func:`start_process` breaks ``os.waitpid()`` on Unix: spawning the
+    first child activates libev child watchers, leading to libev reap children
+    in the moment they die. Applied to such a child, ``os.waitpid()`` throws
     ``ECHILD`` (cf. http://linux.die.net/man/2/waitid).
     """
     if not isinstance(args, tuple):
