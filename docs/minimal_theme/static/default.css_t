@@ -27,7 +27,7 @@ div.document {
 }
 
 div.documentwrapper {
-    max-width: 700px;
+    max-width: 720px;
     margin-left: auto;
     margin-right: auto;
     margin-top: 80px;
@@ -207,9 +207,9 @@ div.body h6 {
     padding: 3px 0 3px 10px;
 }
 
-div.body h1 { margin-top: 0; font-size: 200%; }
-div.body h2 { font-size: 160%; }
-div.body h3 { font-size: 140%; }
+div.body h1 { margin-top: 0; font-size: 230%; }
+div.body h2 { font-size: 200%; }
+div.body h3 { font-size: 160%; }
 div.body h4 { font-size: 120%; }
 div.body h5 { font-size: 110%; }
 div.body h6 { font-size: 100%; }
@@ -288,7 +288,7 @@ pre {
 tt {
     //background-color: #ecf0f3;
     padding: 0 1px 0 1px;
-    font-size: 120%;
+    font-size: 110%;
 }
 
 th {
@@ -304,7 +304,7 @@ th {
 }
 
 .viewcode-back {
-    font-family: 'Droid Sans', sans-serif;    
+    font-family: 'Droid Sans', sans-serif;
 }
 
 div.viewcode-block:target {
