@@ -731,6 +731,47 @@ class TestComplexUseCases():
         p.join(timeout=1)
         assert p.exitcode == 0
 
+    def test_wsgi_scenario(self):
+        from gevent.wsgi import WSGIServer
+
+        def serve(http_server):
+            http_server.serve_forever()
+
+        def hello_world(environ, start_response):
+            # Generate response in child process.
+            with pipe() as (reader, writer):
+                start_response('200 OK', [('Content-Type', 'text/html')])
+                rg = start_process(
+                    target=child_test_wsgi_scenario_respgen,
+                    args=(writer, ))
+                response = reader.get()
+                rg.join()
+            yield response
+
+        http_server = WSGIServer(('localhost', 0), hello_world)
+        servelet = gevent.spawn(serve, http_server)
+        # Wait for server being bound to socket.
+        while True:
+            if http_server.address[1] != 0:
+                break
+            gevent.sleep(0.05)
+        client = start_process(
+            target=child_test_wsgi_scenario_client,
+            args=(http_server.address, ))
+        client.join()
+        servelet.kill()
+        servelet.join()
+
+
+def child_test_wsgi_scenario_respgen(writer):
+    writer.put("response")
+
+
+def child_test_wsgi_scenario_client(http_server_address):
+    import urllib2
+    result = urllib2.urlopen("http://%s:%s/" % http_server_address)
+    assert result.read() == "response"
+
 
 def child_test_threadpool_resolver_mp():
     h = gevent.get_hub()
