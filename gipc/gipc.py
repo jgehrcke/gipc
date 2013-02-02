@@ -171,20 +171,19 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
     if WINDOWS:
-        for h in _all_handles:
+        for h in childhandles:
             h._pre_createprocess_windows()
     p = _GProcess(
         target=_child,
         name=name,
         kwargs={"target": target,
-                "all_handles": _all_handles,
                 "args": args,
                 "kwargs": kwargs})
     if daemon is not None:
         p.daemon = daemon
     p.start()
     if WINDOWS:
-        for h in _all_handles:
+        for h in childhandles:
             h._post_createprocess_windows()
     # Close dispensable file handles in parent.
     for h in childhandles:
@@ -193,7 +192,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     return p
 
 
-def _child(target, all_handles, args, kwargs):
+def _child(target, args, kwargs):
     """Wrapper function that runs in child process. Resets gevent/libev state
     and executes user-given function.
 
@@ -203,11 +202,6 @@ def _child(target, all_handles, args, kwargs):
     state is reset before running the user-given function.
     """
     log.debug("_child start. target: `%s`" % target)
-    # Restore global `_all_handles` (required on Win, does not harm elsewhere).
-    # (The value of a global variable set in the parent process is not
-    #  propagated to children on Windows (as is on Unix via fork())).
-    global _all_handles
-    _all_handles = all_handles
     if not WINDOWS:
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
         # the kernel state for backends that have one. Must be called in the
@@ -229,16 +223,17 @@ def _child(target, all_handles, args, kwargs):
         assert h.loop.default, 'Could not create libev default event loop.'
     allargs = itertools.chain(args, kwargs.values())
     childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
+    set_all_handles(childhandles)
     # Register inherited handles for current process. Close those that are not
     # intended for further usage.
-    for h in _all_handles[:]:
+    for h in childhandles:
         h._set_legit_process()
         if WINDOWS:
             h._post_createprocess_windows()
-        if not h in childhandles:
-            log.debug("Invalidate %s in child." % h)
-            h.close()
-            continue
+        #if not h in childhandles:
+        #    log.debug("Invalidate %s in child." % h)
+        #    h.close()
+        #    continue
         log.debug("Handle `%s` is valid in child." % h)
     target(*args, **kwargs)
     for h in childhandles:
