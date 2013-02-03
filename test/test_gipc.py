@@ -367,8 +367,8 @@ def ipc_child_c(r1, r2, m1, m2):
     gw = gevent.spawn(lambda w: w.put(testmsg), local_writer)
     gr = gevent.spawn(lambda r: r.get(), local_reader)
     assert testmsg == gr.get()
-    gr.join()
-    gw.join()
+    gr.get()
+    gw.get()
     local_reader.close()
     local_writer.close()
     # Receive second message from parent.
@@ -635,8 +635,8 @@ class TestSimpleUseCases():
                 g1 = gevent.spawn(g_from_list_to_sendq)
                 g2 = gevent.spawn(g_from_q_to_forthpipe, forthw)
                 g3 = gevent.spawn(g_from_backpipe_to_recvlist, backr)
-                g1.join()
-                g2.join()
+                g1.get()
+                g2.get()
                 p.join()
                 recvlist = g3.get()
                 assert recvlist == sendlist
@@ -660,8 +660,8 @@ def usecase_child_d(forthreader, backwriter):
 
     g1 = gevent.spawn(g_from_forthpipe_to_q, forthreader)
     g2 = gevent.spawn(g_from_q_to_backpipe, backwriter)
-    g1.join()
-    g2.join()
+    g1.get()
+    g2.get()
 
 
 def usecase_child_a(writer):
@@ -760,19 +760,20 @@ class TestComplexUseCases():
             args=(http_server.address, ))
         client.join()
         servelet.kill()
-        servelet.join()
+        servelet.get() # get() is join and re-raises Exception.
 
     def test_multi_duplex(self):
         def duplex():
-            with gipc.pipe() as (reader, writer):
-                with gipc.pipe() as (reader2, writer2):
-                    p = gipc.start_process(child, (reader, writer2))
-                    writer.put("msg")
-                    reader2.get()
+            with pipe() as (r, w):
+                with pipe() as (r2, w2):
+                    p = start_process(child_test_multi_duplex, (r, w2))
+                    w.put("msg")
+                    assert r2.get() == "msg"
                     p.join()
 
-        duplexlets = [gevent.spawn(duplex) for _ in xrange(10)]
-        gevent.joinall(duplexlets)
+        duplexlets = [gevent.spawn(duplex) for _ in xrange(5)]
+        for g in duplexlets:
+            g.get()
 
 
 def child_test_multi_duplex(r, w):
