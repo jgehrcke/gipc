@@ -762,6 +762,22 @@ class TestComplexUseCases():
         servelet.kill()
         servelet.join()
 
+    def test_multi_duplex(self):
+        def duplex():
+            with gipc.pipe() as (reader, writer):
+                with gipc.pipe() as (reader2, writer2):
+                    p = gipc.start_process(child, (reader, writer2))
+                    writer.put("msg")
+                    reader2.get()
+                    p.join()
+
+        duplexlets = [gevent.spawn(duplex) for _ in xrange(10)]
+        gevent.joinall(duplexlets)
+
+
+def child_test_multi_duplex(r, w):
+    w.put(r.get())
+
 
 def child_test_wsgi_scenario_respgen(writer):
     writer.put("response")
