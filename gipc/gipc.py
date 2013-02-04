@@ -118,8 +118,6 @@ def pipe():
     r, w = os.pipe()
     reader = _GIPCReader(r)
     writer = _GIPCWriter(w)
-    _all_handles.append(reader)
-    _all_handles.append(writer)
     return _HandlePairContext((reader, writer))
 
 
@@ -202,6 +200,8 @@ def _child(target, args, kwargs):
     state is reset before running the user-given function.
     """
     log.debug("_child start. target: `%s`" % target)
+    allargs = itertools.chain(args, kwargs.values())
+    childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
     if not WINDOWS:
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
         # the kernel state for backends that have one. Must be called in the
@@ -221,24 +221,32 @@ def _child(target, args, kwargs):
         h = gevent.get_hub(default=True)
         log.debug("Created new hub and default event loop.")
         assert h.loop.default, 'Could not create libev default event loop.'
-    allargs = itertools.chain(args, kwargs.values())
-    childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
-    set_all_handles(childhandles)
-    # Register inherited handles for current process. Close those that are not
-    # intended for further usage.
+        # On Unix, file descriptors are inherited by default. Also, the global
+        # `_all_handles` is inherited from the parent. Close dispensable file
+        # descriptors in child.
+        for h in _all_handles[:]:
+            if not h in childhandles:
+                log.debug("Invalidate %s in child." % h)
+                h._set_legit_process()
+                h.close()
+    else:
+        # On Windows, the state of module globals is not transferred to
+        # children. Set `_all_handles`.
+        set_all_handles(childhandles)
+    # `_all_handles` now must contain only those handles that have been
+    # transferred to the child on purpose.
+    for h in _all_handles:
+        assert h in childhandles
+    # Register transferred handles for current process.
     for h in childhandles:
         h._set_legit_process()
         if WINDOWS:
             h._post_createprocess_windows()
-        #if not h in childhandles:
-        #    log.debug("Invalidate %s in child." % h)
-        #    h.close()
-        #    continue
-        log.debug("Handle `%s` is valid in child." % h)
+        log.debug("Handle `%s` is now valid in child." % h)
     target(*args, **kwargs)
     for h in childhandles:
         try:
-            # The user or a child of this child might already have closed it.
+            # The user might already have closed it.
             h.close()
         except GIPCClosed:
             pass
@@ -348,16 +356,18 @@ class _GIPCHandle(object):
 
     .. todo::
 
-        Care about destructor?
+        Implement destructor?
         http://eli.thegreenplace.net/2009/06/12/
         safely-using-destructors-in-python/
     """
     def __init__(self):
+        global _all_handles
         self._id = os.urandom(3).encode("hex")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
         self._lock = gevent.lock.Semaphore(value=1)
         self._closed = False
+        _all_handles.append(self)
 
     def _make_nonblocking(self):
         if hasattr(gevent.os, 'make_nonblocking'):
@@ -381,13 +391,13 @@ class _GIPCHandle(object):
             raise GIPCLocked(
                 "Can't close handle %s: locked for I/O operation." % self)
         log.debug("Invalidating %s ..." % self)
-        self._closed = True
         if self._fd is not None:
             os.close(self._fd)
             self._fd = None
         if self in _all_handles:
             # Remove the handle from the global list of valid handles.
             _all_handles.remove(self)
+        self._closed = True
         self._lock.release()
 
     def _set_legit_process(self):
@@ -441,7 +451,8 @@ class _GIPCHandle(object):
             self._fd = False
 
     def _post_createprocess_windows(self):
-        """Restore file descriptor on Windows."""
+        """Restore file descriptor on Windows.
+        """
         if WINDOWS:
             # Get C file descriptor from Windows file handle.
             self._fd = msvcrt.open_osfhandle(self._ihfd, self._fd_flag)
