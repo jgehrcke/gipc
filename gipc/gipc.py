@@ -228,6 +228,8 @@ def _child(target, args, kwargs):
             if not h in childhandles:
                 log.debug("Invalidate %s in child." % h)
                 h._set_legit_process()
+                # At duplication time the handle might have been locked.
+                h._lock.counter = 1
                 h.close()
     else:
         # On Windows, the state of module globals is not transferred to
