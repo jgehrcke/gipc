@@ -331,7 +331,7 @@ class TestIPC():
         p = multiprocessing.Process(target=ipc_child_d, args=(self.rh, ))
         p.start()
         p.join()
-        assert p.exitcode == 0
+        assert p.exitcode == None
         self.rh.close()
 
     def test_child_in_child_in_child_comm(self):
