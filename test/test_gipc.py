@@ -331,6 +331,7 @@ class TestIPC():
         p = multiprocessing.Process(target=ipc_child_d, args=(self.rh, ))
         p.start()
         p.join()
+        # gipc disables multiprocessing's capability to monitor child state.
         assert p.exitcode == None
         self.rh.close()
 
@@ -771,7 +772,7 @@ class TestComplexUseCases():
                     assert r2.get() == "msg"
                     p.join()
 
-        duplexlets = [gevent.spawn(duplex) for _ in xrange(5)]
+        duplexlets = [gevent.spawn(duplex) for _ in xrange(10)]
         for g in duplexlets:
             g.get()
 

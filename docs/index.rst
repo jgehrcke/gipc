@@ -498,7 +498,6 @@ Controlling child processes
 
 .. autoclass:: gipc.gipc._GProcess()
     :show-inheritance:
-    :members: join
 
 
 .. _api_exceptions:
