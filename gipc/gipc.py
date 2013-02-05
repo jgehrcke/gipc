@@ -17,6 +17,7 @@
 """
 .. todo::
 
+    - Implement duplex pipe two readable and writable handles.
     - Implement poll/peek on read end. (It's impossible to identify complete
       messages in advance, but within the framework only complete messages
       are sent.)
@@ -256,49 +257,45 @@ def _child(target, args, kwargs):
 
 class _GProcess(multiprocessing.Process):
     """
-    Implements adjustments to multiprocessing's Process class for
-    gevent-cooperativity. Currently re-implements ``start()``, ``is_alive()``,
-    ``exitcode`` on Unix and ``join()`` on Windows and Unix.
+    Provides the same API as ``multiprocessing.Process``.
+
+    For gevent-cooperativeness and libev-compatibility, it currently
+    re-implements ``start()``, ``is_alive()``, ``exitcode`` on Unix and
+    ``join()`` on Windows as well as on Unix.
+
+    .. note::
+
+        On Unix, child monitoring is implemented via libev child watchers.
+        Since ``os.waitpid()`` would interfere with those, it is not
+        recommended to call ``os.waitpid()`` in the context of this module.
+        ``gipc`` prevents ``multiprocessing`` from calling ``os.waitpid()`` by
+        monkey-patching ``multiprocessing.forking.Popen.poll`` to always return
+        ``None``.
     """
-    #On Unix, we  cannot rely on `multiprocessing.Process.is_alive()` and
-    #`multiprocessing.Process._popen.wait()` to tell the truth about the state
-    #of children of children:
-
-    #In the initial process, gevent makes libev's default event loop not
-    #reap dead children. In children, however, after initialization of the
-    #libev default event loop, dead children (grandchildren of the initial
-    #process) become reaped immediately by the event loop.
-
-    #This makes `os.waitpid(grandchild_pid)` throw an ECHILD error (process
-    #specified by pid does not exist or is not a child of the calling process).
-    #This leads to multiprocessing's `_popen.wait()` returning `None`, meaning
-    #'alive' -- for child processes that does not exist anymore.
-
-    #Immediate child reaping by libev could be rectified via re-installing
-    #the default signal handler with `signal(signal.SIGCHLD, signal.SIG_DFL)`.
-    #However, doing so would render libev's child watchers useless.
-
-    #Instead, for each `_GProcess`, a libev child watcher is explicitly
-    #started in the modified `start()` method below. The modified `join()`
-    #method is adjusted to this libev-watcher-based child monitoring.
-    #`multiprocessing.Process.join()` is entirely surpassed, but resembled.
-    #`os.waitpid()` is broken in all process generations after the first
-    #`_GProcess` has been started.
-
-    #On Windows, cooperative `join()` is realized via frequent non-blocking
-    #calls to `Process.is_alive()` and the original `join()` method.
+    # Remarks regarding child process monitoring on Unix:
+    #
+    # For each `_GProcess`, a libev child watcher is started in the modified
+    # `start()` method below. The modified `join()` method is adjusted to this
+    # libev child watcher-based child monitoring.
+    # `multiprocessing.Process.join()` is entirely surpassed, but resembled.
+    #
+    # After initialization of the first libev child watcher, i.e. after
+    # initialization of the first _GProcess instance, libev handles SIGCHLD
+    # signals. Dead children become reaped immediately by the libev event loop.
+    #
+    # On Windows, cooperative `join()` is realized via frequent non-blocking
+    # calls to `Process.is_alive()` and the original `join()` method.
     if not WINDOWS:
-        # Deactivate os.waitpid() and let libev handle children.
-        # (multiprocessing.process.Process.start() and other methods may
-        #  call multiprocessing.process._cleanup(). This and other methods
-        #  may call multiprocessing.forking.Popen.poll() which itself invokes
-        #  os.waitpid(). In extreme cases (high-frequent child process
-        #  creation, short-living child processes), this competes with libev's
-        #  child watcher and wins, resulting in the child watcher callback
-        #  never be called and _GProcess.join() block forever.)
-        os.waitpid = lambda *a, **b: (0, 0)
-        # Deactivate multiprocessing.forking.Popen.poll(), let _GProcess
-        # extract exitcode based on libev child watcher callback.
+        # multiprocessing.process.Process.start() and other methods may
+        # call multiprocessing.process._cleanup(). This and other mp methods
+        # may call multiprocessing.forking.Popen.poll() which itself invokes
+        # os.waitpid(). In extreme cases (high-frequent child process
+        # creation, short-living child processes), this competes with libev's
+        # child watcher and may win, resulting in libev not being able to
+        # absorb all SIGCHLD signals corresponding to started children. This
+        # could make certain _GProcess.join() calls block forever.
+        # -> Prevent multiprocessing.forking.Popen.poll() from calling
+        # os.waitpid() and/or setting a return code. Let libev do the job.
         multiprocessing.forking.Popen.poll = lambda *a, **b: None
         def start(self):
             hub = gevent.get_hub()
@@ -317,7 +314,7 @@ class _GProcess(multiprocessing.Process):
 
         def _on_sigchld(self, watcher):
             watcher.stop()
-            # Status evaluation taken from `multiprocessing.forking`.
+            # Status evaluation copied from `multiprocessing.forking`.
             if os.WIFSIGNALED(watcher.rstatus):
                 self._popen.returncode = -os.WTERMSIG(watcher.rstatus)
             else:
