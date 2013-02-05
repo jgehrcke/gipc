@@ -288,6 +288,18 @@ class _GProcess(multiprocessing.Process):
     #On Windows, cooperative `join()` is realized via frequent non-blocking
     #calls to `Process.is_alive()` and the original `join()` method.
     if not WINDOWS:
+        # Deactivate os.waitpid() and let libev handle children.
+        # (multiprocessing.process.Process.start() and other methods may
+        #  call multiprocessing.process._cleanup(). This and other methods
+        #  may call multiprocessing.forking.Popen.poll() which itself invokes
+        #  os.waitpid(). In extreme cases (high-frequent child process
+        #  creation, short-living child processes), this competes with libev's
+        #  child watcher and wins, resulting in the child watcher callback
+        #  never be called and _GProcess.join() block forever.)
+        os.waitpid = lambda *a, **b: (0, 0)
+        # Deactivate multiprocessing.forking.Popen.poll(), let _GProcess
+        # extract exitcode based on libev child watcher callback.
+        multiprocessing.forking.Popen.poll = lambda *a, **b: None
         def start(self):
             hub = gevent.get_hub()
             self._returnevent = gevent.event.Event()
@@ -663,5 +675,3 @@ def get_all_handles():
 def set_all_handles(handles):
     global _all_handles
     _all_handles = handles
-
-
