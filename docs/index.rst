@@ -9,7 +9,7 @@
     :maxdepth: 2
 
 ========================================
-gipc: multiprocessing and IPC for gevent
+gipc: child processes and IPC for gevent
 ========================================
 
 **Table of contents:**
@@ -48,12 +48,16 @@ Naive usage of ``multiprocessing`` in the context of a ``gevent``-powered
 application may raise various problems and most likely breaks the application
 in some way. ``gipc`` is developed with the motivation to solve these issues
 transparently and make using ``gevent`` in combination with the basics of
-``multiprocessing`` -- process creation and IPC -- a no-brainer again.
+``multiprocessing``-based child process creation and IPC a no-brainer again.
 
-**With gipc (pronunciation "gipsy") multiprocessing.Process-based child
-processes can safely be created anywhere within your gevent-powered application.
-Furthermore, gipc provides gevent-cooperative inter-process communication and
-useful helper constructs.**
+
+**With gipc (pronunciation “gipsy”) multiprocessing.Process-based child
+processes can safely be created and monitored anywhere within your
+gevent-powered application. Malicious side-effects of child process creation
+in the context of gevent are prevented. The multiprocessing.Process API
+is provided in a gevent-cooperative fashion. Furthermore, gipc provides
+gevent-cooperative inter-process communication and useful helper constructs.**
+
 
 ``gipc`` is lightweight and simple to integrate. In the following code snippet,
 a Python object is sent from a greenlet in the main process to a child
@@ -74,9 +78,9 @@ process::
             writelet.join()
             readchild.join()
 
-Although quite simple, this code would have malicious side effects if used with
-the canonical ``p = multiprocessing.Process(); p.start()`` instead of
-``gipc.start_process()``.
+Although quite simple, this code would have various negative side-effects if
+used with the canonical ``multiprocessing`` API instead of
+``gipc.start_process()`` and ``gipc.pipe()``.
 
 
 What are the challenges and what is gipc's approach?
