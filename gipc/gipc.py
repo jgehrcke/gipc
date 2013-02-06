@@ -328,7 +328,7 @@ class _GProcess(multiprocessing.Process):
         # os.waitpid(). In extreme cases (high-frequent child process
         # creation, short-living child processes), this competes with libev's
         # SIGCHLD handler and may win, resulting in libev not being able to
-        # absorb all SIGCHLD signals corresponding to started children. This
+        # retrieve all SIGCHLD signals corresponding to started children. This
         # could make certain _GProcess.join() calls block forever.
         # -> Prevent multiprocessing.forking.Popen.poll() from calling
         # os.waitpid(). Let libev do the job.
