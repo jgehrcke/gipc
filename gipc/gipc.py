@@ -14,10 +14,21 @@
 #   See the License for the specific language governing permissions and
 #   limitations under the License.
 
+
 """
+gipc: child processes and IPC for gevent.
+
+With gipc (pronunciation “gipsy”) multiprocessing.Process-based child
+processes can safely be created and monitored anywhere within your
+gevent-powered application. Malicious side-effects of child process creation
+in the context of gevent are prevented, and the multiprocessing.Process API
+is rendered gevent-cooperative. Furthermore, gipc provides gevent-cooperative
+inter-process communication and useful helper constructs.
+
+
 .. todo::
 
-    - Implement duplex pipe two readable and writable handles.
+    - Implement duplex pipe, readable and writable from both sides.
     - Implement poll/peek on read end. (It's impossible to identify complete
       messages in advance, but within the framework only complete messages
       are sent.)
@@ -32,13 +43,14 @@
       could give useful control. Use libuv as backend instead of libev?
 """
 
+
 import os
-import sys
 import io
+import sys
 import struct
-import itertools
 import signal
 import logging
+import itertools
 import multiprocessing
 import multiprocessing.forking
 import multiprocessing.process
@@ -55,6 +67,9 @@ import gevent.lock
 import gevent.event
 
 
+# Logging for debugging purposes.
+# Note: naive usage of logging from within multiple processes might yield mixed
+# messages.
 log = logging.getLogger("gipc")
 
 
@@ -81,16 +96,16 @@ class GIPCLocked(GIPCError):
 def pipe():
     """Creates a new pipe and returns its corresponding read and write
     handles. Those allow for sending and receiving pickleable objects through
-    the pipe in a gevent-cooperative manner. A handle-pair can transmit
-    data between greenlets within one process or across processes created via
-    :func:`start_process`.
+    the pipe in a gevent-cooperative manner. A handle pair can transmit data
+    between greenlets within one process or across processes (created via
+    :func:`start_process`).
 
     :returns:
         ``(reader, writer)`` tuple. Both items are instances of
         :class:`gipc._GIPCHandle`.
 
-    :class:`gipc._GIPCHandle` instances are recommended to be used with Python's
-    context manager in the following ways::
+    :class:`gipc._GIPCHandle` instances are recommended to be used with
+    Python's context manager in the following ways::
 
         with pipe() as (r, w):
             do_something(r, w)
@@ -123,9 +138,24 @@ def pipe():
 
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
-    """Spawn child process and execute function ``target(*args, **kwargs)``.
-    Any existing :class:`gipc._GIPCHandle` can be handed over to the child
-    process via ``args`` and/or ``kwargs``.
+    """Start child process and execute function ``target(*args, **kwargs)``.
+    Any existing :class:`gipc._GIPCHandle` can be passed to the child process
+    via ``args`` and/or ``kwargs``.
+
+    .. note::
+
+        Compared to the canonical `multiprocessing.Process()` constructor, this
+        function
+
+        - returns a :class:`gipc._GProcess` instance which is compatible with
+          the `multiprocessing.Process` API.
+        - also takes the essential ``target``, ``arg=()``, and ``kwargs={}``
+          arguments.
+        - introduces the ``daemon=None`` argument.
+        - does not accept the ``group`` argument (being an artifact from
+          ``multiprocessing``'s compatibility with ``threading``).
+        - starts the process, i.e. a subsequent call to the ``start()`` method
+          of the returned object is redundant.
 
     :arg target:
         Function to be called in child as ``target(*args, **kwargs)``.
@@ -148,19 +178,9 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         gevent-cooperative fashion).
 
     Process creation is based on ``multiprocessing.Process()``. When working
-    with gevent, instead of calling ``Process()`` directly, it is highly
-    recommended to start child processes via :func:`start_process`. It takes
-    care of
-
-        - re-initializing gevent and libev's event loop in the child process.
-        - closing dispensable file descriptors after child process creation.
-        - proper file descriptor inheritance on Windows.
-        - providing cooperative process methods (such as ``join()``).
-
-    Calling :func:`start_process` breaks ``os.waitpid()`` on Unix: spawning the
-    first child activates libev child watchers, leading to libev reap children
-    in the moment they die. Applied to such a child, ``os.waitpid()`` throws
-    ``ECHILD`` (cf. http://linux.die.net/man/2/waitid).
+    with gevent, it is highly recommended to start child processes in no other
+    way than via via :func:`start_process`. It takes care of most of the magic
+    behind ``gipc``.
     """
     if not isinstance(args, tuple):
         raise TypeError, '`args` must be tuple.'
@@ -266,8 +286,9 @@ class _GProcess(multiprocessing.Process):
     .. note::
 
         On Unix, child monitoring is implemented via libev child watchers.
-        Since ``os.waitpid()`` would interfere with those, it is not
-        recommended to call ``os.waitpid()`` in the context of this module.
+        To that end, libev installs its own SIGCHLD signal handler.
+        Any call to ``os.waitpid()`` would compete with that handler, so it
+        is not recommended to call it in the context of this module.
         ``gipc`` prevents ``multiprocessing`` from calling ``os.waitpid()`` by
         monkey-patching ``multiprocessing.forking.Popen.poll`` to always return
         ``None``.
@@ -281,7 +302,18 @@ class _GProcess(multiprocessing.Process):
     #
     # After initialization of the first libev child watcher, i.e. after
     # initialization of the first _GProcess instance, libev handles SIGCHLD
-    # signals. Dead children become reaped immediately by the libev event loop.
+    # signals. Dead children become reaped by the libev event loop. The
+    # children's status code is evaluated by libev. In conclusion, installation
+    # of the libev SIGCHLD handler renders multiprocessing's child monitoring
+    # useless and even hindering.
+    #
+    # Any call to os.waitpid can make libev miss certain SIGCHLD
+    # events. According to http://linux.die.net/man/3/waitpid:
+    #
+    # "If [...] the implementation queues the SIGCHLD signal, then if wait()
+    #  or waitpid() returns because the status of a child process is available,
+    #  any pending SIGCHLD signal associated with the process ID of the child
+    #  process shall be discarded."
     #
     # On Windows, cooperative `join()` is realized via frequent non-blocking
     # calls to `Process.is_alive()` and the original `join()` method.
@@ -291,11 +323,11 @@ class _GProcess(multiprocessing.Process):
         # may call multiprocessing.forking.Popen.poll() which itself invokes
         # os.waitpid(). In extreme cases (high-frequent child process
         # creation, short-living child processes), this competes with libev's
-        # child watcher and may win, resulting in libev not being able to
+        # SIGCHLD handler and may win, resulting in libev not being able to
         # absorb all SIGCHLD signals corresponding to started children. This
         # could make certain _GProcess.join() calls block forever.
         # -> Prevent multiprocessing.forking.Popen.poll() from calling
-        # os.waitpid() and/or setting a return code. Let libev do the job.
+        # os.waitpid(). Let libev do the job.
         multiprocessing.forking.Popen.poll = lambda *a, **b: None
         def start(self):
             hub = gevent.get_hub()
