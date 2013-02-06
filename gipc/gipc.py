@@ -293,9 +293,9 @@ class _GProcess(multiprocessing.Process):
         is not recommended to call it in the context of this module.
         ``gipc`` prevents ``multiprocessing`` from calling ``os.waitpid()`` by
         monkey-patching ``multiprocessing.forking.Popen.poll`` to always return
-        ``None``. Calling :class:`gipc._GProcess`.join() is not required for
-        cleaning up after zombies. It just waits until the process has
-        terminated.
+        ``None``. Calling ``gipc._GProcess.join()`` is not required for
+        cleaning up after zombies (libev does). It just waits until the process
+        has terminated.
     """
     # Remarks regarding child process monitoring on Unix:
     #
