@@ -179,7 +179,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
 
     Process creation is based on ``multiprocessing.Process()``. When working
     with gevent, it is highly recommended to start child processes in no other
-    way than via via :func:`start_process`. It takes care of most of the magic
+    way than via via :func:`start_process`. It triggers most of the magic
     behind ``gipc``.
     """
     if not isinstance(args, tuple):
@@ -201,6 +201,8 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     if daemon is not None:
         p.daemon = daemon
     p.start()
+    p.start = lambda *a, **b: sys.stderr.write(
+        "gipc WARNING: Redundant call to %s.start()\n" % p)
     if WINDOWS:
         for h in childhandles:
             h._post_createprocess_windows()
@@ -291,7 +293,9 @@ class _GProcess(multiprocessing.Process):
         is not recommended to call it in the context of this module.
         ``gipc`` prevents ``multiprocessing`` from calling ``os.waitpid()`` by
         monkey-patching ``multiprocessing.forking.Popen.poll`` to always return
-        ``None``.
+        ``None``. Calling :class:`gipc._GProcess`.join() is not required for
+        cleaning up after zombies. It just waits until the process has
+        terminated.
     """
     # Remarks regarding child process monitoring on Unix:
     #
@@ -364,6 +368,15 @@ class _GProcess(multiprocessing.Process):
         @property
         def exitcode(self):
             return self._popen.returncode
+
+        def __repr__(self):
+            """Based on original __repr__ from Python 2.7's mp package.
+            """
+            status = 'started'
+            if self.exitcode is not None:
+                status = self.exitcode
+            return '<%s(%s, %s%s)>' % (type(self).__name__, self._name,
+                status, self._daemonic and ' daemon' or '')
 
     def join(self, timeout=None):
         """
