@@ -93,7 +93,7 @@ class GIPCLocked(GIPCError):
     pass
 
 
-def pipe():
+def pipe(duplex=False):
     """Creates a new pipe and returns its corresponding read and write
     handles. Those allow for sending and receiving pickleable objects through
     the pipe in a gevent-cooperative manner. A handle pair can transmit data
@@ -132,9 +132,10 @@ def pipe():
     #   - based on pipe()
     #   - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
     r, w = os.pipe()
-    reader = _GIPCReader(r)
-    writer = _GIPCWriter(w)
-    return _HandlePairContext((reader, writer))
+    reader1 = _GIPCReader(r)
+    writer1 = _GIPCWriter(w)
+    c1 = _EntityPairContext((reader1, writer1))
+    return c1
 
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
@@ -665,34 +666,39 @@ class _GIPCWriter(_GIPCHandle):
             self._write(bindata)
 
 
-class _HandlePairContext(tuple):
-    def __init__(self, (reader, writer)):
-        self.reader = reader
-        self.writer = writer
-        super(_HandlePairContext, self).__init__((reader, writer))
+class _EntityPairContext(tuple):
+    """
+    Generic context manager for a 2-tuple containing two entities supporting
+    context enter and exit themselves.
+    """
+    def __init__(self, (e1, e2)):
+        self.e1 = e1
+        self.e2 = e2
+        super(_EntityPairContext, self).__init__((e1, e2))
 
     def __enter__(self):
-        for h in self:
-            h.__enter__()
+        for e in self:
+            e.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
-        Call `__exit__()` for both, read and write handles, in any case,
-        as expected of a context manager. Exit writer first, as `os.close()`
-        on reader might block on Windows otherwise. If an exception occurs
-        during writer exit, store it, exit reader and raise it afterwards. If
-        an exception is raised during both, reader and writer exit, only
-        raise the reader exit exception.
+        Call `__exit__()` for both, e1 and e2 entities, in any case,
+        as expected of a context manager. Exit e2 first, as it is used as
+        writer in case of `EntityPairContext((reader1, writer1))` and
+        `os.close()` on reader might block on Windows otherwise.
+        If an exception occurs during e2 exit, store it, exit e1 and raise it
+        afterwards. If an exception is raised during both, e1 and e2 exit, only
+        raise the e1 exit exception.
         """
-        writer_exit_exception = None
+        e2_exit_exception = None
         try:
-            self.writer.__exit__(exc_type, exc_value, traceback)
+            self.e2.__exit__(exc_type, exc_value, traceback)
         except:
-            writer_exit_exception = sys.exc_info()
-        self.reader.__exit__(exc_type, exc_value, traceback)
-        if writer_exit_exception:
-            raise writer_exit_exception[1], None, writer_exit_exception[2]
+            e2_exit_exception = sys.exc_info()
+        self.e1.__exit__(exc_type, exc_value, traceback)
+        if e2_exit_exception:
+            raise e2_exit_exception[1], None, e2_exit_exception[2]
 
 
 # Define non-blocking read and write functions
