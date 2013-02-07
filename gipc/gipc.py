@@ -134,8 +134,14 @@ def pipe(duplex=False):
     r, w = os.pipe()
     reader1 = _GIPCReader(r)
     writer1 = _GIPCWriter(w)
-    c1 = _EntityPairContext((reader1, writer1))
-    return c1
+    if not duplex:
+        return _EntityPairContext((reader1, writer1))
+    r2, w2 = os.pipe()
+    reader2 = _GIPCReader(r2)
+    writer2 = _GIPCWriter(w2)
+    dh1 = _GIPCDuplexHandle((reader1, writer1))
+    dh2 = _GIPCDuplexHandle((reader2, writer2))
+    return _EntityPairContext((dh1, dh2))
 
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
@@ -672,8 +678,8 @@ class _EntityPairContext(tuple):
     context enter and exit themselves.
     """
     def __init__(self, (e1, e2)):
-        self.e1 = e1
-        self.e2 = e2
+        self._e1 = e1
+        self._e2 = e2
         super(_EntityPairContext, self).__init__((e1, e2))
 
     def __enter__(self):
@@ -693,12 +699,28 @@ class _EntityPairContext(tuple):
         """
         e2_exit_exception = None
         try:
-            self.e2.__exit__(exc_type, exc_value, traceback)
+            self._e2.__exit__(exc_type, exc_value, traceback)
         except:
             e2_exit_exception = sys.exc_info()
-        self.e1.__exit__(exc_type, exc_value, traceback)
+        self._e1.__exit__(exc_type, exc_value, traceback)
         if e2_exit_exception:
             raise e2_exit_exception[1], None, e2_exit_exception[2]
+
+
+class _GIPCDuplexHandle(_EntityPairContext):
+    def __init__(self, (reader, writer)):
+        self._reader = reader
+        self._writer = writer
+        self.put = self._writer.put
+        self.get = self._reader.get
+        super(_GIPCDuplexHandle, self).__init__((reader, writer))
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return "<%s(%r, %s)>" % (
+            self.__class__.__name__, self._reader, self._writer)
 
 
 # Define non-blocking read and write functions
