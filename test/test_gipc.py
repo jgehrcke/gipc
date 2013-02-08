@@ -46,6 +46,7 @@ log.setLevel(logging.DEBUG)
 LONG = 999999
 SHORTTIME = 0.01
 ALMOSTZERO = 0.00001
+LONGERTHANBUFFER = "A" * 9999999
 
 class TestComm():
     """
@@ -172,6 +173,11 @@ class TestComm():
         self.rh.close()
         with raises(OSError):
             self.wh.put('')
+
+    def test_all_handles_length(self):
+        assert len(get_all_handles()) == 2
+        self.wh.close()
+        self.rh.close()
 
 
 class TestProcess():
@@ -416,12 +422,6 @@ class TestContextManager():
             set_all_handles([])
             raise Exception("Cleanup was not successful.")
 
-    def test_all_handles_length(self):
-        r, w = pipe()
-        assert len(get_all_handles()) == 2
-        r.close()
-        w.close()
-
     def test_combi(self):
         with pipe() as (r, w):
             fd1 = r._fd
@@ -431,8 +431,6 @@ class TestContextManager():
             os.close(fd1)
         with raises(OSError):
             os.close(fd2)
-        # Make sure the module's self-cleanup works properly.
-        assert not len(get_all_handles())
 
     def test_single_reader(self):
         r, w = pipe()
@@ -445,7 +443,6 @@ class TestContextManager():
         with raises(GIPCClosed):
             w.close()
         r.close()
-        assert not len(get_all_handles())
 
     def test_single_writer(self):
         r, w = pipe()
@@ -458,7 +455,6 @@ class TestContextManager():
         with raises(GIPCClosed):
             r.close()
         w.close()
-        assert not len(get_all_handles())
 
     def test_close_in_context(self):
         with pipe() as (r, w):
@@ -490,7 +486,7 @@ class TestContextManager():
                 # Fill up pipe and try to write more than pipe can hold
                 # (makes `put` block when there is no reader).
                 # Buffer is quite large on Windows.
-                gw = gevent.spawn(lambda w: w.put("A" * 9999999), w)
+                gw = gevent.spawn(lambda w: w.put(LONGERTHANBUFFER), w)
                 gevent.sleep(SHORTTIME)
                 # Context manager tries to close writer first, fails,
                 # and must close reader nevertheless.
@@ -561,9 +557,9 @@ class TestDuplexHandle():
             set_all_handles([])
             raise Exception("Cleanup was not successful.")
 
-
-    def test_duplex_handle_simple(self):
+    def test_simple(self):
         h1, h2 = pipe(duplex=True)
+        assert len(get_all_handles()) == 4
         h1.put(1)
         h2.put(2)
         assert h2.get() == 1
@@ -571,13 +567,149 @@ class TestDuplexHandle():
         h1.close()
         h2.close()
 
-
-    def test_duplex_handle_contextmanager_simple(self):
+    def test_context_simple(self):
         with pipe(duplex=True) as (h1, h2):
             h1.put(1)
             assert h2.get() == 1
             h2.put(2)
             assert h1.get() == 2
+
+    def test_context_close(self):
+        with pipe(duplex=True) as (h1, h2):
+            fd1 = h1._reader._fd
+            fd2 = h1._writer._fd
+            fd3 = h2._reader._fd
+            fd4 = h2._writer._fd
+
+        # Make sure the C file descriptors are closed.
+        for f in (fd1, fd2, fd3, fd4):
+            with raises(OSError):
+                os.close(f)
+
+    def test_context_single_close(self):
+        h1, h2 = pipe(duplex=True)
+        with h1 as side1:
+            fd1 = side1._reader._fd
+            fd2 = side1._writer._fd
+        # Make sure the C file descriptors are closed.
+        with raises(OSError):
+            os.close(fd1)
+        with raises(OSError):
+            os.close(fd2)
+        with raises(GIPCClosed):
+            h1.close()
+        h2.close()
+
+    def test_close_in_context(self):
+        with pipe(duplex=True) as (h1, h2):
+            h1.put('')
+            h2.get()
+            h1.close()
+            h2.close()
+
+    def test_lock_out_of_context_single(self):
+        h1, h2 = pipe(True)
+        g = gevent.spawn(lambda h: h.get(), h1)
+        gevent.sleep(SHORTTIME)
+        with raises(GIPCLocked):
+            with h1:
+                pass
+                # Can't close h1 reader on exit, as it is locked in `g`.
+        g.kill(block=False)
+        # Ensure killing via 'context switch', i.e. yield control to other
+        # coroutines (otherwise the subsequent close attempt may fail with
+        # `GIPCLocked` error).
+        gevent.sleep(-1)
+        h2.close() # Closes read and write handles of h2.
+        assert h1._writer._closed
+        assert not h1._reader._closed
+        h1.close() # Closes read handle, ignore that writer is already closed.
+        assert h1._reader._closed
+
+    def test_lock_out_of_context_pair(self):
+        with raises(GIPCLocked):
+            with pipe(True) as (h1, h2):
+                # Write more to pipe than pipe buffer can hold
+                # (makes `put` block when there is no reader).
+                # Buffer is quite large on Windows.
+                gw = gevent.spawn(lambda h: h.put(LONGERTHANBUFFER), h1)
+                gevent.sleep(SHORTTIME)
+                # Context manager tries to close h2 reader, h2 writer, and
+                # h1 writer first. Fails upon latter, must still close
+                # h1 reader after that.
+        assert not h1._writer._closed
+        assert h1._reader._closed
+        assert h2._writer._closed
+        assert h2._reader._closed
+        # Kill greenlet (free lock on h1 writer), close h1 writer.
+        gw.kill(block=False)
+        gevent.sleep(-1)
+        h1.close()
+        assert h1._writer._closed
+
+    def test_lock_out_of_context_pair_2(self):
+        with raises(GIPCLocked):
+            with pipe(True) as (h1, h2):
+                gr = gevent.spawn(lambda h: h.get(), h2)
+                gevent.sleep(SHORTTIME)
+                # Context succeeds closing h1 reader and writer. Fails during
+                # closing h2 reader.
+        assert not h2._reader._closed
+        assert h1._reader._closed
+        assert h2._writer._closed
+        assert h1._writer._closed
+        gr.kill(block=False)
+        gevent.sleep(-1)
+        h2.close()
+
+    def test_lock_out_of_context_pair_3(self):
+        with raises(GIPCLocked):
+            with pipe(True) as (h1, h2):
+                gr1 = gevent.spawn(lambda h: h.get(), h1)
+                gr2 = gevent.spawn(lambda h: h.get(), h2)
+                gevent.sleep(SHORTTIME)
+                # Context succeeds closing h2 writer, fails upon closing h2
+                # reader. Proceeds closing h1 writer, succeeds, closes h1
+                # reader and fails.
+        assert not h2._reader._closed
+        assert not h1._reader._closed
+        assert h2._writer._closed
+        assert h1._writer._closed
+        gr1.kill(block=False)
+        gr2.kill(block=False)
+        gevent.sleep(-1)
+        h2.close()
+        h1.close()
+
+    def test_lock_out_of_context_pair_4(self):
+        with raises(GIPCLocked):
+            with pipe(True) as (h1, h2):
+                # Write more to pipe than pipe buffer can hold
+                # (makes `put` block when there is no reader).
+                # Buffer is quite large on Windows.
+                gw1 = gevent.spawn(lambda h: h.put(LONGERTHANBUFFER), h1)
+                gw2 = gevent.spawn(lambda h: h.put(LONGERTHANBUFFER), h2)
+                gevent.sleep(SHORTTIME)
+                # Context fails closing h2 writer, succeeds upon closing h2
+                # reader. Proceeds closing h1 writer, fails, closes h1
+                # reader and succeeds.
+        assert h2._reader._closed
+        assert h1._reader._closed
+        assert not h2._writer._closed
+        assert not h1._writer._closed
+        gw1.kill(block=False)
+        gw2.kill(block=False)
+        gevent.sleep(-1)
+        h2.close()
+        h1.close()
+
+    def test_double_close(self):
+        with pipe(True) as (h1, h2):
+            pass
+        with raises(GIPCClosed):
+            h2.close()
+        with raises(GIPCClosed):
+            h1.close()
 
 
 class TestSimpleUseCases():
