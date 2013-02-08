@@ -559,7 +559,7 @@ class _GIPCHandle(object):
         try:
             self.close()
         except GIPCClosed:
-            # Closed before, which is fine.
+            # Tolerate handles that have been closed within context.
             pass
         except GIPCLocked:
             # Locked for I/O outside of context, which is not fine.
@@ -755,8 +755,18 @@ class _GIPCDuplexHandle(_PairContext):
         super(_GIPCDuplexHandle, self).__init__((reader, writer))
 
     def close(self):
-        self._writer.close()
-        self._reader.close()
+        """Close associated `_GIPCHandle` instances. Tolerate if one of both
+        has already been closed before. Throw GIPCClosed if both hafe been
+        closed before.
+        """
+        handles = (self._writer, self._reader)
+        if self._writer._closed and self._reader._closed:
+            raise GIPCClosed("Reader & writer in %s already closed." % (self,))
+        # Close writer first. otherwise, `os.close(r._fd)` would block on Win.
+        if not self._writer._closed:
+            self._writer.close()
+        if not self._reader._closed:
+            self._reader.close()
 
     def __str__(self):
         return self.__repr__()
