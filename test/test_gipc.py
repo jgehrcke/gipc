@@ -549,6 +549,37 @@ class TestGetTimeout():
         assert False
 
 
+class TestDuplexHandle():
+    def teardown(self):
+        if get_all_handles():
+            for h in get_all_handles():
+                try:
+                    h.close()
+                    os.close(h._fd)
+                except (OSError, GIPCError, TypeError):
+                    pass
+            set_all_handles([])
+            raise Exception("Cleanup was not successful.")
+
+
+    def test_duplex_handle_simple(self):
+        h1, h2 = pipe(duplex=True)
+        h1.put(1)
+        h2.put(2)
+        assert h2.get() == 1
+        assert h1.get() == 2
+        h1.close()
+        h2.close()
+
+
+    def test_duplex_handle_contextmanager_simple(self):
+        with pipe(duplex=True) as (h1, h2):
+            h1.put(1)
+            assert h2.get() == 1
+            h2.put(2)
+            assert h1.get() == 2
+
+
 class TestSimpleUseCases():
     """Tests reproducing basic usage scenarios of gipc.
     """
