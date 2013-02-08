@@ -28,7 +28,6 @@ inter-process communication and useful helper constructs.
 
 .. todo::
 
-    - Implement duplex pipe, readable and writable from both sides.
     - Implement poll/peek on read end. (It's impossible to identify complete
       messages in advance, but within the framework only complete messages
       are sent.)
@@ -48,12 +47,11 @@ import os
 import io
 import sys
 import struct
-import signal
 import logging
-import itertools
 import multiprocessing
 import multiprocessing.forking
 import multiprocessing.process
+from itertools import chain
 try:
    import cPickle as pickle
 except:
@@ -174,17 +172,6 @@ def pipe(duplex=False):
         ))
 
 
-def _filter_handles(l):
-    handles = []
-    for o in l:
-        if isinstance(o, _GIPCHandle):
-            handles.append(o)
-        elif isinstance(o, _GIPCDuplexHandle):
-            handles.append(o._writer)
-            handles.append(o._reader)
-    return handles
-
-
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     """Start child process and execute function ``target(*args, **kwargs)``.
     Any existing instance of :class:`gipc._GIPCHandle` or
@@ -236,7 +223,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     if not isinstance(kwargs, dict):
         raise TypeError, '`kwargs` must be dictionary.'
     log.debug("Invoke target `%s` in child process." % target)
-    childhandles = _filter_handles(itertools.chain(args, kwargs.values()))
+    childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if WINDOWS:
         for h in childhandles:
             h._pre_createprocess_windows()
@@ -270,7 +257,7 @@ def _child(target, args, kwargs):
     state is reset before running the user-given function.
     """
     log.debug("_child start. target: `%s`" % target)
-    childhandles = _filter_handles(itertools.chain(args, kwargs.values()))
+    childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if not WINDOWS:
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
         # the kernel state for backends that have one. Must be called in the
@@ -278,6 +265,8 @@ def _child(target, args, kwargs):
         gevent.reinit()
         log.debug("Delete current hub's threadpool.")
         hub = gevent.get_hub()
+        # Delete threadpool before hub destruction, otherwise `hub.destroy()`
+        # might block forever upon `ThreadPool.kill()` as of gevent 1.0rc2.
         del hub.threadpool
         hub._threadpool = None
         # Destroy default event loop via `libev.ev_loop_destroy()` and delete
@@ -315,7 +304,9 @@ def _child(target, args, kwargs):
         if WINDOWS:
             h._post_createprocess_windows()
         log.debug("Handle `%s` is now valid in child." % h)
+    # Invoke user-given function.
     target(*args, **kwargs)
+    # Close file descriptors before exiting process. Needless, but clean.
     for h in childhandles:
         try:
             # The user might already have closed it.
@@ -715,8 +706,8 @@ class _GIPCWriter(_GIPCHandle):
 class _PairContext(tuple):
     """
     Generic context manager for a 2-tuple containing two entities supporting
-    context enter and exit themselves. Returns tuple upon entering the context,
-    attempts to cleanly exit both tuple elements properly upon context exit.
+    context enter and exit themselves. Returns 2-tuple upon entering the
+    context, attempts to exit both tuple elements upon context exit.
     """
     def __init__(self, (e1, e2)):
         self._e1 = e1
@@ -796,11 +787,24 @@ else:
     _WRITE_NB = gevent.os.tp_write
 
 
-# Define container for keeping track of valid `_GIPCHandle`s.
+def _filter_handles(l):
+    """Iterate through `l`, filter and yield `_GIPCHandle` instances.
+    """
+    for o in l:
+        if isinstance(o, _GIPCHandle):
+            yield o
+        elif isinstance(o, _GIPCDuplexHandle):
+            yield o._writer
+            yield o._reader
+
+
+# Container for keeping track of valid `_GIPCHandle`s in current proecss.
 _all_handles = []
 
 
 def get_all_handles():
+    """Return a copy of the list of all handles.
+    """
     return _all_handles[:]
 
 
