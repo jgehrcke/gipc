@@ -93,19 +93,50 @@ class GIPCLocked(GIPCError):
     pass
 
 
-def pipe():
-    """Creates a new pipe and returns its corresponding read and write
-    handles. Those allow for sending and receiving pickleable objects through
-    the pipe in a gevent-cooperative manner. A handle pair can transmit data
-    between greenlets within one process or across processes (created via
-    :func:`start_process`).
+def _newpipe():
+    """Create new `os.pipe()` and return `(_GIPCReader, _GIPCWriter)` tuple.
+
+    os.pipe() implementation on Windows (http://bit.ly/RDuKUm):
+       - CreatePipe(&read, &write, NULL, 0)
+       - anonymous pipe, system handles buffer size
+       - anonymous pipes are implemented using named pipes with unique names
+       - asynchronous (overlapped) read and write operations not supported
+     os.pipe() implementation on Unix (http://linux.die.net/man/7/pipe):
+       - based on pipe()
+       - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
+    """
+    r, w = os.pipe()
+    return (_GIPCReader(r), _GIPCWriter(w))
+
+
+def pipe(duplex=False):
+    """Create a pipe-based message transport channel and return corresponding
+    handles for reading and writing data.
+
+    Allows for gevent-cooperative transmission of pickleable objects. Data can
+    be sent between greenlets within one process or across processes (created
+    via :func:`start_process`).
+
+    :arg duplex:
+        - If ``False`` (default), create a unidirectional pipe-based message
+          transport channel and return the corresponding
+          ``(_GIPCReader, _GIPCWriter)`` handle pair.
+        - If ``True``, create a bidirectional message transport channel based
+          on two pipes and return the corresponding
+          ``(_GIPCDuplexHandle, _GIPCDuplexHandle)`` handle pair.
 
     :returns:
-        ``(reader, writer)`` tuple. Both items are instances of
-        :class:`gipc._GIPCHandle`.
+        - ``duplex=False``: ``(reader, writer)`` 2-tuple. The first element is
+          of type :class:`gipc._GIPCReader`, the second of type
+          :class:`gipc._GIPCWriter`. Both inherit from
+          :class:`gipc._GIPCHandle`.
+        - ``duplex=True``: ``(handle, handle)`` 2-tuple. Both elements are of
+          type :class:`gipc._GIPCDuplexHandle`.
 
-    :class:`gipc._GIPCHandle` instances are recommended to be used with
-    Python's context manager in the following ways::
+
+    :class:`gipc._GIPCHandle` and :class:`gipc._GIPCDuplexHandle`  instances
+    are recommended to be used with Python's context manager as indicated in
+    the following examples::
 
         with pipe() as (r, w):
             do_something(r, w)
@@ -116,31 +147,49 @@ def pipe():
 
         with reader:
             do_something(reader)
+            with writer as w:
+                do_something(w)
 
-        with writer as w:
-            do_something(w)
+    ::
 
-    The transport layer is based on ``os.pipe()`` (i.e. ``CreatePipe()`` on
-    Windows and ``pipe()`` on POSIX-compliant systems).
+        with pipe(duplex=True) as (h1, h2):
+            h1.put(1)
+            assert h2.get() == 1
+            h2.put(2)
+            assert h1.get() == 2
+
+
+    The transport layer is based on ``os.pipe()`` (i.e.
+    `CreatePipe() <http://msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx>`_
+    on Windows and `pipe() <http://www.kernel.org/doc/man-pages/online/pages/man2/pipe.2.html>`_
+    on POSIX-compliant systems).
     """
-    # os.pipe() implementation on Windows (http://bit.ly/RDuKUm):
-    #   - CreatePipe(&read, &write, NULL, 0)
-    #   - anonymous pipe, system handles buffer size
-    #   - anonymous pipes are implemented using named pipes with unique names
-    #   - asynchronous (overlapped) read and write operations not supported
-    # os.pipe() implementation on Unix (http://linux.die.net/man/7/pipe):
-    #   - based on pipe()
-    #   - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
-    r, w = os.pipe()
-    reader = _GIPCReader(r)
-    writer = _GIPCWriter(w)
-    return _HandlePairContext((reader, writer))
+    pair1 = _newpipe()
+    if not duplex:
+        return _PairContext(pair1)
+    pair2 = _newpipe()
+    return _PairContext((
+        _GIPCDuplexHandle((pair1[0], pair2[1])),
+        _GIPCDuplexHandle((pair2[0], pair1[1]))
+        ))
+
+
+def _filter_handles(l):
+    handles = []
+    for o in l:
+        if isinstance(o, _GIPCHandle):
+            handles.append(o)
+        elif isinstance(o, _GIPCDuplexHandle):
+            handles.append(o._writer)
+            handles.append(o._reader)
+    return handles
 
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     """Start child process and execute function ``target(*args, **kwargs)``.
-    Any existing :class:`gipc._GIPCHandle` can be passed to the child process
-    via ``args`` and/or ``kwargs``.
+    Any existing instance of :class:`gipc._GIPCHandle` or
+    :class:`gipc._GIPCDuplexHandle` can be passed to the child process via
+    ``args`` and/or ``kwargs``.
 
     .. note::
 
@@ -187,8 +236,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     if not isinstance(kwargs, dict):
         raise TypeError, '`kwargs` must be dictionary.'
     log.debug("Invoke target `%s` in child process." % target)
-    allargs = itertools.chain(args, kwargs.values())
-    childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
+    childhandles = _filter_handles(itertools.chain(args, kwargs.values()))
     if WINDOWS:
         for h in childhandles:
             h._pre_createprocess_windows()
@@ -203,12 +251,11 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     p.start()
     p.start = lambda *a, **b: sys.stderr.write(
         "gipc WARNING: Redundant call to %s.start()\n" % p)
-    if WINDOWS:
-        for h in childhandles:
-            h._post_createprocess_windows()
     # Close dispensable file handles in parent.
     for h in childhandles:
         log.debug("Invalidate %s in parent." % h)
+        if WINDOWS:
+            h._post_createprocess_windows()
         h.close()
     return p
 
@@ -223,8 +270,7 @@ def _child(target, args, kwargs):
     state is reset before running the user-given function.
     """
     log.debug("_child start. target: `%s`" % target)
-    allargs = itertools.chain(args, kwargs.values())
-    childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
+    childhandles = _filter_handles(itertools.chain(args, kwargs.values()))
     if not WINDOWS:
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
         # the kernel state for backends that have one. Must be called in the
@@ -252,6 +298,7 @@ def _child(target, args, kwargs):
                 log.debug("Invalidate %s in child." % h)
                 h._set_legit_process()
                 # At duplication time the handle might have been locked.
+                # Unlock.
                 h._lock.counter = 1
                 h.close()
     else:
@@ -279,9 +326,9 @@ def _child(target, args, kwargs):
 
 class _GProcess(multiprocessing.Process):
     """
-    Provides the same API as ``multiprocessing.Process``.
+    Compatible with the ``multiprocessing.Process`` API.
 
-    For gevent-cooperativeness and libev-compatibility, it currently
+    For cooperativeness with gevent and compatibility with libev, it currently
     re-implements ``start()``, ``is_alive()``, ``exitcode`` on Unix and
     ``join()`` on Windows as well as on Unix.
 
@@ -521,7 +568,7 @@ class _GIPCHandle(object):
         try:
             self.close()
         except GIPCClosed:
-            # Closed before, which is fine.
+            # Tolerate handles that have been closed within context.
             pass
         except GIPCLocked:
             # Locked for I/O outside of context, which is not fine.
@@ -665,34 +712,77 @@ class _GIPCWriter(_GIPCHandle):
             self._write(bindata)
 
 
-class _HandlePairContext(tuple):
-    def __init__(self, (reader, writer)):
-        self.reader = reader
-        self.writer = writer
-        super(_HandlePairContext, self).__init__((reader, writer))
+class _PairContext(tuple):
+    """
+    Generic context manager for a 2-tuple containing two entities supporting
+    context enter and exit themselves. Returns tuple upon entering the context,
+    attempts to cleanly exit both tuple elements properly upon context exit.
+    """
+    def __init__(self, (e1, e2)):
+        self._e1 = e1
+        self._e2 = e2
+        super(_PairContext, self).__init__((e1, e2))
 
     def __enter__(self):
-        for h in self:
-            h.__enter__()
+        for e in self:
+            e.__enter__()
         return self
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
-        Call `__exit__()` for both, read and write handles, in any case,
-        as expected of a context manager. Exit writer first, as `os.close()`
-        on reader might block on Windows otherwise. If an exception occurs
-        during writer exit, store it, exit reader and raise it afterwards. If
-        an exception is raised during both, reader and writer exit, only
-        raise the reader exit exception.
+        Call `__exit__()` for both, e1 and e2 entities, in any case,
+        as expected of a context manager. Exit e2 first, as it is used as
+        writer in case of `_PairContext((reader1, writer1))` and
+        `os.close()` on reader might block on Windows otherwise.
+        If an exception occurs during e2 exit, store it, exit e1 and raise it
+        afterwards. If an exception is raised during both, e1 and e2 exit, only
+        raise the e1 exit exception.
         """
-        writer_exit_exception = None
+        e2_exit_exception = None
         try:
-            self.writer.__exit__(exc_type, exc_value, traceback)
+            self._e2.__exit__(exc_type, exc_value, traceback)
         except:
-            writer_exit_exception = sys.exc_info()
-        self.reader.__exit__(exc_type, exc_value, traceback)
-        if writer_exit_exception:
-            raise writer_exit_exception[1], None, writer_exit_exception[2]
+            e2_exit_exception = sys.exc_info()
+        self._e1.__exit__(exc_type, exc_value, traceback)
+        if e2_exit_exception:
+            raise e2_exit_exception[1], None, e2_exit_exception[2]
+
+
+class _GIPCDuplexHandle(_PairContext):
+    """
+    A ``_GIPCDuplexHandle`` instance manages one end of a bidirectional
+    pipe-based message transport created via :func:`pipe()` with
+    ``duplex=True``. It provides ``put()``, ``get()``, and ``close()``
+    methods which are forwarded to the corresponding methods of
+    :class:`gipc._GIPCWriter` and :class:`gipc._GIPCReader`.
+    """
+    def __init__(self, (reader, writer)):
+        self._reader = reader
+        self._writer = writer
+        self.put = self._writer.put
+        self.get = self._reader.get
+        super(_GIPCDuplexHandle, self).__init__((reader, writer))
+
+    def close(self):
+        """Close associated `_GIPCHandle` instances. Tolerate if one of both
+        has already been closed before. Throw GIPCClosed if both hafe been
+        closed before.
+        """
+        handles = (self._writer, self._reader)
+        if self._writer._closed and self._reader._closed:
+            raise GIPCClosed("Reader & writer in %s already closed." % (self,))
+        # Close writer first. otherwise, `os.close(r._fd)` would block on Win.
+        if not self._writer._closed:
+            self._writer.close()
+        if not self._reader._closed:
+            self._reader.close()
+
+    def __str__(self):
+        return self.__repr__()
+
+    def __repr__(self):
+        return "<%s(%r, %s)>" % (
+            self.__class__.__name__, self._reader, self._writer)
 
 
 # Define non-blocking read and write functions
