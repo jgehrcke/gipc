@@ -174,6 +174,17 @@ def pipe(duplex=False):
         ))
 
 
+def _filter_handles(l):
+    handles = []
+    for o in l:
+        if isinstance(o, _GIPCHandle):
+            handles.append(o)
+        elif isinstance(o, _GIPCDuplexHandle):
+            handles.append(o._writer)
+            handles.append(o._reader)
+    return handles
+
+
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     """Start child process and execute function ``target(*args, **kwargs)``.
     Any existing instance of :class:`gipc._GIPCHandle` or
@@ -225,8 +236,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     if not isinstance(kwargs, dict):
         raise TypeError, '`kwargs` must be dictionary.'
     log.debug("Invoke target `%s` in child process." % target)
-    allargs = itertools.chain(args, kwargs.values())
-    childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
+    childhandles = _filter_handles(itertools.chain(args, kwargs.values()))
     if WINDOWS:
         for h in childhandles:
             h._pre_createprocess_windows()
@@ -241,12 +251,11 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     p.start()
     p.start = lambda *a, **b: sys.stderr.write(
         "gipc WARNING: Redundant call to %s.start()\n" % p)
-    if WINDOWS:
-        for h in childhandles:
-            h._post_createprocess_windows()
     # Close dispensable file handles in parent.
     for h in childhandles:
         log.debug("Invalidate %s in parent." % h)
+        if WINDOWS:
+            h._post_createprocess_windows()
         h.close()
     return p
 
@@ -261,8 +270,7 @@ def _child(target, args, kwargs):
     state is reset before running the user-given function.
     """
     log.debug("_child start. target: `%s`" % target)
-    allargs = itertools.chain(args, kwargs.values())
-    childhandles = [a for a in allargs if isinstance(a, _GIPCHandle)]
+    childhandles = _filter_handles(itertools.chain(args, kwargs.values()))
     if not WINDOWS:
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
         # the kernel state for backends that have one. Must be called in the
@@ -290,6 +298,7 @@ def _child(target, args, kwargs):
                 log.debug("Invalidate %s in child." % h)
                 h._set_legit_process()
                 # At duplication time the handle might have been locked.
+                # Unlock.
                 h._lock.counter = 1
                 h.close()
     else:
