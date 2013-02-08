@@ -131,7 +131,7 @@ Technical notes
   processes.
 
 - Child process creation and invocation is done via a thin wrapper around
-  ``multiprocessing.Process``. On Unix, the gevent's state and the libev event
+  ``multiprocessing.Process``. On Unix, gevent's state and the libev event
   loop are re-initialized in the child before execution of the target function.
 
 - On POSIX-compliant systems, gevent-aware child process monitoring is based on
@@ -471,7 +471,7 @@ Spawning child processes
 
 .. _api_pipe_create:
 
-Creating a pipe and its handle-pair
+Creating a pipe and its handle pair
 ===================================
 
 .. automodule:: gipc
@@ -493,6 +493,8 @@ Handling handles
 .. autoclass:: gipc.gipc._GIPCReader()
     :show-inheritance:
     :members: get
+
+.. autoclass:: gipc.gipc._GIPCDuplexHandle()
 
 
 .. _api_control_childs:
