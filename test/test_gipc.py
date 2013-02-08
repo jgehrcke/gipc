@@ -404,10 +404,10 @@ class TestIPC():
         p.join()
         if not WINDOWS:
             # On POSIX-compliant systems, gipc disables multiprocessing's
-            # capability to monitor child state.
+            # capability to monitor child states.
             assert p.exitcode == None
         else:
-            assert p.exitcode == 1
+            assert p.exitcode == 0
         self.rh.close()
         self.rh2.close()
         self.wh.close()
