@@ -132,6 +132,7 @@ class TestComm():
         gw = gevent.spawn(gwrite, self.wh, m)
         gr = gevent.spawn(gread, self.rh)
         assert m == gr.get()
+        gw.get()
 
     def test_onewriter_two_readers(self):
         m = [1] * LONG
@@ -144,6 +145,7 @@ class TestComm():
         gr1 = gevent.spawn(gread, self.rh)
         gr2 = gevent.spawn(gread, self.rh)
         assert m == gr1.get() == gr2.get()
+        gw.get()
 
     def test_twowriters_one_reader(self):
         m = [1] * LONG
@@ -155,6 +157,8 @@ class TestComm():
         gw2 = gevent.spawn(gwrite, self.wh, m)
         gr = gevent.spawn(gread, self.rh)
         assert [m, m] == gr.get()
+        gw1.get()
+        gw2.get()
 
     def test_all_handles_length(self):
         assert len(get_all_handles()) == 2
@@ -195,8 +199,8 @@ class TestClose():
         with raises(GIPCLocked):
             self.rh.close()
         g.kill()
-        self.rh.close()
         self.wh.close()
+        self.rh.close()
 
     def test_closewrite_read(self):
         self.wh.close()
