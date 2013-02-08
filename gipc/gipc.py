@@ -18,13 +18,13 @@
 """
 gipc: child processes and IPC for gevent.
 
-With gipc (pronunciation “gipsy”) multiprocessing.Process-based child
+With gipc (pronunciation “gipsy”), multiprocessing.Process-based child
 processes can safely be created and monitored anywhere within your
 gevent-powered application. Malicious side-effects of child process creation
-in the context of gevent are prevented, and the multiprocessing.Process API
-is rendered gevent-cooperative. Furthermore, gipc provides gevent-cooperative
-inter-process communication and useful helper constructs.
-
+in the context of gevent are prevented. The API of multiprocessing.Process
+objects is provided in a gevent-cooperative fashion. Furthermore, gipc comes
+up with a pipe-based transport layer for gevent-cooperative inter-process
+communication.
 
 .. todo::
 
@@ -756,13 +756,12 @@ class _GIPCDuplexHandle(_PairContext):
 
     def close(self):
         """Close associated `_GIPCHandle` instances. Tolerate if one of both
-        has already been closed before. Throw GIPCClosed if both hafe been
+        has already been closed before. Throw GIPCClosed if both have been
         closed before.
         """
-        handles = (self._writer, self._reader)
         if self._writer._closed and self._reader._closed:
             raise GIPCClosed("Reader & writer in %s already closed." % (self,))
-        # Close writer first. otherwise, `os.close(r._fd)` would block on Win.
+        # Close writer first. Otherwise, reader close would block on Win.
         if not self._writer._closed:
             self._writer.close()
         if not self._reader._closed:
