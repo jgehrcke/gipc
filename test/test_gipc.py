@@ -63,7 +63,7 @@ class TestComm():
         self._greenlets_to_be_killed = []
 
     def teardown(self):
-        # Make sure to not leak file descriptors.
+        # Make sure to not leak file descriptors during TestComm tests.
         if get_all_handles():
             for h in get_all_handles():
                 try:
@@ -177,6 +177,14 @@ class TestComm():
     def test_all_handles_length(self):
         assert len(get_all_handles()) == 2
         self.wh.close()
+        self.rh.close()
+
+    def test_write_closewrite_read(self):
+        self.wh.put("a")
+        self.wh.close()
+        assert self.rh.get() == "a"
+        with raises(EOFError):
+            self.rh.get()
         self.rh.close()
 
 
@@ -732,7 +740,7 @@ class TestDuplexHandleIPC():
             p.join()
 
 
-def duplchild_simple_echo(self, h):
+def duplchild_simple_echo(h):
     h.put(h.get())
 
 
@@ -992,7 +1000,7 @@ def complchild_test_threadpool_resolver_mp():
     r = h.resolver
 
 
-def compl_child_test_getaddrinfo_mp():
+def complchild_test_getaddrinfo_mp():
     return
 
 
