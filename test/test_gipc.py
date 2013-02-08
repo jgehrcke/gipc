@@ -545,7 +545,7 @@ class TestGetTimeout():
         assert False
 
 
-class TestDuplexHandle():
+class TestDuplexHandleBasic():
     def teardown(self):
         if get_all_handles():
             for h in get_all_handles():
@@ -710,6 +710,30 @@ class TestDuplexHandle():
             h2.close()
         with raises(GIPCClosed):
             h1.close()
+
+
+class TestDuplexHandleIPC():
+    def teardown(self):
+        if get_all_handles():
+            for h in get_all_handles():
+                try:
+                    h.close()
+                    os.close(h._fd)
+                except (OSError, GIPCError, TypeError):
+                    pass
+            set_all_handles([])
+            raise Exception("Cleanup was not successful.")
+
+    def test_simple_echo(self):
+        with pipe(True) as (hchild, hparent):
+            p = start_process(duplchild_simple_echo, (hchild, ))
+            hparent.put("MSG")
+            assert hparent.get() == "MSG"
+            p.join()
+
+
+def duplchild_simple_echo(self, h):
+    h.put(h.get())
 
 
 class TestSimpleUseCases():
@@ -891,7 +915,7 @@ class TestComplexUseCases():
         """
         import gevent.socket as socket
         socket.getaddrinfo("localhost", 21)
-        p = start_process(target=child_test_getaddrinfo_mp)
+        p = start_process(target=complchild_test_getaddrinfo_mp)
         p.join(timeout=1)
         assert p.exitcode == 0
 
@@ -899,7 +923,7 @@ class TestComplexUseCases():
         h = gevent.get_hub()
         t = h.threadpool
         r = h.resolver
-        p = start_process(target=child_test_threadpool_resolver_mp)
+        p = start_process(target=complchild_test_threadpool_resolver_mp)
         p.join(timeout=1)
         assert p.exitcode == 0
 
@@ -914,7 +938,7 @@ class TestComplexUseCases():
             with pipe() as (reader, writer):
                 start_response('200 OK', [('Content-Type', 'text/html')])
                 rg = start_process(
-                    target=child_test_wsgi_scenario_respgen,
+                    target=complchild_test_wsgi_scenario_respgen,
                     args=(writer, ))
                 response = reader.get()
                 rg.join()
@@ -928,7 +952,7 @@ class TestComplexUseCases():
                 break
             gevent.sleep(0.05)
         client = start_process(
-            target=child_test_wsgi_scenario_client,
+            target=complchild_test_wsgi_scenario_client,
             args=(http_server.address, ))
         client.join()
         servelet.kill()
@@ -938,7 +962,7 @@ class TestComplexUseCases():
         def duplex():
             with pipe() as (r, w):
                 with pipe() as (r2, w2):
-                    p = start_process(child_test_multi_duplex, (r, w2))
+                    p = start_process(complchild_test_multi_duplex, (r, w2))
                     w.put("msg")
                     assert r2.get() == "msg"
                     p.join()
@@ -948,27 +972,27 @@ class TestComplexUseCases():
             g.get()
 
 
-def child_test_multi_duplex(r, w):
+def complchild_test_multi_duplex(r, w):
     w.put(r.get())
 
 
-def child_test_wsgi_scenario_respgen(writer):
+def complchild_test_wsgi_scenario_respgen(writer):
     writer.put("response")
 
 
-def child_test_wsgi_scenario_client(http_server_address):
+def complchild_test_wsgi_scenario_client(http_server_address):
     import urllib2
     result = urllib2.urlopen("http://%s:%s/" % http_server_address)
     assert result.read() == "response"
 
 
-def child_test_threadpool_resolver_mp():
+def complchild_test_threadpool_resolver_mp():
     h = gevent.get_hub()
     t = h.threadpool
     r = h.resolver
 
 
-def child_test_getaddrinfo_mp():
+def compl_child_test_getaddrinfo_mp():
     return
 
 
