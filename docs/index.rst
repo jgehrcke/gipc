@@ -18,7 +18,7 @@ gipc: child processes and IPC for gevent
         - :ref:`What can gipc do for you? <what>`
         - :ref:`Usage <usage>`
         - :ref:`Technical notes <technotes>`
-        - :ref:`Installation and requirements <installation>`
+        - :ref:`Code, requirements, download, installation <installation>`
         - :ref:`Notes for Windows users <winnotes>`
         - :ref:`Author, license, contact <contact>`
     - :ref:`Code examples <examples>`
@@ -41,69 +41,65 @@ About gipc
 
 .. _what:
 
+gipc (pronunciation “gipsy”) is a Python package tested on CPython 2.6 and
+2.7.
+
 What can gipc do for you?
 =========================
 
-Naive usage of ``multiprocessing`` in the context of a ``gevent``-powered
-application may raise various problems and most likely breaks the application
-in some way. ``gipc`` is developed with the motivation to solve these issues
-transparently and make using ``gevent`` in combination with the basics of
-``multiprocessing``-based child process creation and IPC a no-brainer again.
+The usage of multiple processes in the context of `gevent <http://gevent.org>`_
+in principal can be a decent solution whenever a generally I/O-limited Python
+application needs to distribute tasks among multiple CPUs in parallel.
 
+However, naive usage of Python's multiprocessing package in the context of a
+gevent-powered application may raise various problems and most
+likely breaks the application in many ways. gipc is developed with the
+motivation to solve these issues transparently and make using gevent in
+combination with multiprocessing-based child processes and inter-process
+communication (IPC) a no-brainer again.
 
-**With gipc (pronunciation “gipsy”) multiprocessing.Process-based child
+**With gipc, multiprocessing.Process-based child
 processes can safely be created and monitored anywhere within your
 gevent-powered application. Malicious side-effects of child process creation
-in the context of gevent are prevented. The multiprocessing.Process API
-is provided in a gevent-cooperative fashion. Furthermore, gipc provides
-gevent-cooperative inter-process communication and useful helper constructs.**
+in the context of gevent are prevented. The API of multiprocessing.Process
+objects is provided in a gevent-cooperative fashion. Furthermore, gipc comes
+up with a pipe-based transport layer for gevent-cooperative inter-process
+communication.**
 
-
-``gipc`` is lightweight and simple to integrate. In the following code snippet,
+gipc is lightweight and simple to integrate. In the following code snippet,
 a Python object is sent from a greenlet in the main process to a child
 process::
 
     import gevent
     import gipc
 
-    obj = 0
-
     def child(reader):
-        assert reader.get() == obj
+        assert reader.get() == 0
 
     if __name__ == "__main__":
         with gipc.pipe() as (reader, writer):
-            writelet = gevent.spawn(lambda w: w.put(obj), writer)
-            readchild = gipc.start_process(child, args=(reader,))
+            writelet = gevent.spawn(lambda w: w.put(0), writer)
+            readchild = gipc.start_process(target=child, args=(reader,))
             writelet.join()
             readchild.join()
 
-Although quite simple, this code would have various negative side-effects if
-used with the canonical ``multiprocessing`` API instead of
+Although quite simple, this code would have various unwanted side-effects if
+used with the canonical multiprocessing API instead of
 ``gipc.start_process()`` and ``gipc.pipe()``.
 
 
 What are the challenges and what is gipc's approach?
 ----------------------------------------------------
 
-Depending on the operating system, child process creation via
-``multiprocessing`` in the context of ``gevent`` might yield a malicious event
-loop state in the child. Furthermore, greenlets spawned before forking are
+Depending on the operating system, child process creation via Python's
+multiprocessing in the context of gevent might yield a malicious libev event
+loop state in the child. Greenlets spawned before forking might become
 duplicated in the child. In addition, blocking method calls such as ``join()``
 on a ``multiprocessing.Process`` or the ``send()``/``recv()`` methods on a
-``multiprocessing.Connection`` are not gevent-cooperative. ``gipc`` overcomes
-these challenges for you transparently and in a straight-forward fashion.
-It allows for simple integration of child processes in your application -- on
-POSIX-compliant systems as well as on Windows.
-
-
-Can't I just use gevent+multiprocessing?
-----------------------------------------
-
-A solid application based on ``gevent`` and ``multiprocessing`` requires care
-and dealing with special cases. ``gipc`` is only a thin wrapper and provides
-the latter. Of course you can do this yourself. Feel free to have a look at
-gipc's code.
+``multiprocessing.Connection`` are not gevent-cooperative. gipc overcomes
+these and other challenges for you transparently and in a straight-forward
+fashion. It allows for integration of child processes in your application via
+a simple API -- on POSIX-compliant systems as well as on Windows.
 
 
 .. _usage:
@@ -111,7 +107,7 @@ gipc's code.
 Usage
 =====
 
-``gipc``'s interface is small and the usage is pretty simple. Make yourself
+gipc's usage is pretty simple. Its interface is clear and slim. Make yourself
 comfortable with ``gipc.start_process()`` and ``gipc.pipe()`` by going through
 the :ref:`examples <examples>` and the :ref:`API <api>` section.
 
@@ -120,7 +116,7 @@ the :ref:`examples <examples>` and the :ref:`API <api>` section.
 
 Technical notes
 ===============
-- ``gipc`` uses classical anonymous pipes as transport layer for
+- gipc uses classical anonymous pipes as transport layer for
   gevent-cooperative communication between greenlets and/or processes. A binary
   ``pickle`` protocol is used for transmitting arbitrary objects. Reading and
   writing on pipes is done with ``gevent``'s cooperative versions of
@@ -143,42 +139,50 @@ Technical notes
 - Any read/write operation on a pipe is ``gevent.lock.Semaphore``-protected
   and therefore greenlet-/threadsafe and atomic.
 
-- ``gipc`` obeys `semantic versioning 2 <http://semver.org/>`_.
+- gipc obeys `semantic versioning 2 <http://semver.org/>`_.
 
-- Although ``gipc`` is in an early development phase, I found it to work very
-  stable already. The unit test suite aims to cover all of ``gipc``'s features
+- Although gipc is in an early development phase, I found it to work very
+  stable already. The unit test suite aims to cover all of gipc's features
   within a clean gevent environment. More complex application scenarios,
   however, are not covered so far. Please let me know in which cases
-  ``gipc`` + ``gevent`` fails for you.
+  gipc + gevent fails for you.
 
 
 .. _installation:
 
-Installation
-============
+Code, requirements, download, installation
+==========================================
+
+Code
+----
+gipc's Mercurial repository is hosted at
+`Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
 Requirements
 ------------
 
-- gevent >= 1.0 (tested against gevent 1.0rc2). Download gevent
+- `gevent <http://gevent.org>`_ >= 1.0 (currently, gipc is tested against
+  gevent 1.0rc2). Download recent gevent releases
   `here <https://github.com/SiteSupport/gevent/downloads>`_.
-- The unit tests are ensured to pass on Python 2.6 and 2.7.
+- The unit tests are ensured to pass on CPython 2.6 and 2.7 on Linux as well
+  as on Windows.
 
-Install via pip
----------------
+Download & install via pip
+--------------------------
 
-The latest ``gipc`` release from PyPI can be pulled and and installed via
-`pip <http://www.pip-installer.org>`_::
+The latest official gipc release from PyPI can be pulled and and installed
+via `pip <http://www.pip-installer.org>`_::
 
     $ pip install gipc
 
-pip can also install the development version of ``gipc``::
+pip can also install the current development version of gipc::
 
     $ pip install hg+https://bitbucket.org/jgehrcke/gipc
 
 Note that the latter requires the most recent version of
 `distribute <http://packages.python.org/distribute/>`_ which can be installed
-by executing `distribute_setup.py <http://python-distribute.org/distribute_setup.py>`_.
+by executing
+`distribute_setup.py <http://python-distribute.org/distribute_setup.py>`_.
 
 pip is recommended over easy_install. pip installation instructions can be
 found `here <http://www.pip-installer.org/en/latest/installing.html>`_.
@@ -187,15 +191,13 @@ found `here <http://www.pip-installer.org/en/latest/installing.html>`_.
 Install directly via setup.py
 -----------------------------
 
-Download the latest release from `PyPI <http://pypi.python.org/pypi/gipc/>`_.
-Extract the archive and invoke::
+Download and extract the latest gipc release archive from
+`PyPI <http://pypi.python.org/pypi/gipc/>`_. Extract it and invoke::
 
     $ python setup.py install
 
-The same can be done with the latest development version of ``gipc`` which
+The same can be done with the latest development version of gipc which
 can be downloaded from `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
-
-Once installed, you can remove gipc manually or via ``pip uninstall gipc``.
 
 
 .. _winnotes:
@@ -226,7 +228,7 @@ to such a transition and the first steps are already
 Author, license, contact
 ========================
 
-``gipc`` is written and maintained by
+gipc is written and maintained by
 `Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the
 `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_.
 Your feedback is highly appreciated. You can contact me at
@@ -243,6 +245,8 @@ Examples
 - :ref:`Serving multiple clients (in child) from one server (in parent) <exampleserverclient>`
 - :ref:`Time-synchronization between processes <examplesync>`
 
+Note that these examples are invented with the motivation to demonstrate the API
+and capabilities of gipc rather than showing interesting use cases.
 
 .. _exampleipc:
 
@@ -312,8 +316,8 @@ cooperatively until it has stopped. Then it tries to terminate the child process
 Serving multiple clients (in child) from one server (in parent)
 ===============================================================
 
-This example implements TCP communication between a server in the parent
-process and multiple clients in a child process:
+For pure demonstration purposes, this example implements TCP communication
+between a server in the parent process and multiple clients in a child process:
 
 1)  gevent's ``StreamServer`` is started in a greenlet within the initial
     (parent) process. For each connecting client, it receives one
