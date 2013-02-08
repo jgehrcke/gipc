@@ -48,32 +48,46 @@ SHORTTIME = 0.01
 ALMOSTZERO = 0.00001
 LONGERTHANBUFFER = "A" * 9999999
 
-class TestComm():
+
+def check_for_handles_left_open():
+    """Frequently used teardown test method.
+
+    Raise exception if test case left open some file descriptor. Perform
+    rigorous close attempts in order to make sure to not leak file descriptors
+    during tests.
     """
+    if get_all_handles():
+        for h in get_all_handles():
+            try:
+                h.close()
+                os.close(h._fd)
+            except (OSError, GIPCError, TypeError):
+                pass
+        set_all_handles([])
+        raise Exception("Test case left open descriptor behind.")
+
+
+class TestComm():
+    """Test basic communication within single greenlets or among greenlets via
+    pipe-based unidirectional transport channels and `_GIPCHandle`s.
+
     Flow for each test_method:
-    o = TestClass()
-    o.setup()
-    try:
-        o.test_method()
-    finally:
-        o.teardown()
+        o = TestClass()
+        o.setup()
+        try:
+            o.test_method()
+        finally:
+            o.teardown()
     """
     def setup(self):
+        # Create one pipe & two handles for each test case.
         self.rh, self.wh = pipe()
-        self._greenlets_to_be_killed = []
 
     def teardown(self):
-        # Make sure to not leak file descriptors during TestComm tests.
-        if get_all_handles():
-            for h in get_all_handles():
-                try:
-                    h.close()
-                    os.close(h._fd)
-                except (OSError, GIPCError, TypeError):
-                    pass
-            set_all_handles([])
-        for g in self._greenlets_to_be_killed:
-            g.kill()
+        # Test cases must not close handles themselves.
+        self.rh.close()
+        self.wh.close()
+        check_for_handles_left_open()
 
     def test_singlemsg_short_bin(self):
         m = "OK"
@@ -142,42 +156,59 @@ class TestComm():
         gr = gevent.spawn(gread, self.rh)
         assert [m, m] == gr.get()
 
+    def test_all_handles_length(self):
+        assert len(get_all_handles()) == 2
+
+
+class TestClose():
+    """Test `_GIPCHandle`s close behavior and read/write behavior in context of
+    closing.
+    """
+    def setup(self):
+        self.rh, self.wh = pipe()
+
+    def teardown(self):
+        # Each test case needs to properly close both handles.
+        check_for_handles_left_open()
+
     def test_twoclose(self):
         self.wh.close()
         with raises(GIPCClosed):
             self.wh.close()
+        self.rh.close()
 
     def test_closewrite(self):
         self.wh.close()
         with raises(GIPCClosed):
             self.wh.put('')
+        self.rh.close()
 
     def test_closeread(self):
         self.rh.close()
         with raises(GIPCClosed):
             self.rh.get()
+        self.wh.close()
 
-    def test_readclose(self):
+    def test_readclose_whileread(self):
         g = gevent.spawn(lambda r: r.get(), self.rh)
-        self._greenlets_to_be_killed.append(g)
         gevent.sleep(SHORTTIME)
         with raises(GIPCLocked):
             self.rh.close()
+        g.kill()
+        self.rh.close()
+        self.wh.close()
 
     def test_closewrite_read(self):
         self.wh.close()
         with raises(EOFError):
             self.rh.get()
+        self.rh.close()
 
     def test_closeread_write(self):
         self.rh.close()
         with raises(OSError):
             self.wh.put('')
-
-    def test_all_handles_length(self):
-        assert len(get_all_handles()) == 2
         self.wh.close()
-        self.rh.close()
 
     def test_write_closewrite_read(self):
         self.wh.put("a")
@@ -189,6 +220,8 @@ class TestComm():
 
 
 class TestProcess():
+    """Test child process behavior and `_GProcess` API.
+    """
     def test_is_alive_true(self):
         p = start_process(p_child_a)
         assert p.is_alive()
@@ -289,23 +322,25 @@ def p_child_e3():
 
 
 class TestIPC():
+    """Test file descriptor passing and inter-process communication based on
+    unidirectional message transfer channels.
+    """
     def setup(self):
         self.rh, self.wh = pipe()
         self.rh2, self.wh2 = pipe()
-        self._greenlets_to_be_killed = []
 
     def teardown(self):
-        # Make sure to not leak file descriptors.
-        if get_all_handles():
-            for h in get_all_handles():
-                try:
-                    h.close()
-                    os.close(h._fd)
-                except (OSError, GIPCError, TypeError):
-                    pass
-            set_all_handles([])
-        for g in self._greenlets_to_be_killed:
-            g.kill()
+        # Each test case needs to properly have closed all 4 handles in parent.
+        check_for_handles_left_open()
+
+    def test_handlecount(self):
+        p = start_process(ipc_handlecounter1, args=(self.rh, self.rh2))
+        p.join()
+        assert p.exitcode == 0
+        # After passing two handles to the child, only 2 must be left open.
+        assert len(get_all_handles()) == 2
+        self.wh.close()
+        self.wh2.close()
 
     def test_singlemsg_long_list(self):
         m = [1] * LONG
@@ -313,6 +348,11 @@ class TestIPC():
         self.wh.put(m)
         p.join()
         assert p.exitcode == 0
+        with raises(GIPCClosed):
+            self.rh.close()
+        self.rh2.close()
+        self.wh.close()
+        self.wh2.close()
 
     def test_twochannels_singlemsg(self):
         m1 = "OK"
@@ -322,6 +362,8 @@ class TestIPC():
         self.wh2.put(m2)
         p.join()
         assert p.exitcode == 0
+        self.wh.close()
+        self.wh2.close()
 
     def test_childparentcomm_withinchildcomm(self):
         m1 = "OK"
@@ -332,6 +374,8 @@ class TestIPC():
         self.wh2.put(m2)
         p.join()
         assert p.exitcode == 0
+        self.wh.close()
+        self.wh2.close()
 
     def test_childchildcomm(self):
         m = {("KLADUSCH",): "foo"}
@@ -341,21 +385,33 @@ class TestIPC():
         pw.join()
         assert pr.exitcode == 0
         assert pw.exitcode == 0
+        self.rh2.close()
+        self.wh2.close()
 
     def test_handler_after_transfer_to_child(self):
         p = start_process(ipc_child_boring_reader, args=(self.rh,))
-        with raises(GIPCError):
+        with raises(GIPCClosed):
             self.rh.close()
         p.join()
         assert p.exitcode == 0
+        self.rh2.close()
+        self.wh.close()
+        self.wh2.close()
 
     def test_handler_in_nonregistered_process(self):
         p = multiprocessing.Process(target=ipc_child_d, args=(self.rh, ))
         p.start()
         p.join()
-        # gipc disables multiprocessing's capability to monitor child state.
-        assert p.exitcode == None
+        if not WINDOWS:
+            # On POSIX-compliant systems, gipc disables multiprocessing's
+            # capability to monitor child state.
+            assert p.exitcode == None
+        else:
+            assert p.exitcode == 1
         self.rh.close()
+        self.rh2.close()
+        self.wh.close()
+        self.wh2.close()
 
     def test_child_in_child_in_child_comm(self):
         m = "RATZEPENG"
@@ -363,6 +419,13 @@ class TestIPC():
         p.join()
         assert m == self.rh.get()
         assert p.exitcode == 0
+        self.rh.close()
+        self.rh2.close()
+        self.wh2.close()
+
+
+def ipc_handlecounter1(r1, r2):
+    assert len(get_all_handles()) == 2
 
 
 def ipc_readchild(r, m):
@@ -404,13 +467,18 @@ def ipc_child_d(r):
 
 
 def ipc_child_f(w, m):
+    assert len(get_all_handles()) == 1
     i = start_process(ipc_child_f2, args=(w, m))
     i.join()
+    assert i.exitcode == 0
+    with raises(GIPCClosed):
+        w.close()
 
 
 def ipc_child_f2(w, m):
     ii = start_process(ipc_child_f3, args=(w, m))
     ii.join()
+    assert ii.exitcode == 0
 
 
 def ipc_child_f3(w, m):
@@ -419,22 +487,15 @@ def ipc_child_f3(w, m):
 
 
 class TestContextManager():
+    """Test context manager behavior regarding unidirectional transport.
+    """
     def teardown(self):
-        if get_all_handles():
-            for h in get_all_handles():
-                try:
-                    h.close()
-                    os.close(h._fd)
-                except (OSError, GIPCError, TypeError):
-                    pass
-            set_all_handles([])
-            raise Exception("Cleanup was not successful.")
+        check_for_handles_left_open()
 
     def test_combi(self):
         with pipe() as (r, w):
             fd1 = r._fd
             fd2 = w._fd
-        # Make sure the C file descriptors are closed.
         with raises(OSError):
             os.close(fd1)
         with raises(OSError):
@@ -444,7 +505,6 @@ class TestContextManager():
         r, w = pipe()
         with w as foo:
             fd = foo._fd
-        # Make sure the C file descriptor is closed.
         with raises(OSError):
             os.close(fd)
         assert len(get_all_handles()) == 1
@@ -456,7 +516,6 @@ class TestContextManager():
         r, w = pipe()
         with r as foo:
             fd = foo._fd
-        # Make sure the C file descriptor is closed.
         with raises(OSError):
             os.close(fd)
         assert len(get_all_handles()) == 1
@@ -517,16 +576,10 @@ class TestContextManager():
 
 @mark.skipif('WINDOWS')
 class TestGetTimeout():
+    """Test timeout feature of `_GIPCReader` on POSIX-compliant systems.
+    """
     def teardown(self):
-        if get_all_handles():
-            for h in get_all_handles():
-                try:
-                    h.close()
-                    os.close(h._fd)
-                except (OSError, GIPCError, TypeError):
-                    pass
-            set_all_handles([])
-            raise Exception("Cleanup was not successful.")
+        check_for_handles_left_open()
 
     def test_simpletimeout_expires(self):
         with pipe() as (r, w):
@@ -554,16 +607,10 @@ class TestGetTimeout():
 
 
 class TestDuplexHandleBasic():
+    """Test duplex handle behavior in single process.
+    """
     def teardown(self):
-        if get_all_handles():
-            for h in get_all_handles():
-                try:
-                    h.close()
-                    os.close(h._fd)
-                except (OSError, GIPCError, TypeError):
-                    pass
-            set_all_handles([])
-            raise Exception("Cleanup was not successful.")
+        check_for_handles_left_open()
 
     def test_simple(self):
         h1, h2 = pipe(duplex=True)
@@ -721,16 +768,10 @@ class TestDuplexHandleBasic():
 
 
 class TestDuplexHandleIPC():
+    """Test duplex handles for inter-process communication.
+    """
     def teardown(self):
-        if get_all_handles():
-            for h in get_all_handles():
-                try:
-                    h.close()
-                    os.close(h._fd)
-                except (OSError, GIPCError, TypeError):
-                    pass
-            set_all_handles([])
-            raise Exception("Cleanup was not successful.")
+        check_for_handles_left_open()
 
     def test_simple_echo(self):
         with pipe(True) as (hchild, hparent):
@@ -745,26 +786,18 @@ def duplchild_simple_echo(h):
 
 
 class TestSimpleUseCases():
-    """Tests reproducing basic usage scenarios of gipc.
+    """Test very basic usage scenarios of gipc (pure gipc+gevent).
     """
     def teardown(self):
-        if get_all_handles():
-            for h in get_all_handles():
-                try:
-                    h.close()
-                    os.close(h._fd)
-                except (OSError, GIPCError, TypeError):
-                    pass
-            set_all_handles([])
-            raise Exception("Cleanup was not successful.")
+        check_for_handles_left_open()
 
     @mark.skipif('WINDOWS')
     def test_whatever_1(self):
         """
         From a writing child, fire into the pipe. In a greenlet in the parent,
         receive one of these messages and return it to the main greenlet.
-        Terminate the child process.
-        Looks like a timeout of 0.01 s does not reliably lead to success.
+        Expect message retrieval (child process creation) within a certain
+        timeout interval. Terminate the child process after retrieval.
         """
         with pipe() as (r, w):
             def readgreenlet(reader):
@@ -785,7 +818,8 @@ class TestSimpleUseCases():
     @mark.skipif('WINDOWS')
     def test_whatever_2(self):
         """
-        Time-synchronize two child processes.
+        Time-synchronize two child processes via two unidirectional channels.
+        Uses timeout control in children.
         """
         # First pipe for sync.
         with pipe() as (syncreader, syncwriter):
@@ -802,7 +836,7 @@ class TestSimpleUseCases():
 
     def test_whatever_3(self):
         """
-        Circular messaging! Random messages are in `sendlist` in parent.
+        Circular messaging. Random messages are stored in `sendlist` in parent.
         sendlist -> sendqueue(greenlet, parent)
         sendqueue -> forthpipe to child (greenlet, parent)
         forthpipe -> recvqueue (greenlet, child)
@@ -902,19 +936,11 @@ def usecase_child_c(reader, syncwriter):
 
 
 class TestComplexUseCases():
-    """Tests with increased complexity; involving other parts of gevent
-    and reproducing common usage scenarios.
+    """Tests with increased complexity; involving server components of gevent.
+    Rproduction of common usage scenarios.
     """
     def teardown(self):
-            if get_all_handles():
-                for h in get_all_handles():
-                    try:
-                        h.close()
-                        os.close(h._fd)
-                    except (OSError, GIPCError, TypeError):
-                        pass
-                set_all_handles([])
-                raise Exception("Cleanup was not successful.")
+        check_for_handles_left_open()
 
     def test_getaddrinfo_mp(self):
         """This test would make gevent's hub threadpool kill upon hub
