@@ -39,7 +39,7 @@ import multiprocessing.process
 from itertools import chain
 try:
     import cPickle as pickle
-except:
+except ImportError:
     import pickle
 WINDOWS = sys.platform == "win32"
 if WINDOWS:
@@ -372,6 +372,9 @@ class _GProcess(multiprocessing.Process):
             log.debug("SIGCHLD watcher for %s started." % self.pid)
 
         def _on_sigchld(self, watcher):
+            """Callback of libev child watcher. Called when libev event loop
+            catches corresponding SIGCHLD signal.
+            """
             watcher.stop()
             # Status evaluation copied from `multiprocessing.forking`.
             if os.WIFSIGNALED(watcher.rstatus):
