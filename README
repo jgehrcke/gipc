@@ -45,8 +45,8 @@ How can the unit tests be run?
 ==============================
 If you run into troubles with gipc, it is a good idea to run the unit test suite
 under your conditions. gipc's unit tests are written for
-`pytest <http://pytest.org>`_. With `gipc/test` (included in the release) as the
-current working directory, I usually run tests like this::
+`pytest <http://pytest.org>`_. With ``gipc/test`` (included in the release) as
+the current working directory, I usually run tests like this::
 
     $ py.test -v
 
@@ -55,8 +55,8 @@ How is code audit perfomed?
 ===========================
 I mainly use `pep8 <http://pypi.python.org/pypi/pep8>`_ and
 `pylint <http://pypi.python.org/pypi/pylint>`_. pep8 is called without arguments
-in the root directory. It bases its check on the rules defined in ``setup.cfg``
-in the repository. This is how I usually invoke pylint::
+in the root directory and used the rules defined in ``setup.cfg`` in the
+repository. This is how I usually invoke pylint::
 
     $ pylint --reports=n --include-ids=y --disable=C0103 gipc.py
     
