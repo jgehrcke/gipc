@@ -18,7 +18,7 @@ setup(
     platforms = ["POSIX", "Windows"],
     classifiers = [
         "Programming Language :: Python",
-        "Development Status :: 3 - Alpha",
+        "Development Status :: 4 - Beta",
         "License :: OSI Approved :: Apache Software License",
         "Intended Audience :: Developers",
         "Operating System :: POSIX",

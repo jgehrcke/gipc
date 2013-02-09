@@ -25,8 +25,9 @@ import random
 import gevent
 import gevent.queue
 sys.path.insert(0, os.path.abspath('..'))
-from gipc import (start_process, pipe, GIPCError, GIPCClosed, GIPCLocked,
-                  get_all_handles, set_all_handles)
+from gipc import start_process, pipe, GIPCError, GIPCClosed, GIPCLocked
+from gipc.gipc import _get_all_handles as get_all_handles
+from gipc.gipc import _set_all_handles as set_all_handles
 
 WINDOWS = sys.platform == "win32"
 
@@ -56,8 +57,9 @@ def check_for_handles_left_open():
     rigorous close attempts in order to make sure to not leak file descriptors
     during tests.
     """
-    if get_all_handles():
-        for h in get_all_handles():
+    handles = get_all_handles()
+    if handles:
+        for h in handles:
             try:
                 h.close()
                 os.close(h._fd)
