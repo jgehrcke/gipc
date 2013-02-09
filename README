@@ -6,12 +6,10 @@ gevent-powered application may raise various problems and most likely breaks the
 application in many ways.
 
 gipc (pronunciation "gipsy") is developed with the motivation to solve these
-issues transparently and make using gevent in combination with
-multiprocessing-based child processes and inter-process communication (IPC) a
-no-brainer again. With gipc, multiprocessing.Process-based child processes can
-safely be created anywhere within your gevent-powered application. Furthermore,
-gipc provides gevent-cooperative inter-process communication and useful helper
-constructs. gipc is lightweight and very simple to integrate.
+issues transparently. With gipc, multiprocessing.Process-based child processes
+can safely be created anywhere within your gevent-powered application.
+Furthermore, gipc provides gevent-cooperative inter-process communication and
+useful helper constructs. gipc is lightweight and very simple to integrate.
 
 
 What are the boundary conditions?
@@ -29,14 +27,15 @@ http://gehrcke.de/gipc.
 Is gipc stable?
 ===============
 Development began in late 2012. gipc is not mature. However, as of version
-0.3.0, I am not aware of any fundamental issue. Via extensive unit testing, gipc
-has been validated to work reliable in scenarios of low and medium complexity.
-It is ready to be evaluated in the context of serious projects. Please let me
-know how it performs for you.
+0.3.0, I am not aware of any fundamental issue. gipc's basic approach has
+proven to be reasonable. Via extensive unit testing, gipc has been validated to
+work reliably in scenarios of low and medium complexity. It is ready to be
+evaluated in the context of serious projects. Please let me know how it performs
+for you.
 
 
-From where can I retrieve official releases?
-=============================================
+Where should I download gipc?
+=============================
 Releases are available at `PyPI <http://pypi.python.org/pypi/gipc>`_.
 The development version can be retrieved from the mercurial repository at
 `bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
@@ -45,19 +44,19 @@ The development version can be retrieved from the mercurial repository at
 How can the unit tests be run?
 ==============================
 If you run into troubles with gipc, it is a good idea to run the unit test suite
-under your conditions. The unit tests are written for
+under your conditions. gipc's unit tests are written for
 `pytest <http://pytest.org>`_. With `gipc/test` (included in the release) as the
 current working directory, I usually run tests like this::
 
-    $ py.test -v -x
+    $ py.test -v
 
 
 How is code audit perfomed?
 ===========================
-I use `pep8 <http://pypi.python.org/pypi/pep8>`_ and
+I mainly use `pep8 <http://pypi.python.org/pypi/pep8>`_ and
 `pylint <http://pypi.python.org/pypi/pylint>`_. pep8 is called without arguments
-in the root directory. The check is performed based on the rules defined in
-``setup.cfg`` in the repository. This is how I usually invoke pylint::
+in the root directory. It bases its check on the rules defined in ``setup.cfg``
+in the repository. This is how I usually invoke pylint::
 
     $ pylint --reports=n --include-ids=y --disable=C0103 gipc.py
     
