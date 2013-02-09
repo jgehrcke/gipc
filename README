@@ -52,6 +52,13 @@ current working directory, I usually run tests like this::
     $ py.test -v -x
 
 
+How is code audit perfomed?
+===========================
+PEP8 is checked via `pep8 <http://pypi.python.org/pypi/pep8>`_ based on the
+rules defined in ``setup.cfg`` in the repository.
+    
+    
+
 Contact & Help
 ==============
 Your feedback and questions are highly appreciated. For now, please contact me

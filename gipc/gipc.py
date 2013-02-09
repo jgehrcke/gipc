@@ -53,9 +53,9 @@ import multiprocessing.forking
 import multiprocessing.process
 from itertools import chain
 try:
-   import cPickle as pickle
+    import cPickle as pickle
 except:
-   import pickle
+    import pickle
 WINDOWS = sys.platform == "win32"
 if WINDOWS:
     import msvcrt
@@ -168,8 +168,7 @@ def pipe(duplex=False):
     pair2 = _newpipe()
     return _PairContext((
         _GIPCDuplexHandle((pair1[0], pair2[1])),
-        _GIPCDuplexHandle((pair2[0], pair1[1]))
-        ))
+        _GIPCDuplexHandle((pair2[0], pair1[1]))))
 
 
 def start_process(target, args=(), kwargs={}, daemon=None, name=None):
@@ -219,9 +218,9 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     behind ``gipc``.
     """
     if not isinstance(args, tuple):
-        raise TypeError, '`args` must be tuple.'
+        raise TypeError('`args` must be tuple.')
     if not isinstance(kwargs, dict):
-        raise TypeError, '`kwargs` must be dictionary.'
+        raise TypeError('`kwargs` must be dictionary.')
     log.debug("Invoke target `%s` in child process." % target)
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if WINDOWS:
@@ -371,6 +370,7 @@ class _GProcess(multiprocessing.Process):
         # -> Prevent multiprocessing.forking.Popen.poll() from calling
         # os.waitpid(). Let libev do the job.
         multiprocessing.forking.Popen.poll = lambda *a, **b: None
+
         def start(self):
             hub = gevent.get_hub()
             self._returnevent = gevent.event.Event()
@@ -413,8 +413,9 @@ class _GProcess(multiprocessing.Process):
             status = 'started'
             if self.exitcode is not None:
                 status = self.exitcode
-            return '<%s(%s, %s%s)>' % (type(self).__name__, self._name,
-                status, self._daemonic and ' daemon' or '')
+            return '<%s(%s, %s%s)>' % (
+                type(self).__name__, self._name, status,
+                self._daemonic and ' daemon' or '')
 
     def join(self, timeout=None):
         """
