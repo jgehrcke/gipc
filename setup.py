@@ -1,12 +1,13 @@
 import distribute_setup
 distribute_setup.use_setuptools()
 from setuptools import setup
+from gipc import __version__ as gipcversion
 
 setup(
     name = "gipc",
     packages = ["gipc"],
     py_modules = ["distribute_setup"],
-    version = "0.3.0",
+    version = gipcversion,
     description = "gevent-cooperative child processes and inter-process communication.",
     long_description=open("README").read().decode('utf-8'),
     author = "Jan-Philip Gehrcke",
