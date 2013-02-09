@@ -1,4 +1,4 @@
-﻿# -*- coding: utf-8 -*-
+# -*- coding: utf-8 -*-
 #
 #   Copyright (C) 2012 - 2013 Jan-Philip Gehrcke
 #
@@ -39,8 +39,8 @@ from py.test import raises, mark
 
 import logging
 logging.basicConfig(
-  format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
-  datefmt='%H:%M:%S')
+    format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
+    datefmt='%H:%M:%S')
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
@@ -293,7 +293,7 @@ class TestProcess():
     def test_exitcode_previous_to_join(self):
         p = start_process(lambda: gevent.sleep(SHORTTIME))
         assert p.exitcode is None
-        gevent.sleep(3*SHORTTIME)
+        gevent.sleep(3 * SHORTTIME)
         assert p.exitcode == 0
         p.join()
 
@@ -411,7 +411,7 @@ class TestIPC():
         if not WINDOWS:
             # On POSIX-compliant systems, gipc disables multiprocessing's
             # capability to monitor child states.
-            assert p.exitcode == None
+            assert p.exitcode is None
         else:
             assert p.exitcode == 0
         self.rh.close()
@@ -681,10 +681,10 @@ class TestDuplexHandleBasic():
         # coroutines (otherwise the subsequent close attempt may fail with
         # `GIPCLocked` error).
         gevent.sleep(-1)
-        h2.close() # Closes read and write handles of h2.
+        h2.close()  # Closes read and write handles of h2.
         assert h1._writer._closed
         assert not h1._reader._closed
-        h1.close() # Closes read handle, ignore that writer is already closed.
+        h1.close()  # Closes read handle, ignore that writer is already closed.
         assert h1._reader._closed
 
     def test_lock_out_of_context_pair(self):
@@ -807,7 +807,7 @@ class TestSimpleUseCases():
         """
         with pipe() as (r, w):
             def readgreenlet(reader):
-                with gevent.Timeout(SHORTTIME*5, False) as t:
+                with gevent.Timeout(SHORTTIME * 5, False) as t:
                     m = reader.get(timeout=t)
                     return m
             p = start_process(usecase_child_a, args=(w, ))
@@ -996,7 +996,7 @@ class TestComplexUseCases():
             args=(http_server.address, ))
         client.join()
         servelet.kill()
-        servelet.get() # get() is join and re-raises Exception.
+        servelet.get()  # get() is join and re-raises Exception.
 
     def test_multi_duplex(self):
         def duplex():
