@@ -25,21 +25,6 @@ in the context of gevent are prevented. The API of multiprocessing.Process
 objects is provided in a gevent-cooperative fashion. Furthermore, gipc comes
 up with a pipe-based transport layer for gevent-cooperative inter-process
 communication.
-
-.. todo::
-
-    - Implement poll/peek on read end. (It's impossible to identify complete
-      messages in advance, but within the framework only complete messages
-      are sent.)
-    - Can gevent's FileObjectPosix be of any use?
-    - Review buffer-implementation, consider, buffer() and memoryview().
-    - hub.cancel_wait() (cf. gevent sockets) in close instead of lock check?
-    - Work on portability between Python 2 and 3.
-    - put() timeout? Relevant in case of pipe being full. However, put()
-      duration cannot be controlled if write is blocking *after* partial
-      msg write. Doesn't make sense I think.
-    - Implementation on Windows based on NamedPipes with overlapping IO
-      could give useful control. Use libuv as backend instead of libev?
 """
 
 
