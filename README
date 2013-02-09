@@ -54,11 +54,11 @@ current working directory, I usually run tests like this::
 
 How is code audit perfomed?
 ===========================
-PEP8 is checked via `pep8 <http://pypi.python.org/pypi/pep8>`_ based on the
+I use `pep8 <http://pypi.python.org/pypi/pep8>`_ and
+`pylint <http://pypi.python.org/pypi/pylint>`_. PEP8 is checked via  based on the
 rules defined in ``setup.cfg`` in the repository.
     
     
-
 Contact & Help
 ==============
 Your feedback and questions are highly appreciated. For now, please contact me
