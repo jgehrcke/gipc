@@ -293,7 +293,7 @@ def _child(target, args, kwargs):
     else:
         # On Windows, the state of module globals is not transferred to
         # children. Set `_all_handles`.
-        set_all_handles(childhandles)
+        _set_all_handles(childhandles)
     # `_all_handles` now must contain only those handles that have been
     # transferred to the child on purpose.
     for h in _all_handles:
@@ -801,12 +801,12 @@ def _filter_handles(l):
 _all_handles = []
 
 
-def get_all_handles():
+def _get_all_handles():
     """Return a copy of the list of all handles.
     """
     return _all_handles[:]
 
 
-def set_all_handles(handles):
+def _set_all_handles(handles):
     global _all_handles
     _all_handles = handles
