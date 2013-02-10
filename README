@@ -26,12 +26,13 @@ http://gehrcke.de/gipc.
 
 Is gipc stable?
 ===============
-Development began in late 2012. gipc is not mature. However, as of version
-0.3.0, I am not aware of any fundamental issue. gipc's basic approach has
-proven to be reasonable. Via extensive unit testing, gipc has been validated to
-work reliably in scenarios of low and medium complexity. It is ready to be
-evaluated in the context of serious projects. Please let me know how it performs
-for you.
+Development began in late 2012, so it is far from being mature. However, as of
+version 0.3.0, I am not aware of any fundamental issue. gipc's basic approach
+has proven to be reasonable. gipc is developed with a strong focus on
+reliability and with best intentions in mind. Via extensive unit testing, it has
+been validated to work reliably in scenarios of low and medium complexity. It is
+ready to be evaluated in the context of serious projects. Please let me know how
+gipc performs for you.
 
 
 Where should I download gipc?
@@ -45,20 +46,17 @@ How can the unit tests be run?
 ==============================
 If you run into troubles with gipc, it is a good idea to run the unit test suite
 under your conditions. gipc's unit tests are written for
-`pytest <http://pytest.org>`_. With ``gipc/test`` (included in the release) as
-the current working directory, I usually run tests like this::
+`pytest <http://pytest.org>`_. With ``gipc/test`` (included in the release)
+being the current working directory, I usually run tests like this::
 
     $ py.test -v
 
 
 How is code audit perfomed?
 ===========================
-I mainly use `pep8 <http://pypi.python.org/pypi/pep8>`_ and
-`pylint <http://pypi.python.org/pypi/pylint>`_. pep8 is called without arguments
-in the root directory and used the rules defined in ``setup.cfg`` in the
-repository. This is how I usually invoke pylint::
-
-    $ pylint --reports=n --include-ids=y --disable=C0103 gipc.py
+I use `pep8 <http://pypi.python.org/pypi/pep8>`_ and
+`pylint <http://pypi.python.org/pypi/pylint>`_. Have a look at ``audit.sh`` in
+the code repository.
     
     
 Contact & Help
@@ -70,6 +68,6 @@ via mail at jgehrcke@googlemail.com or use the
 
 Author & license
 ================
-``gipc`` is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_
-and is licensed under the
+``gipc`` is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_.
+It is licensed under the
 `Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_.
