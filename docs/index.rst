@@ -451,9 +451,9 @@ This concept can easily be implemented using a bidirectional ``gipc.pipe()``:
 
 .. code::
 
-    import time
     import gevent
     import gipc
+    import time
 
 
     def main():
@@ -464,12 +464,10 @@ This concept can easily be implemented using a bidirectional ``gipc.pipe()``:
             pend.put("SYN")
             assert pend.get() == "ACK"
             # Now in sync with child.
-            t = time.time()
-            while pend.get() != "STOP":
-                pass
-            elapsed = time.time() - t
+            ptime = time.time()
+            ctime = pend.get()
             p.join()
-            print "Time elapsed: %.3f s" % elapsed
+            print "Time delta: %.8f s." % abs(ptime - ctime)
 
 
     def writer_process(cend):
@@ -477,9 +475,7 @@ This concept can easily be implemented using a bidirectional ``gipc.pipe()``:
             assert cend.get() == "SYN"
             cend.put("ACK")
             # Now in sync with parent.
-            for i in xrange(1000):
-                cend.put("A"*1000)
-            cend.put("STOP")
+            cend.put(time.time())
 
 
     if __name__ == "__main__":
@@ -487,7 +483,10 @@ This concept can easily be implemented using a bidirectional ``gipc.pipe()``:
 
 
 The marked code blocks in parent and child are entered quasi-simultaneously.
-Output on my test machine: ``Time elapsed: 0.012 s``.
+Example output on my test machine (Linux): ``Time delta: 0.00005388 s``. On
+Windows, ``time.time()``'s precision is not sufficient to resolve the time
+delta (and ``time.clock()`` is not applicable for comparing times across
+processes).
 
 .. _api:
 
