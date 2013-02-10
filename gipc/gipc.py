@@ -334,7 +334,8 @@ class _GProcess(multiprocessing.Process):
     # useless and even hindering.
     #
     # Any call to os.waitpid can make libev miss certain SIGCHLD
-    # events. According to http://linux.die.net/man/3/waitpid:
+    # events. According to 
+    # http://pubs.opengroup.org/onlinepubs/009695399/functions/waitpid.html
     #
     # "If [...] the implementation queues the SIGCHLD signal, then if wait()
     #  or waitpid() returns because the status of a child process is available,
