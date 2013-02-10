@@ -1,7 +1,6 @@
 import gevent
 import gipc
 import time
-import sys
 
 
 def main():
