@@ -4,31 +4,29 @@ import gipc
 
 
 def main():
-    with gipc.pipe() as (r1, w1):
-        with gipc.pipe() as (r2, w2):
-            p = gipc.start_process(
-                writer_process,
-                kwargs={'writer': w2, 'syncreader': r1}
-                )
-            result = None
-            # Synchronize with child process.
-            w1.put("SYN")
-            assert r2.get() == "ACK"
-            t = time.time()
-            while result != "STOP":
-                result = r2.get()
-            elapsed = time.time() - t
-            p.join()
-            print "Time elapsed: %.3f s" % elapsed
+    with gipc.pipe(duplex=True) as (cend, pend):
+        # `cend` is the channel end for the child, `pend` for the parent.
+        p = gipc.start_process(writer_process, args=(cend,))
+        # Synchronize with child process.
+        pend.put("SYN")
+        assert pend.get() == "ACK"
+        # Now in sync with child.
+        t = time.time()
+        while pend.get() != "STOP":
+            pass
+        elapsed = time.time() - t
+        p.join()
+        print "Time elapsed: %.3f s" % elapsed
 
 
-def writer_process(writer, syncreader):
-    with writer:
-        assert syncreader.get() == "SYN"
-        writer.put("ACK")
+def writer_process(cend):
+    with cend:
+        assert cend.get() == "SYN"
+        cend.put("ACK")
+        # Now in sync with parent.
         for i in xrange(1000):
-            writer.put("A"*1000)
-        writer.put('STOP')
+            cend.put("A"*1000)
+        cend.put("STOP")
 
 
 if __name__ == "__main__":
