@@ -51,7 +51,7 @@ LONGERTHANBUFFER = "A" * 9999999
 
 
 def check_for_handles_left_open():
-    """Frequently used teardown test method.
+    """Frequently used during test teardown.
 
     Raise exception if test case left open some file descriptor. Perform
     rigorous close attempts in order to make sure to not leak file descriptors
@@ -785,6 +785,24 @@ class TestDuplexHandleIPC():
             hparent.put("MSG")
             assert hparent.get() == "MSG"
             p.join()
+
+    def test_time_sync(self):
+        with pipe(duplex=True) as (cend, pend):
+            p = start_process(duplchild_time_sync_child, args=(cend, ))
+            pend.put("SYN")
+            assert pend.get() == "ACK"
+            ptime = time.time()
+            ctime = pend.get()
+            # Require small time delta.
+            assert abs(ptime - ctime) < 0.01
+            p.join()
+
+
+def duplchild_time_sync_child(cend):
+    with cend:
+        assert cend.get() == "SYN"
+        cend.put("ACK")
+        cend.put(time.time())
 
 
 def duplchild_simple_echo(h):

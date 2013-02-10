@@ -1,6 +1,12 @@
-import time
 import gevent
 import gipc
+import time
+import sys
+WINDOWS = sys.platform == "win32"
+if WINDOWS:
+    timer = time.clock
+else:
+    timer = time.time
 
 
 def main():
@@ -11,12 +17,10 @@ def main():
         pend.put("SYN")
         assert pend.get() == "ACK"
         # Now in sync with child.
-        t = time.time()
-        while pend.get() != "STOP":
-            pass
-        elapsed = time.time() - t
+        ptime = timer()
+        ctime = pend.get()
         p.join()
-        print "Time elapsed: %.3f s" % elapsed
+        print "Time delta: %.8f s." % abs(ptime - ctime)
 
 
 def writer_process(cend):
@@ -24,9 +28,7 @@ def writer_process(cend):
         assert cend.get() == "SYN"
         cend.put("ACK")
         # Now in sync with parent.
-        for i in xrange(1000):
-            cend.put("A"*1000)
-        cend.put("STOP")
+        cend.put(timer())
 
 
 if __name__ == "__main__":
