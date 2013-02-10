@@ -2,11 +2,6 @@ import gevent
 import gipc
 import time
 import sys
-WINDOWS = sys.platform == "win32"
-if WINDOWS:
-    timer = time.clock
-else:
-    timer = time.time
 
 
 def main():
@@ -17,7 +12,7 @@ def main():
         pend.put("SYN")
         assert pend.get() == "ACK"
         # Now in sync with child.
-        ptime = timer()
+        ptime = time.time()
         ctime = pend.get()
         p.join()
         print "Time delta: %.8f s." % abs(ptime - ctime)
@@ -28,7 +23,7 @@ def writer_process(cend):
         assert cend.get() == "SYN"
         cend.put("ACK")
         # Now in sync with parent.
-        cend.put(timer())
+        cend.put(time.time())
 
 
 if __name__ == "__main__":
