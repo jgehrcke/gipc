@@ -788,7 +788,7 @@ class TestDuplexHandleIPC():
 
     def test_time_sync(self):
         with pipe(duplex=True) as (cend, pend):
-            p = start_process(duplchild_time_sync_child, args=(cend, ))
+            p = start_process(duplchild_time_sync, args=(cend, ))
             pend.put("SYN")
             assert pend.get() == "ACK"
             ptime = time.time()
@@ -797,8 +797,38 @@ class TestDuplexHandleIPC():
             assert abs(ptime - ctime) < 0.01
             p.join()
 
+    def test_circular_forward(self):
+        with pipe(True) as (p11, p12):
+            with pipe(True) as (p21, p22):
+                with pipe(True) as (p31, p32):
+                    # Spawn two forwarders.
+                    forwarder1 = start_process(
+                        duplchild_circular_forward, (p12, p21))
+                    forwarder2 = start_process(
+                        duplchild_circular_forward, (p22, p31))
+                    # Make sure that only 2 of 6 handles are usable.
+                    for h in (p12, p21, p22, p31):
+                        with raises(GIPCClosed):
+                            h.put(0)
+                    # Send messages on their journey through children.
+                    for _ in xrange(100):
+                        p11.put("BABUUUZ")
+                        assert p32.get() == "BABUUUZ"
+                    p11.put("stop")
+                    forwarder1.join()
+                    forwarder2.join()
 
-def duplchild_time_sync_child(cend):
+
+def duplchild_circular_forward(receiver, sender):
+    with receiver:
+        with sender:
+            msg = None
+            while msg != "stop":
+                msg = receiver.get()
+                sender.put(msg)
+
+
+def duplchild_time_sync(cend):
     with cend:
         assert cend.get() == "SYN"
         cend.put("ACK")
