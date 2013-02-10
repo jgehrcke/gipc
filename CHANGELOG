@@ -6,8 +6,8 @@ Version 0.3.0 (TBD)
     - Don't pass dispensable gipc handles to child.
     - Properly deal with handles that are locked for I/O operation while being
       inherited by child.
-    - Various minor code changes, new unit tests (for more complex scenarios in
-      particular), and documentation changes.
+    - Various minor code changes, and a new class of unit tests for more complex
+      scenarios.
     
 
 Version 0.2.0 (Jan 31, 2013)

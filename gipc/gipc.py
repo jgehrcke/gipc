@@ -18,13 +18,11 @@
 """
 gipc: child processes and IPC for gevent.
 
-With gipc (pronunciation “gipsy”), multiprocessing.Process-based child
-processes can safely be created and monitored anywhere within your
-gevent-powered application. Malicious side-effects of child process creation
-in the context of gevent are prevented. The API of multiprocessing.Process
-objects is provided in a gevent-cooperative fashion. Furthermore, gipc comes
-up with a pipe-based transport layer for gevent-cooperative inter-process
-communication.
+With gipc (pronunciation “gipsy”), malicious side-effects of child process
+creation in the context of gevent are prevented. The API of
+multiprocessing.Process objects is provided in a gevent-cooperative fashion.
+Furthermore, gipc comes up with a pipe-based transport layer for
+gevent-cooperative inter-process communication.
 """
 
 
@@ -334,7 +332,7 @@ class _GProcess(multiprocessing.Process):
     # useless and even hindering.
     #
     # Any call to os.waitpid can make libev miss certain SIGCHLD
-    # events. According to 
+    # events. According to
     # http://pubs.opengroup.org/onlinepubs/009695399/functions/waitpid.html
     #
     # "If [...] the implementation queues the SIGCHLD signal, then if wait()

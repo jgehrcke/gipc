@@ -7,9 +7,11 @@ application in many ways.
 
 gipc (pronunciation "gipsy") is developed with the motivation to solve these
 issues transparently. With gipc, multiprocessing.Process-based child processes
-can safely be created anywhere within your gevent-powered application.
-Furthermore, gipc provides gevent-cooperative inter-process communication and
-useful helper constructs. gipc is lightweight and very simple to integrate.
+can safely be created anywhere within your gevent-powered application. The API
+of multiprocessing.Process objects is provided in a gevent-cooperative fashion.
+Furthermore, gipc comes up with a pipe-based transport layer for
+gevent-cooperative inter-process communication and useful helper constructs.
+gipc is lightweight and simple to integrate.
 
 
 What are the boundary conditions?
