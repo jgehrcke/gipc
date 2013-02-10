@@ -334,23 +334,23 @@ handle ``r`` and write handle ``w``. On context exit (latest) the pipe ends will
 be closed properly.
 
 Within the context, a child process is spawned via ``gipc.start_process()``.
-The read handle ``r`` is provided to the child process. It calls
+The read handle ``r`` is provided to the child process. The child invokes
 ``child_process(r)`` where an endless loop waits for objects on the read end of
-the pipe. Upon retrieval, it immediately prints them.
+the pipe. Upon retrieval, it immediately writes them to stdout.
 
 While child process ``p`` is running, a greenlet ``wg`` is started in the main
-process. It executes the function ``writegreenlet`` while providing
-``gipc._GIPCWriter`` ``w`` as an argument. Within this greenlet, one string per
-second is written to the write end of the pipe.
+process. It executes the function ``writegreenlet`` and passes the write handle
+``w`` as an argument. Within this greenlet, one string per second is written to
+the write end of the pipe.
 
 After spawning ``wg``, ``p.join()`` is called immediately, i.e. the write
 greenlet is running while ``p.join()`` waits for the child process to terminate.
-In this state, messages are passed between parent and child until a
+In this state, one message per second is passed between parent and child until a
 ``KeyboardInterrupt`` exception is raised in the parent.
 
-On ``KeyboardInterrupt``, the parent first kills the write greenlet and blocks
-cooperatively until it has stopped. Then it tries to terminate the child process
-(via ``SIGTER`` on Unix) and waits for it to exit via ``p.join()``.
+Upon ``KeyboardInterrupt``, the parent first kills the write greenlet and blocks
+cooperatively until it has stopped. Then it terminates the child process (via
+``SIGTER`` on Unix) and waits for it to exit via ``p.join()``.
 
 
 .. _exampleserverclient:
@@ -358,8 +358,9 @@ cooperatively until it has stopped. Then it tries to terminate the child process
 Serving multiple clients (in child) from one server (in parent)
 ===============================================================
 
-For pure demonstration purposes, this example implements TCP communication
-between a server in the parent process and multiple clients in a child process:
+For pure API and reliability demonstration purposes, this example implements TCP
+communication between a server in the parent process and multiple clients in
+one child process:
 
 1)  gevent's ``StreamServer`` is started in a greenlet within the initial
     (parent) process. For each connecting client, it receives one
@@ -437,18 +438,16 @@ Time-synchronization between processes
 Child process creation may take a significant amount of time, especially on
 Windows. This time is not predictable.
 
-Often, the code in the parent should only proceed in the moment
-the child and the code in the child have reached a certain state.
-Applications must not rely on a child process "probably being up and running by
-now" or on "sufficient" constant waiting times. The proper way to tackle this
-is a bi-directional synchronization mechanism:
+When code in the parent should only proceed in the moment the code in the
+child has reached a certain state, the proper way to tackle this is a
+bidirectional synchronization handshake:
 
 - Process A sends a synchronization request to process B and waits for an
   acknowledgement response. It proceeds upon retrieval.
 - Process B sends the acknowledgement in the moment it retrieves the sync
   request and proceeds.
 
-This concept can easily be implemented using two ``gipc.pipe()s``:
+This concept can easily be implemented using a bidirectional ``gipc.pipe()``:
 
 .. code::
 
@@ -458,41 +457,37 @@ This concept can easily be implemented using two ``gipc.pipe()s``:
 
 
     def main():
-        with gipc.pipe() as (r1, w1):
-            with gipc.pipe() as (r2, w2):
-                p = gipc.start_process(
-                    writer_process,
-                    kwargs={'writer': w2, 'syncreader': r1}
-                    )
-                result = None
-                # Synchronize with child process.
-                w1.put("SYN")
-                assert r2.get() == "ACK"
-                # SYNC
-                t = time.time()
-                while result != "STOP":
-                    result = r2.get()
-                elapsed = time.time() - t
-                p.join()
-                print "Time elapsed: %.3f s" % elapsed
+        with gipc.pipe(duplex=True) as (cend, pend):
+            # `cend` is the channel end for the child, `pend` for the parent.
+            p = gipc.start_process(writer_process, args=(cend,))
+            # Synchronize with child process.
+            pend.put("SYN")
+            assert pend.get() == "ACK"
+            # Now in sync with child.
+            t = time.time()
+            while pend.get() != "STOP":
+                pass
+            elapsed = time.time() - t
+            p.join()
+            print "Time elapsed: %.3f s" % elapsed
 
 
-    def writer_process(writer, syncreader):
-        with writer:
-            assert syncreader.get() == "SYN"
-            writer.put("ACK")
-            # SYNC
+    def writer_process(cend):
+        with cend:
+            assert cend.get() == "SYN"
+            cend.put("ACK")
+            # Now in sync with parent.
             for i in xrange(1000):
-                writer.put("A" * 1000)
-            writer.put('STOP')
+                cend.put("A"*1000)
+            cend.put("STOP")
 
 
     if __name__ == "__main__":
         main()
 
-The code blocks marked with ``# SYNC`` in parent and child are entered
-quasi-simultaneously.
 
+The marked code blocks in parent and child are entered quasi-simultaneously.
+Output on my test machine: ``Time elapsed: 0.012 s``.
 
 .. _api:
 
