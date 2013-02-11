@@ -1,4 +1,4 @@
-Version 0.3.0 (TBD)
+Version 0.3.0 (Feb 11, 2013)
 ----------------------------
     - Add bidirectional message transfer channels for IPC.
     - Prevent multiprocessing from swallowing SIGCHLD signals. Eliminates race

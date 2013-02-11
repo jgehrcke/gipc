@@ -980,8 +980,8 @@ def usecase_child_c(reader, syncwriter):
 
 
 class TestComplexUseCases():
-    """Tests with increased complexity; involving server components of gevent.
-    Rproduction of common usage scenarios.
+    """Tests with increased complexity, also involving server components of
+    gevent. Reproduction of common usage scenarios.
     """
     def teardown(self):
         check_for_handles_left_open()
