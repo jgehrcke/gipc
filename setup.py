@@ -1,4 +1,6 @@
 # -*- coding: utf-8 -*-
+# Copyright 2012-2013 Jan-Philip Gehrcke. See LICENSE file for details.
+
 
 # For packaging, I tried to follow these recommendations:
 # http://guide.python-distribute.org/introduction.html#current-state-of-packaging
