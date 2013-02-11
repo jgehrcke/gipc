@@ -1,4 +1,7 @@
-# Copyright 2013, Jan-Philip Gehrcke. See LICENSE for details.
+# -*- coding: utf-8 -*-
+# Copyright 2012-2013 Jan-Philip Gehrcke. See LICENSE file for details.
+
+
 import gevent
 from gevent.server import StreamServer
 from gevent import socket

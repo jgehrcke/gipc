@@ -2,7 +2,7 @@
    sphinx-quickstart on Thu Nov 22 15:14:51 2012.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
-
+   Copyright 2012-2013 Jan-Philip Gehrcke. See LICENSE file for details.
 
 .. toctree::
     :hidden:
