@@ -266,8 +266,11 @@ class TestProcess():
 
     def test_terminate(self):
         p = start_process(gevent.sleep, args=(1,))
+        # Test __repr__ and __str__
+        p.__repr__()
         p.terminate()
         p.join()
+        p.__repr__()
         assert p.exitcode == -signal.SIGTERM
 
     def test_child_in_child_in_child(self):
