@@ -201,7 +201,9 @@ Code, requirements, download, installation
 Code
 ----
 gipc's Mercurial repository is hosted at
-`Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
+`Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_. It also contains a
+changelog and license information.
+
 
 Requirements
 ------------
@@ -211,6 +213,7 @@ Requirements
   `here <https://github.com/SiteSupport/gevent/downloads>`_.
 - The unit tests are ensured to pass on CPython 2.6 and 2.7 on Linux as well
   as on Windows.
+
 
 Download & install via pip
 --------------------------
