@@ -42,7 +42,7 @@ About gipc
 .. _what:
 
 gipc (pronunciation “gipsy”) is a Python package tested on CPython 2.6 and
-2.7.
+2.7 on Linux as well as on Windows.
 
 What is gipc good for?
 ======================
@@ -55,18 +55,21 @@ However, naive usage of Python's multiprocessing package within a gevent-powered
 application may raise various problems and most likely breaks the application in
 many ways. gipc is developed with the motivation to solve these issues
 transparently and make using gevent in combination with multiprocessing-based
-child processes and inter-process communication (IPC) a no-brainer again.
+child processes and inter-process communication (IPC) a no-brainer again:
 
-**With gipc, multiprocessing.Process-based child
-processes can safely be created and monitored anywhere within your
-gevent-powered application. Malicious side-effects of child process creation
-in the context of gevent are prevented. The API of multiprocessing.Process
-objects is provided in a gevent-cooperative fashion. Furthermore, gipc comes
-up with a pipe-based transport layer for gevent-cooperative IPC.**
+- **With gipc, multiprocessing.Process-based child
+  processes can safely be created and monitored anywhere within your
+  gevent-powered application. Malicious side-effects of child process creation
+  in the context of gevent are prevented.**
+- **The API of multiprocessing.Process objects is provided in a
+  gevent-cooperative fashion.**
+- **gevent natively works in children.**
+- **gipc comes up with a pipe-based transport layer for gevent-cooperative
+  IPC.**
+- **gipc is lightweight and simple to integrate.**
 
-gipc is lightweight and simple to integrate. In the following code snippet,
-a Python object is sent from a greenlet in the main process through a pipe to a
-child process::
+In the following code snippet, a Python object is sent from a greenlet in the
+main process through a pipe to a child process::
 
     import gevent
     import gipc
@@ -90,11 +93,11 @@ What are the challenges and what is gipc's approach?
 ----------------------------------------------------
 
 Depending on the operating system, child process creation via Python's
-multiprocessing in the context of gevent requires special care. Most care is
-required on POSIX-compliant systems. There, a fork might yield a faulty libev
-event loop state in the child. Most noticable, greenlets spawned before forking
-are cloned and haunt in the child upon context switch. Consider this code
-running on Unix (tested with Python 2.7 & gevent 1.0rc2)::
+multiprocessing in the context of gevent requires special treatment. Most care
+is needed on POSIX-compliant systems. There, a fork might yield a faulty libev
+event loop state in the child. Most noticeable, greenlets spawned before
+forking are cloned and haunt in the child upon context switch. Consider this
+code running on Unix (tested with Python 2.7 & gevent 1.0rc2)::
 
     import gevent
     import multiprocessing
@@ -121,15 +124,15 @@ sent -- as intended -- from the writelet in the parent through the ``c1`` end of
 the pipe. It is retrieved at the ``c2`` end of the pipe in the child. The other
 message is sent from the spooky writelet clone in the child. It is also written
 to the ``c1`` end of the pipe which has implicitly been duplicated during
-forking. Duplicated greenlets in the child of course only run when a context
-switch is triggered; in this case via ``gevent.sleep(0)``. As you can imagine,
-this behavior in general might lead to a wide range of side-effects and tedius
+forking. Greenlet clones in the child of course only run when a context switch
+is triggered; in this case via ``gevent.sleep(0)``. As you can imagine, this
+behavior in general might lead to a wide range of side-effects and tedious
 debugging sessions.
 
 In addition, the code above contains several non-cooperatively blocking method
 calls: ``readchild.join()`` as well as the ``send()``/``recv()`` calls (of
-``multiprocessing.Connection`` objects) block the calling thread and do not
-allow for context switches.
+``multiprocessing.Connection`` objects in general) block the calling thread and
+do not allow for context switches.
 
 gipc overcomes these and other challenges for you transparently and in a
 straight-forward fashion. It provides high performing gevent-cooperative

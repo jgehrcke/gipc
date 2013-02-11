@@ -16,14 +16,15 @@ gipc is lightweight and simple to integrate.
 
 What are the boundary conditions?
 =================================
-Currently, gipc is tested on CPython 2.6 & 2.7 and developed against gevent
-1.0rc2.
+Currently, gipc is developed against gevent 1.0rc2. It is tested on CPython 2.6
+& 2.7 on Linux as well as on Windows.
 
 
-Where is the documentation?
-===========================
+Where are documentation and changelog?
+======================================
 The API documentation and further details can be found at
-http://gehrcke.de/gipc.
+http://gehrcke.de/gipc. The changelog can be retrieved from Bitbucket:
+https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst
 
 
 Is gipc stable?
@@ -64,7 +65,7 @@ the code repository. Unit test code coverage analysis requires
 behind a coverage HTML report in the ``coverage_html`` directory.
 
 
-Contact & Help
+Contact & help
 ==============
 Your feedback and questions are highly appreciated. For now, please contact me
 via mail at jgehrcke@googlemail.com or use the
