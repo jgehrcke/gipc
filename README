@@ -58,9 +58,12 @@ How is code audit perfomed?
 ===========================
 I use `pep8 <http://pypi.python.org/pypi/pep8>`_ and
 `pylint <http://pypi.python.org/pypi/pylint>`_. Have a look at ``audit.sh`` in
-the code repository.
-    
-    
+the code repository. Unit test code coverage analysis requires
+`coverage <http://pypi.python.org/pypi/coverage>`_ and
+`pytest-cov <http://pypi.python.org/pypi/pytest-cov>`_. ``audit.sh`` leaves
+behind a coverage HTML report in the ``coverage_html`` directory.
+
+
 Contact & Help
 ==============
 Your feedback and questions are highly appreciated. For now, please contact me
