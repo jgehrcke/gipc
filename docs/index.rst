@@ -277,10 +277,9 @@ Author, license, contact
 ========================
 
 gipc is written and maintained by
-`Jan-Philip Gehrcke <http://gehrcke.de>`_ and is licensed under the
-`Apache License 2.0 <http://www.apache.org/licenses/LICENSE-2.0.txt>`_.
-Your feedback is highly appreciated. You can contact me at
-jgehrcke@googlemail.com or use the
+`Jan-Philip Gehrcke <http://gehrcke.de>`_ and licensed under an MIT license
+(see LICENSE file for details). Your feedback is highly appreciated. You can
+contact me at jgehrcke@googlemail.com or use the
 `Bitbucket issue tracker <https://bitbucket.org/jgehrcke/gipc/issues>`_.
 
 
