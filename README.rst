@@ -23,8 +23,10 @@ Currently, gipc is developed against gevent 1.0rc2. It is tested on CPython 2.6
 Where are documentation and changelog?
 ======================================
 The API documentation and further details can be found at
-http://gehrcke.de/gipc. The changelog can be retrieved from Bitbucket:
-https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst
+http://gehrcke.de/gipc.
+`Here <https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst>`_, the
+changelog can be retrieved from Bitbucket.
+
 
 
 Is gipc stable?
@@ -41,8 +43,8 @@ gipc performs for you.
 Where should I download gipc?
 =============================
 Releases are available at `PyPI <http://pypi.python.org/pypi/gipc>`_.
-The development version can be retrieved from the mercurial repository at
-`bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
+The development version can be retrieved from the Mercurial repository at
+`Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
 
 How can the unit tests be run?
