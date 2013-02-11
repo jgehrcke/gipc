@@ -23,12 +23,11 @@ setup(
     author_email = "jgehrcke@googlemail.com",
     url = "http://gehrcke.de/gipc",
     keywords = ["gevent", "multiprocessing", "ipc", "child processes"],
-    license = "Apache License 2.0",
     platforms = ["POSIX", "Windows"],
     classifiers = [
         "Programming Language :: Python",
         "Development Status :: 4 - Beta",
-        "License :: OSI Approved :: Apache Software License",
+        "License :: OSI Approved :: MIT License",
         "Intended Audience :: Developers",
         "Operating System :: POSIX",
         "Operating System :: Microsoft :: Windows",
