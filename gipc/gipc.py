@@ -379,6 +379,8 @@ class _GProcess(multiprocessing.Process):
 
         @property
         def exitcode(self):
+            if self._popen is None:
+                return None
             return self._popen.returncode
 
         def __repr__(self):
