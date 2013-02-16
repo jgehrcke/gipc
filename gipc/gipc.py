@@ -343,16 +343,15 @@ class _GProcess(multiprocessing.Process):
         multiprocessing.forking.Popen.poll = lambda *a, **b: None
 
         def start(self):
-            hub = gevent.get_hub()
-            self._returnevent = gevent.event.Event()
             # Start grabbing SIGCHLD in libev event loop.
-            hub.loop.install_sigchld()
+            gevent.get_hub().loop.install_sigchld()
             # Run new process (based on `fork()` on POSIX-compliant systems).
             super(_GProcess, self).start()
             # The occurrence of SIGCHLD is recorded asynchronously in libev.
             # This guarantees proper behaviour even if the child watcher is
             # started after the child exits. Start child watcher now.
-            self._sigchld_watcher = hub.loop.child(self.pid)
+            self._sigchld_watcher = gevent.get_hub().loop.child(self.pid)
+            self._returnevent = gevent.event.Event()
             self._sigchld_watcher.start(
                 self._on_sigchld, self._sigchld_watcher)
             log.debug("SIGCHLD watcher for %s started." % self.pid)
