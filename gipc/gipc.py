@@ -15,6 +15,7 @@ gevent-cooperative inter-process communication.
 
 import os
 import io
+import gc
 import sys
 import struct
 import logging
@@ -33,12 +34,18 @@ import gevent
 import gevent.os
 import gevent.lock
 import gevent.event
+from gevent.hub import LoopExit
 
 
-# Logging for debugging purposes.
-# Note: naive usage of logging from within multiple processes might yield mixed
-# messages.
+# Logging for debugging purposes. Note:
+# Simple logging from within multiple processes might yield mixed messages.
 log = logging.getLogger("gipc")
+
+# Globally store reference to main greenlet.
+_maingreenlet = gevent.getcurrent()
+assert _maingreenlet.parent is None, ("gipc is required to be imported from "
+    "the main greenlet.")
+
 
 
 class GIPCError(Exception):
@@ -216,7 +223,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     return p
 
 
-def _child(target, args, kwargs):
+def _child(target, args, kwargs, cleanup=True):
     """Wrapper function that runs in child process. Resets gevent/libev state
     and executes user-given function.
 
@@ -228,26 +235,7 @@ def _child(target, args, kwargs):
     log.debug("_child start. target: `%s`" % target)
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if not WINDOWS:
-        # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
-        # the kernel state for backends that have one. Must be called in the
-        # child before using further libev API.
-        gevent.reinit()
-        log.debug("Delete current hub's threadpool.")
-        hub = gevent.get_hub()
-        # Delete threadpool before hub destruction, otherwise `hub.destroy()`
-        # might block forever upon `ThreadPool.kill()` as of gevent 1.0rc2.
-        del hub.threadpool
-        hub._threadpool = None
-        # Destroy default event loop via `libev.ev_loop_destroy()` and delete
-        # hub. This dumps all registered events and greenlets that have been
-        # duplicated from the parent via fork().
-        log.debug("Destroy hub and default loop.")
-        hub.destroy(destroy_loop=True)
-        # Create a new hub and a new default event loop via
-        # `libev.gevent_ev_default_loop`.
-        h = gevent.get_hub(default=True)
-        log.debug("Created new hub and default event loop.")
-        assert h.loop.default, 'Could not create libev default event loop.'
+
         # On Unix, file descriptors are inherited by default. Also, the global
         # `_all_handles` is inherited from the parent. Close dispensable file
         # descriptors in child.
@@ -259,6 +247,136 @@ def _child(target, args, kwargs):
                 # Unlock.
                 h._lock.counter = 1
                 h.close()
+
+        # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
+        # the kernel state for backends that have one. Must be called in the
+        # child before using further libev API.
+        gevent.reinit()
+        oldhub = gevent.get_hub()
+
+        if cleanup:
+            # The event loop as inherited from the parent process is going to
+            # be destroyed, rendering gevent's state static with corresponding
+            # ojects being still in memory. Break as many reference cycles as
+            # possible now, before actually destroying loop and hub. This
+            # enables garbage collection to later deallocate as much of stalled
+            # greenlets, stopped timers and watchers, and destroyed hub and
+            # event loop as possible.
+            glets = []
+            watchers = []
+            for o in gc.get_objects():
+                # Without an additional bookkeeping layer, `gc.get_objects()`
+                # is the best we can do.
+                if isinstance(o, gevent.Greenlet):
+                    glets.append(o)
+                elif isinstance(o, gevent.core.watcher):
+                    watchers.append(o)
+                #elif isinstance(o, gevent.Timeout):
+                #    log.debug("Timeout to be stopped: %s" % o)
+                #    o.timer.stop()
+                #    del o.timer.loop  # Remove reference to loop # timers are also watchers..
+            for w in watchers:
+                log.debug("Watcher to be stopped: %s" % w)
+                w.stop()
+            #gevent.sleep(0)
+            for g in glets:
+                if gevent.getcurrent() is g:
+                    # Fork happened in greenlet other than main greenlet.
+                    # Don't kill myself.
+                    continue
+                log.debug("Greenlet to be killed: %s" % g)
+                g.kill(block=False)
+            # Allow for context switch into hub: makes the above take effect. Required?
+            #gevent.sleep(0)
+            del watchers
+            try:
+                del o
+            except UnboundLocalError:
+                pass
+            try:
+                del w
+            except UnboundLocalError:
+                pass
+            try:
+                del g
+            except UnboundLocalError:
+                pass
+
+        # Hardkill hub.
+        assert oldhub.parent is _maingreenlet
+
+        if cleanup:
+            # If this fork has been initiated from a greenlet other than the
+            # main greenlet, then the current greenlet's parent is the current
+            # (old) hub. After destroying the current hub and creating a new
+            # hub below, the goal is to make the new hub the parent of the
+            # current greenlet. Set temporary state:
+            # - make current greenlet child of the main greenlet.
+            # - make current greenlet parent of the old hub.
+            if gevent.getcurrent().parent is not None:
+                log.debug("Child not forked from main greenlet.")
+                assert gevent.getcurrent().parent is oldhub
+                gevent.getcurrent().parent = _maingreenlet
+                oldhub.parent = gevent.getcurrent()
+            # Join old hub, and throw GreenletExit exception in it.
+            oldhub.join()
+            try:
+                oldhub.throw()
+            except LoopExit:
+                log.debug("LoopExit in hub run catched.")
+            # Second throw is required?
+            #try:
+            #    oldhub.throw()
+            #except LoopExit:
+            #    log.debug("LoopExit in hub run catched.")
+
+        log.debug("Delete current hub's threadpool.")
+        # Delete threadpool before hub destruction, otherwise `hub.destroy()`
+        # might block forever upon `ThreadPool.kill()` as of gevent 1.0rc2.
+        del oldhub.threadpool
+        oldhub._threadpool = None
+
+        # Destroy default event loop via `libev.ev_loop_destroy()` and delete
+        # hub. This dumps all registered events and greenlets that have been
+        # duplicated from the parent via fork().
+        log.debug("Destroy hub and default loop.")
+        oldhub.destroy(destroy_loop=True)
+
+        # Create a new hub and a new default event loop via
+        # `libev.gevent_ev_default_loop`.
+        newhub = gevent.get_hub(default=True)
+        log.debug("Created new hub and default event loop.")
+        assert newhub.loop.default, 'Could not create libev default event loop.'
+
+        # Remove old hub from current scope.
+        del oldhub
+
+        if gevent.getcurrent().parent is not None:
+            # Make new hub's parent being the main greenlet (.
+            newhub.parent = _maingreenlet
+
+        if cleanup:
+            # Killed and unreferenced greenlets can be garbage collected by
+            # now. However, there might still be greenlets that were referenced
+            # in the parent in a scope not accessible anymore to the child.
+            # These are not garbage collectable in the child. They themselves,
+            # however, reference the destroyed hub via their parent attribute.
+            # Remove these references in order to make the destroyed hub
+            # deallocateable.
+            # -> Make all existing greenlets children of new hub. This removes
+            # references to destroyed hub. Secondly, if the fork happened in a
+            # greenlet other than the main one, its parent (currently the main
+            # greenlet) is updated to be the new hub.
+            for g in glets:
+                g.parent = newhub
+            del glets
+            try:
+                del g
+            except UnboundLocalError:
+                pass
+            # Explicitly trigger garbage collection.
+            gc.collect()
+        #print dir()
     else:
         # On Windows, the state of module globals is not transferred to
         # children. Set `_all_handles`.
@@ -350,8 +468,9 @@ class _GProcess(multiprocessing.Process):
             # The occurrence of SIGCHLD is recorded asynchronously in libev.
             # This guarantees proper behaviour even if the child watcher is
             # started after the child exits. Start child watcher now.
-            self._sigchld_watcher = gevent.get_hub().loop.child(self.pid)
             self._returnevent = gevent.event.Event()
+            self._sigchld_watcher = gevent.get_hub().loop.child(self.pid)
+            log.debug("Created child watcher: %r" % self._sigchld_watcher)
             self._sigchld_watcher.start(
                 self._on_sigchld, self._sigchld_watcher)
             log.debug("SIGCHLD watcher for %s started." % self.pid)
