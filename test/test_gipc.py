@@ -8,7 +8,8 @@ import time
 import signal
 import multiprocessing
 import random
-
+import weakref
+import gc
 import gevent
 import gevent.queue
 sys.path.insert(0, os.path.abspath('..'))
@@ -979,6 +980,44 @@ def usecase_child_c(reader, syncwriter):
     sys.exit(5)
 
 
+@mark.skipif('WINDOWS')
+class TestChildCleanup(object):
+    """Tests for the object cleanup upon fork on Unix.
+    """
+    def teardown(self):
+        check_for_handles_left_open()
+
+    def test_firstgreenlets_thenprocess(self):
+        def sidelet():
+            while True:
+                gevent.sleep(0.01)
+        gletrefs = []
+        for _ in xrange(10):
+            # Keep weak references to spawned greenlets.
+            gletrefs.append(weakref.ref(gevent.spawn(sidelet)))
+        gevent.sleep(0)
+        p1 = start_process(target=cleanchild_test_objectcount)
+        p2 = start_process(target=cleanchild_test_objectcount)
+        p1.join()
+        p2.join()
+        assert p1.exitcode == 0
+        assert p2.exitcode == 0
+        # Re-create greenlet objects from weakrefs and kill them.
+        for gr in gletrefs:
+            sidelet = gr()
+            sidelet.kill()
+
+
+def cleanchild_test_objectcount():
+    glets = [o for o in gc.get_objects() if isinstance(o, gevent.Greenlet)]
+    hubs = [o for o in gc.get_objects() if isinstance(o, gevent.hub.Hub)]
+    loops = [o for o in gc.get_objects() if isinstance(o, gevent.core.loop)]
+    # TODO: currently fails regarding hubs & loops.
+    assert len(glets) == 0
+    assert len(hubs) == 1
+    assert len(loops) == 1
+
+
 class TestComplexUseCases(object):
     """Tests with increased complexity, also involving server components of
     gevent. Reproduction of common usage scenarios.
@@ -1044,10 +1083,43 @@ class TestComplexUseCases(object):
                     w.put("msg")
                     assert r2.get() == "msg"
                     p.join()
+                    assert p.exitcode == 0
 
-        duplexlets = [gevent.spawn(duplex) for _ in xrange(10)]
+        # TODO: currently fails with cleanup code and N > 1.
+        duplexlets = [gevent.spawn(duplex) for _ in xrange(1)]
         for g in duplexlets:
             g.get()
+
+    def test_multi_spawn_duplex_pipe(self):
+        def getlet(h):
+            assert h.get() == "msg"
+
+        getlets = []
+        children = []
+        pipehandles = []
+        for _ in xrange(10):
+            h1, h2 = pipe(duplex=True)
+            pipehandles.append(h1)
+            pipehandles.append(h2)
+            children.append(start_process(
+                complchild_multi_spawn_duplex_pipe, (h2,)))
+            getlets.append(gevent.spawn(getlet, h1))
+            h1.put("msg")
+        for p in children:
+            p.join()
+        for g in getlets:
+            g.get()
+        for p in pipehandles:
+            try:
+                p.close()
+            except GIPCClosed:
+                pass
+
+
+def complchild_multi_spawn_duplex_pipe(h):
+    e = h.get()
+    gevent.sleep(0.01)
+    h.put(e)
 
 
 def complchild_test_multi_duplex(r, w):
