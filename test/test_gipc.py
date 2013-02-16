@@ -56,7 +56,7 @@ def check_for_handles_left_open():
         raise Exception("Test case left open descriptor behind.")
 
 
-class TestComm():
+class TestComm(object):
     """Test basic communication within single greenlets or among greenlets via
     pipe-based unidirectional transport channels and `_GIPCHandle`s.
 
@@ -153,7 +153,7 @@ class TestComm():
         assert len(get_all_handles()) == 2
 
 
-class TestClose():
+class TestClose(object):
     """Test `_GIPCHandle`s close behavior and read/write behavior in context of
     closing.
     """
@@ -212,7 +212,7 @@ class TestClose():
         self.rh.close()
 
 
-class TestProcess():
+class TestProcess(object):
     """Test child process behavior and `_GProcess` API.
     """
     def test_is_alive_true(self):
@@ -317,7 +317,7 @@ def p_child_e3():
     pass
 
 
-class TestIPC():
+class TestIPC(object):
     """Test file descriptor passing and inter-process communication based on
     unidirectional message transfer channels.
     """
@@ -482,7 +482,7 @@ def ipc_child_f3(w, m):
     w.close()
 
 
-class TestContextManager():
+class TestContextManager(object):
     """Test context manager behavior regarding unidirectional transport.
     """
     def teardown(self):
@@ -571,7 +571,7 @@ class TestContextManager():
 
 
 @mark.skipif('WINDOWS')
-class TestGetTimeout():
+class TestGetTimeout(object):
     """Test timeout feature of `_GIPCReader` on POSIX-compliant systems.
     """
     def teardown(self):
@@ -602,7 +602,7 @@ class TestGetTimeout():
         assert False
 
 
-class TestDuplexHandleBasic():
+class TestDuplexHandleBasic(object):
     """Test duplex handle behavior in single process.
     """
     def teardown(self):
@@ -763,7 +763,7 @@ class TestDuplexHandleBasic():
             h1.close()
 
 
-class TestDuplexHandleIPC():
+class TestDuplexHandleIPC(object):
     """Test duplex handles for inter-process communication.
     """
     def teardown(self):
@@ -829,7 +829,7 @@ def duplchild_simple_echo(h):
     h.put(h.get())
 
 
-class TestSimpleUseCases():
+class TestSimpleUseCases(object):
     """Test very basic usage scenarios of gipc (pure gipc+gevent).
     """
     def teardown(self):
@@ -979,7 +979,7 @@ def usecase_child_c(reader, syncwriter):
     sys.exit(5)
 
 
-class TestComplexUseCases():
+class TestComplexUseCases(object):
     """Tests with increased complexity, also involving server components of
     gevent. Reproduction of common usage scenarios.
     """
