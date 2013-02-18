@@ -372,6 +372,7 @@ class _GProcess(multiprocessing.Process):
                        "stored: %s" % (self.pid, self._popen.returncode)))
 
         def is_alive(self):
+            assert self._popen is not None, "Process not yet started."
             if self._popen.returncode is None:
                 return True
             return False
