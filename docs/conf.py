@@ -95,11 +95,7 @@ pygments_style = 'sphinx'
 # -- Options for HTML output ---------------------------------------------------
 
 html_theme_path = ["."]
-#html_theme = 'haiku'
-html_theme = 'minimal_theme'
-#html_theme_options = {
-#    "nosidebar": "true",
-#    }
+html_theme = 'new_minimal_theme'
 
 
 # The theme to use for HTML and HTML Help pages.  See the documentation for

@@ -5,7 +5,6 @@
    Copyright 2012-2013 Jan-Philip Gehrcke. See LICENSE file for details.
 
 .. toctree::
-    :hidden:
     :maxdepth: 2
 
 ========================================
