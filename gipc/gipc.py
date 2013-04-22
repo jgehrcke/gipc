@@ -563,7 +563,6 @@ class _GIPCReader(_GIPCHandle):
         self._fd = pipe_read_fd
         self._fd_flag = os.O_RDONLY
         _GIPCHandle.__init__(self)
-        self._newmessage_lengthreceived = False
         self._timeout = None
 
     def _recv_in_buffer(self, n):
@@ -621,9 +620,7 @@ class _GIPCReader(_GIPCHandle):
                 h.wait(h.loop.io(self._fd, 1))
                 timeout.cancel()
             msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
-            self._newmessage_lengthreceived = True
             bindata = self._recv_in_buffer(msize).getvalue()
-            self._newmessage_lengthreceived = False
         return pickle.loads(bindata)
 
 
