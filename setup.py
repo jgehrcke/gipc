@@ -6,11 +6,19 @@
 # http://guide.python-distribute.org/introduction.html#current-state-of-packaging
 # http://pythonhosted.org/distribute/using.html
 # http://ziade.org/2010/03/03/the-fate-of-distutils-pycon-summit-packaging-sprint-detailed-report/
+# http://stackoverflow.com/a/2073599/145400
 
+import re
 import distribute_setup
 distribute_setup.use_setuptools()
 from setuptools import setup
-from gipc import __version__ as gipcversion
+
+gipcversion = re.search(
+    "^__version__\s*=\s*'(.*)'",
+    open('gipc/__init__.py').read(),
+    re.M
+    ).group(1)
+assert gipcversion
 
 setup(
     name = "gipc",
