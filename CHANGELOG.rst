@@ -1,6 +1,6 @@
 Version 0.3.1 (Apr 22, 2013)
 ----------------------------
-    - Fix `issue #1<https://bitbucket.org/jgehrcke/gipc/issue/1>`_: don't
+    - Fix `issue #1 <https://bitbucket.org/jgehrcke/gipc/issue/1>`_: don't
       import gipc from setup.py anymore.
     - Fix: make GProcess' exitcode return ``None`` if ``Popen`` object still
       not existing.

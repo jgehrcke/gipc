@@ -8,6 +8,7 @@ coverage html -d coverage_html
 echo -e "\n\nRunning setup.py check & readme2html..."
 python setup.py check
 python setup.py --long-description | rst2html.py > /dev/null
+rst2html.py CHANGELOG.rst > /dev/null
 echo -e "\n\nRunning PEP8 check..."
 pep8
 echo -e "\n\nRunning pylint..."
