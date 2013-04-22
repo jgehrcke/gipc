@@ -1,4 +1,6 @@
 /*
+ * minimal.css_t by Jan-Philip Gehrcke based on
+ *
  * default.css_t
  * ~~~~~~~~~~~~~
  *
@@ -14,7 +16,7 @@
 /* -- page layout ----------------------------------------------------------- */
 
 body {
-    font-family: 'Droid Serif', serif;
+    font-family: {{ theme_bodyfont }};
     font-size: 100%;
     background-color: {{ theme_footerbgcolor }};
     color: #000;
@@ -27,10 +29,11 @@ div.document {
 }
 
 div.documentwrapper {
-    max-width: 720px;
+    max-width: 820px;
     margin-left: auto;
     margin-right: auto;
     margin-top: 80px;
+    
 }
 
 div.bodywrapper {
@@ -40,7 +43,7 @@ div.bodywrapper {
 div.body {
     background-color: {{ theme_bgcolor }};
     color: {{ theme_textcolor }};
-    padding: 0 20px 30px 20px;
+    padding: 2px 20px 30px 20px;
 }
 
 {%- if theme_rightsidebar|tobool %}
@@ -103,9 +106,8 @@ div.documentwrapper {
 */
 {%- endif %}
 
-
 div.sphinxsidebar h3 {
-    font-family: 'Droid Sans', sans-serif;
+    font-family: {{ theme_headfont }};
     color: {{ theme_sidebartextcolor }};
     font-size: 1.4em;
     font-weight: normal;
@@ -118,7 +120,7 @@ div.sphinxsidebar h3 a {
 }
 
 div.sphinxsidebar h4 {
-    font-family: 'Droid Sans', sans-serif;
+    font-family: {{ theme_headfont }};
     color: {{ theme_sidebartextcolor }};
     font-size: 1.3em;
     font-weight: normal;
@@ -198,18 +200,18 @@ div.body h3,
 div.body h4,
 div.body h5,
 div.body h6 {
-    font-family: 'Droid Sans', sans-serif;
+    font-family: {{ theme_headfont }};
     background-color: {{ theme_headbgcolor }};
     font-weight: normal;
     color: {{ theme_headtextcolor }};
     border-bottom: 1px solid #ccc;
-    margin: 20px -20px 10px -20px;
+    margin: 20px -19px 10px -19px;
     padding: 3px 0 3px 10px;
 }
 
-div.body h1 { margin-top: 0; font-size: 230%; }
-div.body h2 { font-size: 200%; }
-div.body h3 { font-size: 160%; }
+div.body h1 { margin-top: 0; font-size: 200%; }
+div.body h2 { font-size: 160%; }
+div.body h3 { font-size: 140%; }
 div.body h4 { font-size: 120%; }
 div.body h5 { font-size: 110%; }
 div.body h6 { font-size: 100%; }
@@ -229,7 +231,6 @@ a.headerlink:hover {
 div.body p, div.body dd, div.body li {
     /*text-align: justify;*/
     line-height: 130%;
-    margin-bottom: 10px;
 }
 
 div.admonition p.admonition-title + p {
@@ -286,9 +287,9 @@ pre {
 }
 
 tt {
-    //background-color: #ecf0f3;
+    background-color: #ecf0f3;
     padding: 0 1px 0 1px;
-    font-size: 110%;
+    font-size: 0.95em;
 }
 
 th {
@@ -304,7 +305,7 @@ th {
 }
 
 .viewcode-back {
-    font-family: 'Droid Sans', sans-serif;
+    font-family: {{ theme_bodyfont }};
 }
 
 div.viewcode-block:target {
@@ -312,3 +313,14 @@ div.viewcode-block:target {
     border-top: 1px solid #ac9;
     border-bottom: 1px solid #ac9;
 }
+
+.drop-shadow {
+    margin:2em 10px 4em;
+    background:#fff;
+    -moz-border-radius: 5px;
+    border-radius: 5px;
+    -webkit-box-shadow: 2px 2px 8px 2px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1) inset;
+    -moz-box-shadow: 2px 2px 8px 2px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1) inset;
+    box-shadow: 2px 2px 8px 2px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1) inset;
+}
+
