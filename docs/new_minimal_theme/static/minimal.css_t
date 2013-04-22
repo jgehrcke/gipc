@@ -33,7 +33,7 @@ div.documentwrapper {
     margin-left: auto;
     margin-right: auto;
     margin-top: 80px;
-    
+
 }
 
 div.bodywrapper {
@@ -43,7 +43,7 @@ div.bodywrapper {
 div.body {
     background-color: {{ theme_bgcolor }};
     color: {{ theme_textcolor }};
-    padding: 2px 20px 30px 20px;
+    padding: 0px 20px 30px 20px;
 }
 
 {%- if theme_rightsidebar|tobool %}
