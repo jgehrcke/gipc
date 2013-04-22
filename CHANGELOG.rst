@@ -1,3 +1,16 @@
+Version 0.3.1 (Apr 22, 2013)
+----------------------------
+    - Fix `issue #1<https://bitbucket.org/jgehrcke/gipc/issue/1>`_: don't
+      import gipc from setup.py anymore.
+    - Fix: make GProcess' exitcode return ``None`` if ``Popen`` object still
+      not existing.
+    - Fix ``GProcess.is_alive``: Raise exception if process has not been
+      started yet.
+    - Create event object after forking instead of before (one reference to old
+      Hub object less in child).
+    - Make test classes newstyle. Doh.
+
+
 Version 0.3.0 (Feb 11, 2013)
 ----------------------------
     - Add bidirectional message transfer channels for IPC.
@@ -8,7 +21,7 @@ Version 0.3.0 (Feb 11, 2013)
       inherited by child.
     - Various minor code changes, and a new class of unit tests for more complex
       scenarios.
-    
+
 
 Version 0.2.0 (Jan 31, 2013)
 ----------------------------
