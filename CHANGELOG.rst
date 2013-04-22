@@ -9,6 +9,7 @@ Version 0.3.1 (Apr 22, 2013)
     - Create event object after forking instead of before (one reference to old
       Hub object less in child).
     - Make test classes newstyle. Doh.
+    - Modify documentation theme.
 
 
 Version 0.3.0 (Feb 11, 2013)
