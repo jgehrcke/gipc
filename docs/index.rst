@@ -209,7 +209,7 @@ Requirements
 
 - `gevent <http://gevent.org>`_ >= 1.0 (currently, gipc is tested against
   gevent 1.0rc2). Download recent gevent releases
-  `here <https://github.com/SiteSupport/gevent/downloads>`_.
+  `here <https://github.com/surfly/gevent/downloads>`_.
 - The unit tests are ensured to pass on CPython 2.6 and 2.7 on Linux as well
   as on Windows.
 
