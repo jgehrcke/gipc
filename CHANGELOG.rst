@@ -1,3 +1,9 @@
+Version x.x.x (not released)
+----------------------------
+    - Don't provide and use distribute_setup.py anymore. Thanks to Guy
+      Rozendorn.
+
+
 Version 0.3.1 (Apr 22, 2013)
 ----------------------------
     - Fix `issue #1 <https://bitbucket.org/jgehrcke/gipc/issue/1>`_: don't
