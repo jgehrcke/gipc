@@ -35,9 +35,8 @@ import gevent.lock
 import gevent.event
 
 
-# Logging for debugging purposes.
-# Note: naive usage of logging from within multiple processes might yield mixed
-# messages.
+# Logging for debugging purposes. Usage of logging in this simple form in the
+# context of multiple processes might yield mixed messages in the output.
 log = logging.getLogger("gipc")
 
 
@@ -62,7 +61,8 @@ class GIPCLocked(GIPCError):
 
 
 def _newpipe():
-    """Create new `os.pipe()` and return `(_GIPCReader, _GIPCWriter)` tuple.
+    """Create new pipe via `os.pipe()` and return `(_GIPCReader, _GIPCWriter)`
+    tuple.
 
     os.pipe() implementation on Windows (http://bit.ly/RDuKUm):
        - CreatePipe(&read, &write, NULL, 0)
@@ -78,19 +78,19 @@ def _newpipe():
 
 
 def pipe(duplex=False):
-    """Create a pipe-based message transport channel and return corresponding
-    handles for reading and writing data.
+    """Create a pipe-based message transport channel and return two
+    corresponding handles for reading and writing data.
 
     Allows for gevent-cooperative transmission of pickleable objects. Data can
-    be sent between greenlets within one process or across processes (created
-    via :func:`start_process`).
+    be transmitted between greenlets within one process or across processes
+    (created via :func:`start_process`).
 
     :arg duplex:
         - If ``False`` (default), create a unidirectional pipe-based message
           transport channel and return the corresponding
           ``(_GIPCReader, _GIPCWriter)`` handle pair.
-        - If ``True``, create a bidirectional message transport channel based
-          on two pipes and return the corresponding
+        - If ``True``, create a bidirectional message transport channel (using
+          two pipes internally) and return the corresponding
           ``(_GIPCDuplexHandle, _GIPCDuplexHandle)`` handle pair.
 
     :returns:
@@ -103,8 +103,8 @@ def pipe(duplex=False):
 
 
     :class:`gipc._GIPCHandle` and :class:`gipc._GIPCDuplexHandle`  instances
-    are recommended to be used with Python's context manager as indicated in
-    the following examples::
+    are recommended to be used with a context manager as indicated in the
+    following examples::
 
         with pipe() as (r, w):
             do_something(r, w)
@@ -154,16 +154,16 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
 
         - returns a :class:`gipc._GProcess` instance which is compatible with
           the `multiprocessing.Process` API.
-        - also takes the essential ``target``, ``arg=()``, and ``kwargs={}``
+        - just as well takes the ``target``, ``arg=()``, and ``kwargs={}``
           arguments.
         - introduces the ``daemon=None`` argument.
         - does not accept the ``group`` argument (being an artifact from
           ``multiprocessing``'s compatibility with ``threading``).
         - starts the process, i.e. a subsequent call to the ``start()`` method
-          of the returned object is redundant.
+          of the returned object is not needed.
 
     :arg target:
-        Function to be called in child as ``target(*args, **kwargs)``.
+        Function to be called in child. Signature: ``target(*args, **kwargs)``.
 
     :arg args:
         Tuple defining positional arguments provided to ``target``.
@@ -264,7 +264,8 @@ def _child(target, args, kwargs):
         # children. Set `_all_handles`.
         _set_all_handles(childhandles)
     # `_all_handles` now must contain only those handles that have been
-    # transferred to the child on purpose.
+    # transferred to the child on purpose. TODO: remove this check in future
+    # versions.
     for h in _all_handles:
         assert h in childhandles
     # Register transferred handles for current process.
@@ -275,7 +276,8 @@ def _child(target, args, kwargs):
         log.debug("Handle `%s` is now valid in child." % h)
     # Invoke user-given function.
     target(*args, **kwargs)
-    # Close file descriptors before exiting process. Needless, but clean.
+    # Close file descriptors before exiting process. Usually needless (OS
+    # should take care of this), but being expressive about this is clean.
     for h in childhandles:
         try:
             # The user might already have closed it.
@@ -348,7 +350,7 @@ class _GProcess(multiprocessing.Process):
             # Run new process (based on `fork()` on POSIX-compliant systems).
             super(_GProcess, self).start()
             # The occurrence of SIGCHLD is recorded asynchronously in libev.
-            # This guarantees proper behaviour even if the child watcher is
+            # This guarantees proper behavior even if the child watcher is
             # started after the child exits. Start child watcher now.
             self._sigchld_watcher = gevent.get_hub().loop.child(self.pid)
             self._returnevent = gevent.event.Event()
@@ -567,6 +569,8 @@ class _GIPCReader(_GIPCHandle):
 
     def _recv_in_buffer(self, n):
         """Cooperatively read `n` bytes from file descriptor to buffer."""
+        # Frequent creation of a new buffer is faster than re-using an existing
+        # buffer via seek(0) and truncate().
         readbuf = io.BytesIO()
         remaining = n
         while remaining > 0:
@@ -588,7 +592,7 @@ class _GIPCReader(_GIPCHandle):
 
         :arg timeout: ``None`` (default) or a ``gevent.Timeout``
             instance. The timeout must be started to take effect and is
-            cancelled when the first byte of a new message arrives (i.e.
+            canceled when the first byte of a new message arrives (i.e.
             providing a timeout does not guarantee that the method completes
             within the timeout interval).
 
@@ -645,7 +649,7 @@ class _GIPCWriter(_GIPCHandle):
                 to EAGAIN. Otherwise, from 1 to n bytes may be written (i.e.,
                 a "partial write" may occur; the caller should check the
                 return value from write(2) to see how many bytes were
-                actualy written), and these bytes may be interleaved with
+                actually written), and these bytes may be interleaved with
                 writes by other processes."
 
             EAGAIN is handled within _WRITE_NB; partial writes here.
@@ -769,7 +773,7 @@ def _filter_handles(l):
             yield o._reader
 
 
-# Container for keeping track of valid `_GIPCHandle`s in current proecss.
+# Container for keeping track of valid `_GIPCHandle`s in current process.
 _all_handles = []
 
 
