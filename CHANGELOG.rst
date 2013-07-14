@@ -1,4 +1,4 @@
-Version x.x.x (not released)
+Version 0.3.2 (July 14, 2013)
 ----------------------------
     - Don't provide and use distribute_setup.py anymore. Thanks to Guy
       Rozendorn.
