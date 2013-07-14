@@ -1,17 +1,11 @@
 # -*- coding: utf-8 -*-
 # Copyright 2012-2013 Jan-Philip Gehrcke. See LICENSE file for details.
 
-
-# For packaging, I tried to follow these recommendations:
-# http://guide.python-distribute.org/introduction.html#current-state-of-packaging
-# http://pythonhosted.org/distribute/using.html
-# http://ziade.org/2010/03/03/the-fate-of-distutils-pycon-summit-packaging-sprint-detailed-report/
-# http://stackoverflow.com/a/2073599/145400
-
 import re
-import distribute_setup
-distribute_setup.use_setuptools()
-from setuptools import setup
+try:
+	from setuptools import setup
+except ImportError:
+	from distutils.core import setup
 
 gipcversion = re.search(
     "^__version__\s*=\s*'(.*)'",
@@ -23,7 +17,6 @@ assert gipcversion
 setup(
     name = "gipc",
     packages = ["gipc"],
-    py_modules = ["distribute_setup"],
     version = gipcversion,
     description = "gevent-cooperative child processes and inter-process communication.",
     long_description=open("README.rst").read().decode('utf-8'),
