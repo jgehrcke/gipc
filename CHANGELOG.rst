@@ -2,6 +2,8 @@ Version x.x.x (not released)
 ----------------------------
     - Don't provide and use distribute_setup.py anymore. Thanks to Guy
       Rozendorn.
+    - Slightly improve pipe write performance (measured improvement of up to
+      10 % in data throughput as well as message transmission rate).
 
 
 Version 0.3.1 (Apr 22, 2013)
