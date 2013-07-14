@@ -69,7 +69,7 @@ def _newpipe():
        - anonymous pipe, system handles buffer size
        - anonymous pipes are implemented using named pipes with unique names
        - asynchronous (overlapped) read and write operations not supported
-     os.pipe() implementation on Unix (http://linux.die.net/man/7/pipe):
+    os.pipe() implementation on Unix (http://linux.die.net/man/7/pipe):
        - based on pipe()
        - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
     """
@@ -672,9 +672,7 @@ class _GIPCWriter(_GIPCHandle):
         self._validate()
         with self._lock:
             bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
-            # TODO: one write instead of two?
-            self._write(struct.pack("!i", len(bindata)))
-            self._write(bindata)
+            self._write(struct.pack("!i", len(bindata)) + bindata)
 
 
 class _PairContext(tuple):
