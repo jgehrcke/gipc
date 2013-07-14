@@ -1,5 +1,5 @@
 Version 0.3.2 (July 14, 2013)
-----------------------------
+-----------------------------
     - Don't provide and use distribute_setup.py anymore. Thanks to Guy
       Rozendorn.
     - Slightly improve pipe write performance (measured improvement of up to
