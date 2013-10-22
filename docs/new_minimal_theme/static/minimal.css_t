@@ -235,7 +235,7 @@ div.body p, div.body dd, div.body li {
 
 div.admonition p.admonition-title + p {
     display: inline;
-i}
+}
 
 div.admonition p {
     margin-bottom: 5px;
