@@ -43,7 +43,7 @@ div.bodywrapper {
 div.body {
     background-color: {{ theme_bgcolor }};
     color: {{ theme_textcolor }};
-    padding: 0px 20px 30px 20px;
+    padding: 30px 9%;
 }
 
 {%- if theme_rightsidebar|tobool %}
@@ -235,7 +235,7 @@ div.body p, div.body dd, div.body li {
 
 div.admonition p.admonition-title + p {
     display: inline;
-}
+i}
 
 div.admonition p {
     margin-bottom: 5px;
@@ -317,10 +317,16 @@ div.viewcode-block:target {
 .drop-shadow {
     margin:2em 10px 4em;
     background:#fff;
-    -moz-border-radius: 5px;
-    border-radius: 5px;
-    -webkit-box-shadow: 2px 2px 8px 2px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1) inset;
-    -moz-box-shadow: 2px 2px 8px 2px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1) inset;
-    box-shadow: 2px 2px 8px 2px rgba(0, 0, 0, 0.2), 0 0 20px rgba(0, 0, 0, 0.1) inset;
+    -webkit-box-shadow: 2px 2px 4px 1px rgba(0, 0, 0, 0.2), 0 0 4px rgba(0, 0, 0, 0.1) inset;
+    -moz-box-shadow: 2px 2px 3px 1px rgba(0, 0, 0, 0.2), 0 0 4px rgba(0, 0, 0, 0.1) inset;
+    box-shadow: 2px 2px 3px 1px rgba(0, 0, 0, 0.2), 0 0 4px rgba(0, 0, 0, 0.1) inset;
 }
 
+dd {
+    margin-left: 5px;
+}
+
+blockquote {
+    padding: 0 5px 5px 0;
+    margin: 0 5px 5px 0;
+}
