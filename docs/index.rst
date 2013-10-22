@@ -85,7 +85,7 @@ main process through a pipe to a child process::
 
 Although quite simple, this code would have various negative side-effects if
 used with the canonical multiprocessing API instead of
-``gipc.start_process()`` and ``gipc.pipe()``, as outlined in the next paragrah.
+``gipc.start_process()`` and ``gipc.pipe()``, as outlined in the next paragraph.
 
 
 What are the challenges and what is gipc's approach?
