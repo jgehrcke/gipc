@@ -184,8 +184,8 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
 
     Process creation is based on ``multiprocessing.Process()``. When working
     with gevent, it is highly recommended to start child processes in no other
-    way than via via :func:`start_process`. It triggers most of the magic
-    behind ``gipc``.
+    way than via :func:`start_process`. It triggers most of the magic
+    in ``gipc``.
     """
     if not isinstance(args, tuple):
         raise TypeError('`args` must be tuple.')
