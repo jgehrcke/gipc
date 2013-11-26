@@ -96,7 +96,7 @@ multiprocessing in the context of gevent requires special treatment. Most care
 is needed on POSIX-compliant systems. There, a fork might yield a faulty libev
 event loop state in the child. Most noticeable, greenlets spawned before
 forking are cloned and haunt in the child upon context switch. Consider this
-code running on Unix (tested with Python 2.7 & gevent 1.0rc2)::
+code running on Unix (tested with Python 2.7 & gevent 1.0)::
 
     import gevent
     import multiprocessing
@@ -208,8 +208,9 @@ Requirements
 ------------
 
 - `gevent <http://gevent.org>`_ >= 1.0 (currently, gipc is tested against
-  gevent 1.0rc2). Download recent gevent releases
-  `here <https://github.com/surfly/gevent/downloads>`_.
+  gevent 1.0). Download recent gevent releases
+  `here <https://github.com/surfly/gevent/downloads>`_ or from
+  `PyPI <https://pypi.python.org/pypi/gevent>`_.
 - The unit tests are ensured to pass on CPython 2.6 and 2.7 on Linux as well
   as on Windows.
 
