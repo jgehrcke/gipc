@@ -692,10 +692,14 @@ class _PairContext(tuple):
     context enter and exit themselves. Returns 2-tuple upon entering the
     context, attempts to exit both tuple elements upon context exit.
     """
-    def __init__(self, (e1, e2)):
-        self._e1 = e1
-        self._e2 = e2
-        super(_PairContext, self).__init__((e1, e2))
+
+    # _PairContext inherits from immutable type, so __new__ is the way to go
+    # for hooking into object creation.
+    def __new__ (cls, (e1, e2)):
+        c = super(_PairContext, cls).__new__(cls, (e1,e2))
+        c._e1 = e1
+        c._e2 = e2
+        return c
 
     def __enter__(self):
         for e in self:
