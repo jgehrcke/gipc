@@ -61,7 +61,7 @@ class GIPCLocked(GIPCError):
     pass
 
 
-def _newpipe():
+def _newpipe(encoder, decoder):
     """Create new pipe via `os.pipe()` and return `(_GIPCReader, _GIPCWriter)`
     tuple.
 
@@ -75,10 +75,22 @@ def _newpipe():
        - common Linux: pipe buffer is 4096 bytes, pipe capacity is 65536 bytes
     """
     r, w = os.pipe()
-    return (_GIPCReader(r), _GIPCWriter(w))
+    return (_GIPCReader(r, decoder), _GIPCWriter(w, encoder))
 
 
-def pipe(duplex=False):
+# Define default encoder and decoder functions for pipe data serialization .
+def _default_encoder(o):
+    return pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
+
+
+_default_decoder = pickle.loads
+
+
+def raw_pipe(duplex=False):
+    return pipe(duplex, encoder=lambda x: x, decoder=lambda x: x)
+
+
+def pipe(duplex=False, encoder=_default_encoder, decoder=_default_decoder):
     """Create a pipe-based message transport channel and return two
     corresponding handles for reading and writing data.
 
@@ -133,10 +145,10 @@ def pipe(duplex=False):
     on Windows and `pipe() <http://www.kernel.org/doc/man-pages/online/pages/man2/pipe.2.html>`_
     on POSIX-compliant systems).
     """
-    pair1 = _newpipe()
+    pair1 = _newpipe(encoder, decoder)
     if not duplex:
         return _PairContext(pair1)
-    pair2 = _newpipe()
+    pair2 = _newpipe(encoder, decoder)
     return _PairContext((
         _GIPCDuplexHandle((pair1[0], pair2[1])),
         _GIPCDuplexHandle((pair2[0], pair1[1]))))
@@ -574,11 +586,12 @@ class _GIPCReader(_GIPCHandle):
     A ``_GIPCReader`` instance manages the read end of a pipe. It is created
     via :func:`pipe`.
     """
-    def __init__(self, pipe_read_fd):
+    def __init__(self, pipe_read_fd, decoder):
         self._fd = pipe_read_fd
         self._fd_flag = os.O_RDONLY
         _GIPCHandle.__init__(self)
         self._timeout = None
+        self._decoder = decoder
 
     def _recv_in_buffer(self, n):
         """Cooperatively read `n` bytes from file descriptor to buffer."""
@@ -638,7 +651,7 @@ class _GIPCReader(_GIPCHandle):
                 timeout.cancel()
             msize, = struct.unpack("!i", self._recv_in_buffer(4).getvalue())
             bindata = self._recv_in_buffer(msize).getvalue()
-        return pickle.loads(bindata)
+        return self._decoder(bindata)
 
 
 class _GIPCWriter(_GIPCHandle):
@@ -646,10 +659,11 @@ class _GIPCWriter(_GIPCHandle):
     A ``_GIPCWriter`` instance manages the write end of a pipe. It is created
     via :func:`pipe`.
     """
-    def __init__(self, pipe_write_fd):
+    def __init__(self, pipe_write_fd, encoder):
         self._fd = pipe_write_fd
         self._fd_flag = os.O_WRONLY
         _GIPCHandle.__init__(self)
+        self._encoder = encoder
 
     def _write(self, bindata):
         """Write `bindata` to pipe in a gevent-cooperative manner.
@@ -688,7 +702,7 @@ class _GIPCWriter(_GIPCHandle):
         """
         self._validate()
         with self._lock:
-            bindata = pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
+            bindata = self._encoder(o)
             self._write(struct.pack("!i", len(bindata)) + bindata)
 
 
