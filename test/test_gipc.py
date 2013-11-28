@@ -15,6 +15,7 @@ sys.path.insert(0, os.path.abspath('..'))
 from gipc import start_process, pipe, GIPCError, GIPCClosed, GIPCLocked
 from gipc.gipc import _get_all_handles as get_all_handles
 from gipc.gipc import _set_all_handles as set_all_handles
+from gipc.gipc import _signals_to_reset as signals_to_reset
 
 WINDOWS = sys.platform == "win32"
 
@@ -1074,5 +1075,70 @@ def complchild_test_getaddrinfo_mp():
     return
 
 
+class TestSignals(object):
+    """Tests involving signal handling.
+    """
+
+    def teardown(self):
+        check_for_handles_left_open()
+        # One could verify that signal handlers are not left improperly
+        # by a test case, but libev's signal handling might go through
+        # signalfd() which we cannot detect here anyway. So the test cases
+        # have to properly clean up their signal handling modifications
+        # themselves.
+
+    def test_orphaned_signal_watcher(self):
+        # Install libev-based signal watcher.
+        s = gevent.signal(signal.SIGTERM, signals_test_sigterm_handler)
+        # Normal behavior: signal handlers become inherited by children.
+        # Bogus behavior of libev-based signal watchers in child process:
+        # They should not be active anymore when 'orphaned' (when their
+        # corresponding event loop has been destroyed). What happens, however:
+        # The old handler stays active and registering a new handler does not
+        # 'overwrite' the old one -- both are active.
+        # Since this test is about testing the behavior of 'orphaned' libev
+        # signal watchers, the signal must be transmitted *after* event loop
+        # recreation, so wait here for the child process to go through
+        # the hub & event loop destruction (and recreation) process before
+        # sending the signal. Waiting is realized with sync through pipe.
+        # Without cleanup code in gipc, the inherited but orphaned libev signal
+        # watcher would be active in the fresh event loop and trigger the
+        # handler. This is a problem. With cleanup code, this handler must
+        # never be called. Child exitcode 20 means that the inherited handler
+        # has been called, -15 (-signal.SIGTERM) means that the child was
+        # actually killed by SIGTERM within a certain short time interval.
+        # Returncode 0 would mean that the child finished normally after that
+        # short time interval.
+        with pipe() as (r, w):
+            p = start_process(signals_test_child_a, (w,))
+            assert r.get() == p.pid
+            os.kill(p.pid, signal.SIGTERM)
+            p.join()
+            assert p.exitcode == -signal.SIGTERM
+        s.cancel()
+
+    def test_signal_handlers_default(self):
+        p = start_process(signals_test_child_defaulthandlers)
+        p.join()
+        # Child exits normally when all signal dispositions are default.
+        assert p.exitcode == 0
+
+
+def signals_test_child_defaulthandlers():
+    for s in signals_to_reset:
+        assert signal.getsignal(s) is signal.SIG_DFL
+
+
+def signals_test_sigterm_handler():
+    sys.exit(20)
+
+
+def signals_test_child_a(w):
+    w.put(os.getpid())
+    gevent.sleep(SHORTTIME)
+    sys.exit(0)
+
+
 if __name__ == "__main__":
     pass
+
