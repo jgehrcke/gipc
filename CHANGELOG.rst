@@ -1,3 +1,12 @@
+Version 0.4.0 (TBD)
+-----------------------------
+    - Restore default signal disposition in child wrapper for all signals
+      (improves reliability).
+    - Implement decoder/encoder pipe API, introduce raw_pipe().
+    - Require gevent 1.0 final release version via setup.py.
+    - Fix DeprecationWarning related to _PairContext class.
+
+
 Version 0.3.2 (July 14, 2013)
 -----------------------------
     - Don't provide and use distribute_setup.py anymore. Thanks to Guy
