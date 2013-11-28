@@ -183,10 +183,16 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         ``multiprocessing.Process`` and re-implements some of its methods in a
         gevent-cooperative fashion).
 
-    Process creation is based on ``multiprocessing.Process()``. When working
-    with gevent, it is highly recommended to start child processes in no other
-    way than via :func:`start_process`. It triggers most of the magic
-    in ``gipc``.
+    :func:`start_process` triggers most of the magic in ``gipc``. Process
+    creation is based on ``multiprocessing.Process()``, i.e. ``fork()`` on
+    POSIX-compliant systems and ``CreateProcess()`` on Windows.
+
+    .. warning::
+
+        Please note that in order to provide reliable signal handling in the
+        context of libev, the default disposition (action) is restored for all
+        signals in the child before executing the user-given ``target``
+        function. You can (re)install any signal handler within ``target``.
     """
     if not isinstance(args, tuple):
         raise TypeError('`args` must be tuple.')
