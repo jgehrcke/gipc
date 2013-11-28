@@ -35,5 +35,5 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: System :: Hardware :: Symmetric Multi-processing",
         ],
-    #install_requires=("gevent>=1.0"), # currently not available at PyPI.
+    install_requires=("gevent>=1.0"),
     )
