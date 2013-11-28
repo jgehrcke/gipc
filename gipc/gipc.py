@@ -17,6 +17,7 @@ import os
 import io
 import sys
 import struct
+import signal
 import logging
 import multiprocessing
 import multiprocessing.forking
@@ -228,6 +229,12 @@ def _child(target, args, kwargs):
     log.debug("_child start. target: `%s`" % target)
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if not WINDOWS:
+        # Restore default signal handlers (SIG_DFL).
+        # Orphaned libev signal watchers may not become properly deactivated
+        # otherwise.
+        # TODO/note: here, we could even reset sigprocmask (Python 2.x does not
+        # have API for it, but it could be done via ctypes).
+        _reset_signal_handlers()
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
         # the kernel state for backends that have one. Must be called in the
         # child before using further libev API.
@@ -239,7 +246,7 @@ def _child(target, args, kwargs):
         del hub.threadpool
         hub._threadpool = None
         # Destroy default event loop via `libev.ev_loop_destroy()` and delete
-        # hub. This dumps all registered events and greenlets that have been
+        # hub. This orphans all registered events and greenlets that have been
         # duplicated from the parent via fork().
         log.debug("Destroy hub and default loop.")
         hub.destroy(destroy_loop=True)
@@ -249,8 +256,8 @@ def _child(target, args, kwargs):
         log.debug("Created new hub and default event loop.")
         assert h.loop.default, 'Could not create libev default event loop.'
         # On Unix, file descriptors are inherited by default. Also, the global
-        # `_all_handles` is inherited from the parent. Close dispensable file
-        # descriptors in child.
+        # `_all_handles` is inherited from the parent. Close dispensable gipc-
+        # related file descriptors in child.
         for h in _all_handles[:]:
             if not h in childhandles:
                 log.debug("Invalidate %s in child." % h)
@@ -786,3 +793,15 @@ def _get_all_handles():
 def _set_all_handles(handles):
     global _all_handles
     _all_handles = handles
+
+
+# Inspect signal module for signals whose action is to be restored to the
+# default action right after fork.
+_signals_to_reset = [getattr(signal, s) for s in
+    set([s for s in dir(signal) if s.startswith("SIG")]) -
+    set(['SIG_DFL', 'SIGSTOP', 'SIGKILL'])]
+
+
+def _reset_signal_handlers():
+    for s in _signals_to_reset:
+        signal.signal(s, signal.SIG_DFL)
