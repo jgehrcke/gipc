@@ -16,7 +16,7 @@ gipc is lightweight and simple to integrate.
 
 What are the boundary conditions?
 =================================
-Currently, gipc is developed against gevent 1.0rc2. It is tested on CPython 2.6
+Currently, gipc is developed against gevent 1.0. It is tested on CPython 2.6
 & 2.7 on Linux as well as on Windows.
 
 
