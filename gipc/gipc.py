@@ -78,7 +78,7 @@ def _newpipe(encoder, decoder):
     return (_GIPCReader(r, decoder), _GIPCWriter(w, encoder))
 
 
-# Define default encoder and decoder functions for pipe data serialization .
+# Define default encoder and decoder functions for pipe data serialization.
 def _default_encoder(o):
     return pickle.dumps(o, pickle.HIGHEST_PROTOCOL)
 
@@ -86,17 +86,13 @@ def _default_encoder(o):
 _default_decoder = pickle.loads
 
 
-def raw_pipe(duplex=False):
-    return pipe(duplex, encoder=lambda x: x, decoder=lambda x: x)
-
-
-def pipe(duplex=False, encoder=_default_encoder, decoder=_default_decoder):
+def pipe(duplex=False, encoder='default', decoder='default'):
     """Create a pipe-based message transport channel and return two
     corresponding handles for reading and writing data.
 
-    Allows for gevent-cooperative transmission of pickleable objects. Data can
-    be transmitted between greenlets within one process or across processes
-    (created via :func:`start_process`).
+    Allows for gevent-cooperative transmission of data (any picklable Python
+    object by default). Data can be transmitted between greenlets within one
+    process or across processes (created via :func:`start_process`).
 
     :arg duplex:
         - If ``False`` (default), create a unidirectional pipe-based message
@@ -105,6 +101,22 @@ def pipe(duplex=False, encoder=_default_encoder, decoder=_default_decoder):
         - If ``True``, create a bidirectional message transport channel (using
           two pipes internally) and return the corresponding
           ``(_GIPCDuplexHandle, _GIPCDuplexHandle)`` handle pair.
+
+    :arg encoder:
+        Defines the entity used for data serialization before writing data to
+        the pipe. Must be a callable, ``None`` or ``'default'``. ``'default'``
+        translates to ``pickle.dumps`` (any pickleable Python object can be
+        transmitted in this mode). When setting this to ``None``, no data
+        encoding/serialization is performed (only byte strings can be
+        transmitted in this case, in all other cases a ``TypeError`` will be
+        thrown).
+
+    :arg decoder:
+        Defines the entity used for data deserialization after reading raw data
+        from the pipe. Must be a callable, ``None`` or ``'default'``.
+        ``'default'`` translates to ``pickle.loads``. When setting this to
+        ``None``, no data decoding/deserialization is performed (a raw byte
+        string is returned).
 
     :returns:
         - ``duplex=False``: ``(reader, writer)`` 2-tuple. The first element is
@@ -145,6 +157,20 @@ def pipe(duplex=False, encoder=_default_encoder, decoder=_default_decoder):
     on Windows and `pipe() <http://www.kernel.org/doc/man-pages/online/pages/man2/pipe.2.html>`_
     on POSIX-compliant systems).
     """
+    # Internally, `encoder` and `decoder` must always be callable. Translate
+    # special values `None` and `'default'` to callables here.
+    if encoder is None:
+        encoder = lambda x: x
+    elif encoder == 'default':
+        encoder = _default_encoder
+    elif not callable(encoder):
+        raise GIPCError("pipe 'encoder' argument must be callable.")
+    if decoder is None:
+        decoder = lambda x: x
+    elif decoder == 'default':
+        decoder = _default_decoder
+    elif not callable(decoder):
+        raise GIPCError("pipe 'decoder' argument must be callable.")
     pair1 = _newpipe(encoder, decoder)
     if not duplex:
         return _PairContext(pair1)
@@ -613,8 +639,9 @@ class _GIPCReader(_GIPCHandle):
         return readbuf
 
     def get(self, timeout=None):
-        """Receive and return an object from the pipe. Block
-        gevent-cooperatively until object is available or timeout expires.
+        """Receive, decode and return data from the pipe. Block
+        gevent-cooperatively until data is available or timeout expires. The
+        default decoder is ``pickle.loads``.
 
         :arg timeout: ``None`` (default) or a ``gevent.Timeout``
             instance. The timeout must be started to take effect and is
@@ -689,10 +716,11 @@ class _GIPCWriter(_GIPCHandle):
             bindata = bindata[-diff:]
 
     def put(self, o):
-        """Pickle object ``o`` and write it to the pipe. Block
-        gevent-cooperatively until all data is written.
+        """Encode object ``o`` and write it to the pipe.
+        Block gevent-cooperatively until all data is written. The default
+        encoder is ``pickle.dumps``.
 
-        :arg o: a pickleable Python object.
+        :arg o: a Python object that is encodable with the encoder of choice.
 
         Raises:
             - :exc:`GIPCError`
