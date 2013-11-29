@@ -161,12 +161,12 @@ the :ref:`examples <examples>` and the :ref:`API <api>` section.
 Technical notes
 ===============
 - gipc uses classical anonymous pipes as transport layer for
-  gevent-cooperative communication between greenlets and/or processes. A binary
-  ``pickle`` protocol is used for transmitting arbitrary objects. Reading and
-  writing on pipes is done with ``gevent``'s cooperative versions of
-  ``os.read()`` and ``os.write()`` (on POSIX-compliant systems they use
-  non-blocking I/O, on Windows a threadpool is used). On Linux, my test system
-  (Xeon E5630) achieved a payload transfer rate of 1200 MB/s and a message
+  gevent-cooperative communication between greenlets and/or processes.
+  By default, a binary ``pickle`` protocol is used for transmitting arbitrary
+  objects. Reading and writing on pipes is done with ``gevent``'s cooperative
+  versions of ``os.read()`` and ``os.write()`` (on POSIX-compliant systems they
+  use non-blocking I/O, on Windows a threadpool is used). On Linux, my test
+  system (Xeon E5630) achieved a payload transfer rate of 1200 MB/s and a message
   transmission rate of 100.000 messages/s through one pipe between two
   processes.
 
