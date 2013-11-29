@@ -830,6 +830,76 @@ def duplchild_simple_echo(h):
     h.put(h.get())
 
 
+class TestPipe(object):
+    """Test pipe API, focus on explicitly defining codecs. The default behavior
+    is tested thoroughly in all other tests involving pipe().
+    """
+    @staticmethod
+    def readlet(r):
+        return r.get()
+
+    @staticmethod
+    def writelet(w, data):
+        w.put(data)
+
+    def teardown(self):
+        check_for_handles_left_open()
+
+    def test_default(self):
+        data = [10]
+        with pipe(encoder='default', decoder='default') as (r, w):
+            gw = gevent.spawn(self.writelet, w, data)
+            gr = gevent.spawn(self.readlet, r)
+            assert data == gr.get()
+            gw.get()
+
+    def test_callable_raw(self):
+        data = os.urandom(10000)
+        with pipe(encoder=lambda x:x, decoder=lambda x:x) as (r, w):
+            gw = gevent.spawn(self.writelet, w, data)
+            gr = gevent.spawn(self.readlet, r)
+            assert data == gr.get()
+            gw.get()
+
+    def test_raw(self):
+        data = os.urandom(10000)
+        with pipe(encoder=None, decoder=None) as (r, w):
+            gw = gevent.spawn(self.writelet, w, data)
+            gr = gevent.spawn(self.readlet, r)
+            assert data == gr.get()
+            gw.get()
+
+    def test_json(self):
+        import json
+        data = {"a": 10**10}
+        with pipe(encoder=json.dumps, decoder=json.loads) as (r, w):
+            gw = gevent.spawn(self.writelet, w, data)
+            gr = gevent.spawn(self.readlet, r)
+            assert data == gr.get()
+            gw.get()
+
+    def test_zlib(self):
+        import zlib
+        data = os.urandom(10000)
+        with pipe(encoder=zlib.compress, decoder=zlib.decompress) as (r, w):
+            gw = gevent.spawn(self.writelet, w, data)
+            gr = gevent.spawn(self.readlet, r)
+            assert data == gr.get()
+            gw.get()
+
+    def test_not_callable_encoder(self):
+        data = os.urandom(10000)
+        with raises(GIPCError):
+            with pipe(encoder=1, decoder=lambda x: x) as (r, w):
+                pass
+
+    def test_not_callable_decoder(self):
+        data = os.urandom(10000)
+        with raises(GIPCError):
+            with pipe(encoder=lambda x: x, decoder=1) as (r, w):
+                pass
+
+
 class TestSimpleUseCases(object):
     """Test very basic usage scenarios of gipc (pure gipc+gevent).
     """
