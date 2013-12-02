@@ -1,10 +1,14 @@
 Version 0.4.0 (TBD)
 -----------------------------
-    - Restore default signal disposition in child wrapper for all signals
-      (improves reliability).
-    - Implement data (de)serialization pipe API.
+    - Implement data (de)serialization pipe API (allowing for raw byte
+      transmission and for custom encoders/decoders).
+    - Restore default signal disposition in child wrapper for all signals (see
+      `issue #7 <https://bitbucket.org/jgehrcke/gipc/issue/7>`_).
+    - Fix DeprecationWarning related to _PairContext class (see
+      `issue #5 <https://bitbucket.org/jgehrcke/gipc/issue/5>`_).
+    - Significantly improve large message write performance by using Python's
+      buffer interface.
     - Require gevent 1.0 final release version via setup.py.
-    - Fix DeprecationWarning related to _PairContext class.
 
 
 Version 0.3.2 (July 14, 2013)
