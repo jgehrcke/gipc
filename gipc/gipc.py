@@ -691,6 +691,8 @@ class _GIPCWriter(_GIPCHandle):
         self._fd_flag = os.O_WRONLY
         _GIPCHandle.__init__(self)
         self._encoder = encoder
+        if sys.version_info[:2] == (2, 6):
+            self._write = self._write_py26_fallback
 
     def _write(self, bindata):
         """Write `bindata` to pipe in a gevent-cooperative manner.
@@ -708,12 +710,24 @@ class _GIPCWriter(_GIPCHandle):
 
             EAGAIN is handled within _WRITE_NB; partial writes here.
         """
+        bindata = memoryview(bindata)
         while True:
             # Causes OSError when read end is closed (broken pipe).
-            diff = len(bindata) - _WRITE_NB(self._fd, bindata)
-            if not diff:
+            bytes_written = _WRITE_NB(self._fd, bindata)
+            if bytes_written == len(bindata):
                 break
-            bindata = bindata[-diff:]
+            bindata = bindata[bytes_written:]
+
+    def _write_py26_fallback(self, bindata):
+        # memoryview() is not available in Python 2.6, buffer() has been
+        # removed from Python 3. The API of buffer/memview objects differs.
+        bindata = buffer(bindata)
+        while True:
+            bytes_written = _WRITE_NB(self._fd, bindata)
+            if len(bindata) == bytes_written:
+                break
+            # Get new buffer with `bytes_written` offset of previous buffer.
+            bindata = buffer(bindata, bytes_written)
 
     def put(self, o):
         """Encode object ``o`` and write it to the pipe.
