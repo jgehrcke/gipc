@@ -757,8 +757,8 @@ class _PairContext(tuple):
 
     # _PairContext inherits from immutable type, so __new__ is the way to go
     # for hooking into object creation.
-    def __new__ (cls, (e1, e2)):
-        c = super(_PairContext, cls).__new__(cls, (e1,e2))
+    def __new__(cls, (e1, e2)):
+        c = super(_PairContext, cls).__new__(cls, (e1, e2))
         c._e1 = e1
         c._e2 = e2
         return c
