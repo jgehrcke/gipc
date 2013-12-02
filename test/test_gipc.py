@@ -855,7 +855,7 @@ class TestPipe(object):
 
     def test_callable_raw(self):
         data = os.urandom(10000)
-        with pipe(encoder=lambda x:x, decoder=lambda x:x) as (r, w):
+        with pipe(encoder=lambda x: x, decoder=lambda x: x) as (r, w):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
             assert data == gr.get()
@@ -871,7 +871,7 @@ class TestPipe(object):
 
     def test_json(self):
         import json
-        data = {"a": 10**10}
+        data = {"a": 10 ** 10}
         with pipe(encoder=json.dumps, decoder=json.loads) as (r, w):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
@@ -1211,4 +1211,3 @@ def signals_test_child_a(w):
 
 if __name__ == "__main__":
     pass
-
