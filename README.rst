@@ -1,11 +1,11 @@
 
 What is gipc?
 =============
-Naive usage of Python's multiprocessing package in the context of a
-gevent-powered application may raise various problems and most likely breaks the
-application in many ways.
+Usage of Python's multiprocessing package in the context of a
+gevent-powered application may raise various problems and most likely breaks
+the application in many ways.
 
-gipc (pronunciation "gipsy") is developed with the motivation to solve these
+gipc (pronunciation "gipsy") is developed with the motivation to solve many of these
 issues transparently. With gipc, multiprocessing.Process-based child processes
 can safely be created anywhere within your gevent-powered application. The API
 of multiprocessing.Process objects is provided in a gevent-cooperative fashion.
@@ -17,34 +17,39 @@ gipc is lightweight and simple to integrate.
 What are the boundary conditions?
 =================================
 Currently, gipc is developed against gevent 1.0. It is tested on CPython 2.6
-& 2.7 on Linux as well as on Windows.
+& 2.7 on Linux as well as on Windows. Python 3 will be supported as soon as
+gevent supports it.
 
 
 Where are documentation and changelog?
 ======================================
-The API documentation and further details can be found at
-http://gehrcke.de/gipc.
-`Here <https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst>`_, the
-changelog can be retrieved from Bitbucket.
+    - API documentation and further details: http://gehrcke.de/gipc.
+    - Changelog: `Here <https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst>`_,
+      hosted at Bitbucket.
 
 
-
-Is gipc stable?
-===============
-Development began in late 2012, so it is far from being mature. However, as of
-version 0.3.0, I am not aware of any fundamental issue. gipc's basic approach
-has proven to be reasonable. gipc is developed with a strong focus on
-reliability and with best intentions in mind. Via extensive unit testing, it has
-been validated to work reliably in scenarios of low and medium complexity. It is
-ready to be evaluated in the context of serious projects. Please let me know how
-gipc performs for you.
+Is gipc reliable?
+=================
+Development of gipc began in late 2012, so it is still not being mature.
+However, as of version 0.3, I am not aware of severe issues. To my
+knowledge, gipc has already been deployed in serious projects. Generally, you
+should be aware of the fact that mixing any of fork, threads, greenlets and an
+event loop library such as libev bears the potential for various kinds of
+corner-case disasters. Some people would argue that ``fork()`` ing in the
+context of libev without doing a clean ``exec`` in the child already *is*
+broken design. However, many people would like to do exactly this and gipc's
+basic approach has proven to work in these cases. gipc is developed with a
+strong focus on reliability and with best intentions in mind,
+and via unit testing, gipc has been validated to work reliably in scenarios of
+low and medium complexity. Of course, gipc cannot rescue an a priori ill-posed
+approach. Now it is up to you to evaluate gipc in the context of your project
+-- please let me know how gipc performs for you.
 
 
 Where should I download gipc?
 =============================
-Releases are available at `PyPI <http://pypi.python.org/pypi/gipc>`_.
-The development version can be retrieved from the Mercurial repository at
-`Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
+    - Releases: `PyPI <http://pypi.python.org/pypi/gipc>`_.
+    - Development version: `Hg repository <https://bitbucket.org/jgehrcke/gipc>`_.
 
 
 How can the unit tests be run?
@@ -76,5 +81,5 @@ via mail at jgehrcke@googlemail.com or use the
 
 Author & license
 ================
-``gipc`` is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_.
+gipc is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_.
 It is licensed under an MIT license (see LICENSE file).
