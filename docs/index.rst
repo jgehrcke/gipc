@@ -1,7 +1,4 @@
-.. gipc documentation master file, created by
-   sphinx-quickstart on Thu Nov 22 15:14:51 2012.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
+.. gipc documentation master file
    Copyright 2012-2013 Jan-Philip Gehrcke. See LICENSE file for details.
 
 .. toctree::
@@ -40,21 +37,30 @@ About gipc
 
 .. _what:
 
-gipc (pronunciation “gipsy”) is a Python package tested on CPython 2.6 and
-2.7 on Linux as well as on Windows.
+gipc provides convenient child process management in the context of
+`gevent <http://gevent.org>`_. gipc (pronunciation “gipsy”) is a Python package
+tested on CPython 2.6 and 2.7 on Linux as well as on Windows.
 
 What is gipc good for?
 ======================
 
-The usage of multiple processes in the context of `gevent <http://gevent.org>`_
-in principal can be a decent solution whenever a generally I/O-limited Python
-application needs to distribute tasks among multiple CPUs in parallel.
+There is plenty of motivation for using multiple processes in event-driven
+architectures. The assumption behind gipc is that applying multiple processes
+that communicate among each other (whereas each process has its own event loop)
+can be a decent solution for many types of problems in such architectures.
+First of all, it helps decoupling system components by making each process
+responsible for one part of the architecture only. Furthermore, even a
+generally I/O-limited application might at some point -- if executed on one CPU
+core only -- become bound to the performance of this CPU core. In these cases,
+the distribution of tasks among multiple processes is an efficient way to make
+use of multi-core machines and easily increases the application's performance.
 
-However, naive usage of Python's multiprocessing package within a gevent-powered
-application may raise various problems and most likely breaks the application in
-many ways. gipc is developed with the motivation to solve these issues
-transparently and make using gevent in combination with multiprocessing-based
-child processes and inter-process communication (IPC) a no-brainer again:
+However, canonical usage of Python's multiprocessing module within a
+gevent-powered application may raise various problems and most likely breaks
+the application in many ways. gipc is developed with the motivation to solve
+these issues transparently and make using gevent in combination with
+multiprocessing-based child processes and inter-process communication (IPC) a
+no-brainer again:
 
 - **With gipc, multiprocessing.Process-based child
   processes can safely be created and monitored anywhere within your
@@ -91,6 +97,8 @@ used with the canonical multiprocessing API instead of
 What are the challenges and what is gipc's approach?
 ----------------------------------------------------
 
+**Challenges:**
+
 Depending on the operating system, child process creation via Python's
 multiprocessing in the context of gevent requires special treatment. Most care
 is needed on POSIX-compliant systems. There, a fork might yield a faulty libev
@@ -116,16 +124,16 @@ code running on Unix (tested with Python 2.7 & gevent 1.0)::
         writelet.join()
         readchild.join()
 
-It runs without error. Although the code intends to send only one message to the
-child through a multiprocessing ``Pipe``, the two ``assert`` statements verify
-that the child actually receives two times the same message. One message is
-sent -- as intended -- from the writelet in the parent through the ``c1`` end of
-the pipe. It is retrieved at the ``c2`` end of the pipe in the child. The other
-message is sent from the spooky writelet clone in the child. It is also written
-to the ``c1`` end of the pipe which has implicitly been duplicated during
-forking. Greenlet clones in the child of course only run when a context switch
-is triggered; in this case via ``gevent.sleep(0)``. As you can imagine, this
-behavior in general might lead to a wide range of side-effects and tedious
+It runs without error. Although the code intends to send only one message to
+the child through a multiprocessing ``Pipe``, the two ``assert`` statements
+verify that the child actually receives two times the same message. One message
+is sent -- as intended -- from the writelet in the parent through the ``c1``
+end of the pipe. It is retrieved at the ``c2`` end of the pipe in the child.
+The other message is sent from the spooky writelet clone in the child. It is
+also written to the ``c1`` end of the pipe which has implicitly been duplicated
+during forking. Greenlet clones in the child of course only run when a context
+switch is triggered; in this case via ``gevent.sleep(0)``. As you can imagine,
+this behavior in general might lead to a wide range of side-effects and tedious
 debugging sessions.
 
 In addition, the code above contains several non-cooperatively blocking method
@@ -133,17 +141,30 @@ calls: ``readchild.join()`` as well as the ``send()``/``recv()`` calls (of
 ``multiprocessing.Connection`` objects in general) block the calling thread and
 do not allow for context switches.
 
-gipc overcomes these and other challenges for you transparently and in a
-straight-forward fashion. It provides high performing gevent-cooperative
-pipe-based message transport channels. Dispensable gipc pipe handles are closed
-in the child. Greenlet clones are cleanly killed in the child before being
-harmful. The libev event loop state is fixed in time. Basically, children start
-off with a fresh gevent state before entering the user-given target function. On
-POSIX-compliant systems, gipc entirely avoids multiprocessing's child monitoring
-capabilities and uses libev's wonderful child watcher system.
+**Solution:**
 
-gipc allows for integration of child processes in your application via a simple
-API -- on POSIX-compliant systems as well as on Windows.
+gipc overcomes these and other issues for you transparently and in a straight-
+forward fashion: basically, children start off with a fresh gevent state before
+entering the user-given target function. More specifically, as one of the first
+actions, children destroy the inherited gevent hub as well as the inherited
+libev event loop and create their own fresh versions of these objects. This
+way, inherited greenlets as well as libev watchers become orphaned -- the fresh
+hub and event loop are not connected to them anymore. Consequently, execution
+of code related to these inherited greenlets and libev watchers is efficiently
+prevented without the need to deactivate or kill them one by one.
+
+Furthermore, on POSIX-compliant systems, gipc entirely avoids multiprocessing's
+child monitoring implementation (which is based on ``wait``) and instead uses
+libev's wonderful child watcher system (based on SIGCHLD signal transmission).
+
+For the sake of gevent-cooperative inter-process communication, gipc provides
+efficient pipe-based data transport channels. Of course, gipc takes care of
+closing dispensable pipe handles (file descriptors) in the parent as well as in
+the child after forking.
+
+Overall, gipc main goal is to allow for the integration of child processes in
+your gevent-powered application via a simple API -- on POSIX-compliant systems
+as well as on Windows.
 
 
 .. _usage:
@@ -171,11 +192,13 @@ Technical notes
   processes.
 
 - Child process creation and invocation is done via a thin wrapper around
-  ``multiprocessing.Process``. On Unix, gevent's state and the libev event
-  loop are re-initialized in the child before execution of the target function.
+  ``multiprocessing.Process``. On Unix, the inherited gevent hub as well as the
+  libev event loop become destroyed and re-initialized in the child before
+  execution of the target function.
 
-- On POSIX-compliant systems, gevent-aware child process monitoring is based on
-  libev child watchers (this affects ``is_alive()`` and ``join()``).
+- On POSIX-compliant systems, gevent-cooperative child process monitoring is
+  based on libev child watchers (this affects the ``is_alive()`` and
+  ``join()`` methods).
 
 - Convenience features such as a context manager for pipe handles or timeout
   controls based on ``gevent.Timeout`` are available.
