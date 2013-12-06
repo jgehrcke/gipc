@@ -22,8 +22,7 @@ WINDOWS = sys.platform == "win32"
 # py.test runs tests by order of definition. This is useful for running simple,
 # fundamental tests first and more complex tests later.
 from py.test import raises, mark
-# Nose is great and all, but can run tests in alphabetical order only.
-# from nose.tools import raises
+
 
 import logging
 logging.basicConfig(
@@ -830,8 +829,8 @@ def duplchild_simple_echo(h):
     h.put(h.get())
 
 
-class TestPipe(object):
-    """Test pipe API, focus on explicitly defining codecs. The default behavior
+class TestPipeCodecs(object):
+    """Test pipe encoding/decoding API. The default behavior
     is tested thoroughly in all other tests involving pipe().
     """
     @staticmethod
@@ -1184,9 +1183,13 @@ class TestSignals(object):
             assert r.get() == p.pid
             os.kill(p.pid, signal.SIGTERM)
             p.join()
-            assert p.exitcode == -signal.SIGTERM
+            if not WINDOWS:
+                assert p.exitcode == -signal.SIGTERM
+            else:
+                assert p.exitcode == signal.SIGTERM
         s.cancel()
 
+    @mark.skipif('WINDOWS')
     def test_signal_handlers_default(self):
         p = start_process(signals_test_child_defaulthandlers)
         p.join()
