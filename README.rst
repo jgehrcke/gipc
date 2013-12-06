@@ -35,10 +35,10 @@ However, as of version 0.3, I am not aware of severe issues. To my
 knowledge, gipc has already been deployed in serious projects. Generally, you
 should be aware of the fact that mixing any of fork, threads, greenlets and an
 event loop library such as libev bears the potential for various kinds of
-corner-case disasters. Some people would argue that ``fork()`` ing in the
+corner-case disasters. One could argue that ``fork()`` in the
 context of libev without doing a clean ``exec`` in the child already *is*
 broken design. However, many people would like to do exactly this and gipc's
-basic approach has proven to work in these cases. gipc is developed with a
+basic approach has proven to work in such cases. gipc is developed with a
 strong focus on reliability and with best intentions in mind,
 and via unit testing, gipc has been validated to work reliably in scenarios of
 low and medium complexity. Of course, gipc cannot rescue an a priori ill-posed
