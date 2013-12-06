@@ -5,11 +5,11 @@
 """
 gipc: child processes and IPC for gevent.
 
-With gipc (pronunciation “gipsy”), malicious side-effects of child process
-creation in the context of gevent are prevented. The API of
-multiprocessing.Process objects is provided in a gevent-cooperative fashion.
-Furthermore, gipc comes up with a pipe-based transport layer for
-gevent-cooperative inter-process communication.
+With gipc (pronunciation “gipsy”), various malicious side-effects of
+multiprocessing-based child process creation in the context of gevent are
+prevented. The API of multiprocessing.Process objects is provided in a
+gevent-cooperative fashion. Furthermore, gipc comes up with a pipe-based
+transport layer for efficient gevent-cooperative inter-process communication.
 """
 
 
@@ -626,7 +626,7 @@ class _GIPCReader(_GIPCHandle):
         readbuf = io.BytesIO()
         remaining = n
         while remaining > 0:
-            chunk = _READ_NB(self._fd, remaining)
+            chunk = _read_nonblocking(self._fd, remaining)
             received = len(chunk)
             if received == 0:
                 if remaining == n:
@@ -708,12 +708,12 @@ class _GIPCWriter(_GIPCHandle):
                 actually written), and these bytes may be interleaved with
                 writes by other processes."
 
-            EAGAIN is handled within _WRITE_NB; partial writes here.
+            EAGAIN is handled within _write_nonblocking; partial writes here.
         """
         bindata = memoryview(bindata)
         while True:
             # Causes OSError when read end is closed (broken pipe).
-            bytes_written = _WRITE_NB(self._fd, bindata)
+            bytes_written = _write_nonblocking(self._fd, bindata)
             if bytes_written == len(bindata):
                 break
             bindata = bindata[bytes_written:]
@@ -723,7 +723,7 @@ class _GIPCWriter(_GIPCHandle):
         # removed from Python 3. The API of buffer/memview objects differs.
         bindata = buffer(bindata)
         while True:
-            bytes_written = _WRITE_NB(self._fd, bindata)
+            bytes_written = _write_nonblocking(self._fd, bindata)
             if len(bindata) == bytes_written:
                 break
             # Get new buffer with `bytes_written` offset of previous buffer.
@@ -827,12 +827,12 @@ class _GIPCDuplexHandle(_PairContext):
 # Define non-blocking read and write functions
 if hasattr(gevent.os, 'nb_write'):
     # POSIX system -> use actual non-blocking I/O
-    _READ_NB = gevent.os.nb_read
-    _WRITE_NB = gevent.os.nb_write
+    _read_nonblocking = gevent.os.nb_read
+    _write_nonblocking = gevent.os.nb_write
 else:
     # Windows -> imitate non-blocking I/O based on gevent threadpool
-    _READ_NB = gevent.os.tp_read
-    _WRITE_NB = gevent.os.tp_write
+    _read_nonblocking = gevent.os.tp_read
+    _write_nonblocking = gevent.os.tp_write
 
 
 def _filter_handles(l):
