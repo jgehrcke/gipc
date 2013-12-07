@@ -236,7 +236,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         raise TypeError('`args` must be tuple.')
     if not isinstance(kwargs, dict):
         raise TypeError('`kwargs` must be dictionary.')
-    log.debug("Invoke target `%s` in child process." % target)
+    log.debug("Invoke target `%s` in child process.", target)
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if WINDOWS:
         for h in childhandles:
@@ -254,7 +254,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         "gipc WARNING: Redundant call to %s.start()\n" % p)
     # Close dispensable file handles in parent.
     for h in childhandles:
-        log.debug("Invalidate %s in parent." % h)
+        log.debug("Invalidate %s in parent.", h)
         if WINDOWS:
             h._post_createprocess_windows()
         h.close()
@@ -270,7 +270,7 @@ def _child(target, args, kwargs):
     both, the parent and the child. Therefore, on Unix, gevent's and libev's
     state is reset before running the user-given function.
     """
-    log.debug("_child start. target: `%s`" % target)
+    log.debug("_child start. target: `%s`", target)
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if not WINDOWS:
         # Restore default signal handlers (SIG_DFL).
@@ -304,7 +304,7 @@ def _child(target, args, kwargs):
         # related file descriptors in child.
         for h in _all_handles[:]:
             if not h in childhandles:
-                log.debug("Invalidate %s in child." % h)
+                log.debug("Invalidate %s in child.", h)
                 h._set_legit_process()
                 # At duplication time the handle might have been locked.
                 # Unlock.
@@ -324,7 +324,7 @@ def _child(target, args, kwargs):
         h._set_legit_process()
         if WINDOWS:
             h._post_createprocess_windows()
-        log.debug("Handle `%s` is now valid in child." % h)
+        log.debug("Handle `%s` is now valid in child.", h)
     # Invoke user-given function.
     target(*args, **kwargs)
     # Close file descriptors before exiting process. Usually needless (OS
@@ -407,7 +407,7 @@ class _GProcess(multiprocessing.Process):
             self._returnevent = gevent.event.Event()
             self._sigchld_watcher.start(
                 self._on_sigchld, self._sigchld_watcher)
-            log.debug("SIGCHLD watcher for %s started." % self.pid)
+            log.debug("SIGCHLD watcher for %s started.", self.pid)
 
         def _on_sigchld(self, watcher):
             """Callback of libev child watcher. Called when libev event loop
@@ -422,7 +422,7 @@ class _GProcess(multiprocessing.Process):
                 self._popen.returncode = os.WEXITSTATUS(watcher.rstatus)
             self._returnevent.set()
             log.debug(("SIGCHLD watcher callback for %s invoked. Exitcode "
-                       "stored: %s" % (self.pid, self._popen.returncode)))
+                       "stored: %s", (self.pid, self._popen.returncode)))
 
         def is_alive(self):
             assert self._popen is not None, "Process not yet started."
@@ -514,7 +514,7 @@ class _GIPCHandle(object):
         if not self._lock.acquire(blocking=False):
             raise GIPCLocked(
                 "Can't close handle %s: locked for I/O operation." % self)
-        log.debug("Invalidating %s ..." % self)
+        log.debug("Invalidating %s ...", self)
         if self._fd is not None:
             os.close(self._fd)
             self._fd = None
@@ -525,7 +525,7 @@ class _GIPCHandle(object):
         self._lock.release()
 
     def _set_legit_process(self):
-        log.debug("Legitimate %s for current process." % self)
+        log.debug("Legitimate %s for current process.", self)
         self._legit_pid = os.getpid()
 
     def _validate(self):
