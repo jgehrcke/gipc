@@ -1,4 +1,4 @@
-Version 0.4.0 (TBD)
+Version 0.4.0 (Dec 07, 2013)
 -----------------------------
     - Implement data (de)serialization pipe API (allowing for raw byte
       transmission and for custom encoders/decoders).
