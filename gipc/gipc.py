@@ -871,4 +871,9 @@ _signals_to_reset = [getattr(signal, s) for s in
 
 def _reset_signal_handlers():
     for s in _signals_to_reset:
-        signal.signal(s, signal.SIG_DFL)
+        # On FreeBSD, the numerical value of SIGRT* is larger than NSIG
+        # from signal.h (which is a bug in my opinion). Do not change
+        # action for these signals. This prevents a ValueError raised
+        # in the signal module.
+        if s < signal.NSIG:
+            signal.signal(s, signal.SIG_DFL)
