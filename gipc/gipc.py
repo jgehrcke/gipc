@@ -184,7 +184,8 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     """Start child process and execute function ``target(*args, **kwargs)``.
     Any existing instance of :class:`gipc._GIPCHandle` or
     :class:`gipc._GIPCDuplexHandle` can be passed to the child process via
-    ``args`` and/or ``kwargs``.
+    ``args`` and/or ``kwargs``. If any such instance is passed to the child,
+    the corresponding file descriptor is automatically closed in the parent.
 
     .. note::
 
