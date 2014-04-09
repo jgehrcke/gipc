@@ -159,11 +159,11 @@ libev's wonderful child watcher system (based on SIGCHLD signal transmission),
 enabling gevent-cooperative waiting for child termination.
 
 For the sake of gevent-cooperative inter-process communication, gipc uses
-efficient pipe-based data transport channels with non-blocking I/O. Of course,
-gipc takes care of closing dispensable pipe handles (file descriptors) in the
-parent as well as in the child after forking.
+efficient pipe-based data transport channels with non-blocking I/O. gipc takes
+care of closing dispensable pipe handles (file descriptors) in the parent as
+well as in the child after forking.
 
-Overall, gipc main goal is to allow for the integration of child processes in
+Overall, gipc's main goal is to allow for the integration of child processes in
 your gevent-powered application via a simple API -- on POSIX-compliant systems
 as well as on Windows.
 
@@ -207,6 +207,13 @@ Technical notes
 - Any read/write operation on a pipe is ``gevent.lock.Semaphore``-protected
   and therefore greenlet-/threadsafe and atomic.
 
+- The auto-close behavior (gipc automatically closes handles in the parent
+  if provided to the child, and also closes those in the child that were not
+  explicitly transferred to it) might be a limitation in some cases. At the
+  same time, it automatically prevents file descriptor leakage and forces
+  developers to make deliberate choices about which handles should be
+  transferred explicitly.
+
 - gipc obeys `semantic versioning 2 <http://semver.org/>`_.
 
 - Although gipc is in an early development phase, I found it to work very
@@ -220,8 +227,7 @@ Technical notes
 
 Is gipc reliable?
 =================
-Development of gipc began in late 2012, so it is still not being mature.
-However, as of version 0.3, I am not aware of severe issues. To my
+As of version 0.3, I am not aware of any severe issues. To my
 knowledge, gipc has already been deployed in serious projects. Generally, you
 should be aware of the fact that mixing any of fork, threads, greenlets and an
 event loop library such as libev bears the potential for various kinds of
@@ -229,8 +235,8 @@ corner-case disasters. One could argue that ``fork()`` in the
 context of libev without doing a clean ``exec`` in the child already *is*
 broken design. However, many people would like to do exactly this and gipc's
 basic approach has proven to work in such cases. gipc is developed with a
-strong focus on reliability and with best intentions in mind,
-and via unit testing, it has been validated to work reliably in scenarios of
+strong focus on reliability and with best intentions in mind.
+Via unit testing it has been validated to work reliably in scenarios of
 low and medium complexity. Of course, gipc cannot rescue an a priori ill-posed
 approach. Now it is up to you to evaluate gipc in the context of your project
 -- please let me know how it performs for you.
