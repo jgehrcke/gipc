@@ -5,11 +5,11 @@
 """
 gipc: child processes and IPC for gevent.
 
-With gipc (pronunciation “gipsy”), various malicious side-effects of
-multiprocessing-based child process creation in the context of gevent are
-prevented. The API of multiprocessing.Process objects is provided in a
-gevent-cooperative fashion. Furthermore, gipc comes up with a pipe-based
-transport layer for efficient gevent-cooperative inter-process communication.
+With gipc (pronunciation “gipsy”), negative side-effects of multiprocessing
+based child process creation in the context of gevent are prevented. The API of
+multiprocessing.Process objects is provided in a gevent-cooperative fashion.
+Furthermore, gipc comes up with a pipe-based transport layer for efficient
+gevent-cooperative inter-process communication.
 """
 
 
@@ -422,8 +422,8 @@ class _GProcess(multiprocessing.Process):
                 assert os.WIFEXITED(watcher.rstatus)
                 self._popen.returncode = os.WEXITSTATUS(watcher.rstatus)
             self._returnevent.set()
-            log.debug(("SIGCHLD watcher callback for %s invoked. Exitcode "
-                       "stored: %s", (self.pid, self._popen.returncode)))
+            log.debug("SIGCHLD watcher callback for %s invoked. Exitcode "
+                       "stored: %s", self.pid, self._popen.returncode)
 
         def is_alive(self):
             assert self._popen is not None, "Process not yet started."
@@ -617,7 +617,6 @@ class _GIPCReader(_GIPCHandle):
         self._fd = pipe_read_fd
         self._fd_flag = os.O_RDONLY
         _GIPCHandle.__init__(self)
-        self._timeout = None
         self._decoder = decoder
 
     def _recv_in_buffer(self, n):
