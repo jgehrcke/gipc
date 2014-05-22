@@ -1,5 +1,12 @@
+Version 0.4.1 (xxx xx, 2014)
+---------------------------
+    - Improve large message throughput on Linux (see issue #13).
+    - Work around read(2) system call flaw on Mac OS X (see issue #13).
+    - Work around signal.NSIG-related problem on FreeBSD (see issue #10).
+
+
 Version 0.4.0 (Dec 07, 2013)
------------------------------
+----------------------------
     - Implement data (de)serialization pipe API (allowing for raw byte
       transmission and for custom encoders/decoders).
     - Restore default signal disposition in child wrapper for all signals (see
