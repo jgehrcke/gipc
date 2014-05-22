@@ -626,7 +626,17 @@ class _GIPCReader(_GIPCHandle):
         readbuf = io.BytesIO()
         remaining = n
         while remaining > 0:
-            chunk = _read_nonblocking(self._fd, remaining)
+            # Attempt to read at most 65536 bytes from pipe, which is the
+            # pipe capacity on common Linux systems. Although unexpected,
+            # requesting larger amounts leads to a slow-down of the system
+            # call. This has been measured for Linux 2.6.32 and 3.2.0. At
+            # the same time this works around a bug in Mac OS X' read()
+            # syscall. These findings are documented in
+            # https://bitbucket.org/jgehrcke/gipc/issue/13.
+            if remaining > 65536:
+                chunk = _read_nonblocking(self._fd, 65536)
+            else:
+                chunk = _read_nonblocking(self._fd, remaining)
             received = len(chunk)
             if received == 0:
                 if remaining == n:
