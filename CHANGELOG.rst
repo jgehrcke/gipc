@@ -1,4 +1,4 @@
-Version 0.5.0 (xxx xx, 2014)
+Version 0.5.0 (Oct 22, 2014)
 ---------------------------
     - Improve large message throughput on Linux (see issue #13).
     - Work around read(2) system call flaw on Mac OS X (see issue #13).
