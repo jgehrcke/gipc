@@ -12,4 +12,5 @@ test/coverage_html
 docs/_build
 dist
 build
-
+stuff
+coverage_html
