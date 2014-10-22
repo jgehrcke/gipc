@@ -234,8 +234,8 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         function. You can (re)install any signal handler within ``target``. The
         notable exception is the SIGPIPE signal, whose handler is *not* reset
         to its default handler in child processes created by ``gipc``. That is,
-        the SIGPIPE action in children is inherited by the parent. The default
-        action for SIGPIPE set by CPython is SIG_IGN, i.e. the signal is
+        the SIGPIPE action in children is inherited from the parent. In
+        CPython, the default action for SIGPIPE is SIG_IGN, i.e. the signal is
         ignored.
     """
     if not isinstance(args, tuple):
