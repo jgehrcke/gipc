@@ -1,5 +1,5 @@
 .. gipc documentation master file
-   Copyright 2012-2013 Jan-Philip Gehrcke. See LICENSE file for details.
+   Copyright 2012-2014 Jan-Philip Gehrcke. See LICENSE file for details.
 
 .. toctree::
     :maxdepth: 2
