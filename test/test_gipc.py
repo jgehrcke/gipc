@@ -419,6 +419,52 @@ class TestIPC(object):
         self.rh2.close()
         self.wh2.close()
 
+    def test_early_readchild_exit(self):
+        start_process(ipc_readonce_then_exit, (self.rh,))
+        # The first message sent is read by the reading child. The child
+        # then exits and implicitly closes the read end of the pipe. The
+        # following write attempt should result in an exception raised in the
+        # writing process (the initial one): OSError: [Errno 32] Broken pipe
+        # This only happens if SIGPIPE is ignored (otherwise, if SIGPIPE
+        # is not ignored and not handled, the writing process exits silently
+        # with code -13 on POSIX).
+        with raises(OSError) as excinfo:
+            while True:
+                self.wh.put(0)
+        assert "Broken pipe" in str(excinfo.value)
+        self.wh.close()
+        self.rh2.close()
+        self.wh2.close()        
+
+    def test_early_readchild_exit_write_from_child(self):
+        pr = start_process(ipc_readonce_then_exit, (self.rh,))
+        pw = start_process(ipc_endless_write_for_early_reader_exit, (self.wh,))
+        # This test is to make sure equivalent behavior as in test
+        # `test_early_readchild_exit` when the writing process is a
+        # child process itself (above, the write process in the initial
+        # process). Since gipc's child process creation
+        # routine messes around with signal handlers, this test makes
+        # sure that SIGPIPE is ignored in the child and that a
+        # failing write attempt (after early read child exit) results
+        # in an exception raised in the writing process.
+        pr.join()
+        pw.join()
+        assert pr.exitcode == 0
+        assert pw.exitcode == 0
+        self.rh2.close()
+        self.wh2.close()
+
+
+def ipc_readonce_then_exit(r):
+    r.get()
+    
+
+def ipc_endless_write_for_early_reader_exit(w):
+    with raises(OSError) as excinfo:
+        while True:
+            w.put(0)
+    assert "Broken pipe" in str(excinfo.value)
+
 
 def ipc_handlecounter1(r1, r2):
     assert len(get_all_handles()) == 2

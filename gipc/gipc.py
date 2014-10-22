@@ -231,7 +231,12 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         Please note that in order to provide reliable signal handling in the
         context of libev, the default disposition (action) is restored for all
         signals in the child before executing the user-given ``target``
-        function. You can (re)install any signal handler within ``target``.
+        function. You can (re)install any signal handler within ``target``. The
+        notable exception is the SIGPIPE signal, whose handler is *not* reset
+        to its default handler in child processes created by ``gipc``. That is,
+        the SIGPIPE action in children is inherited by the parent. The default
+        action for SIGPIPE set by CPython is SIG_IGN, i.e. the signal is
+        ignored.
     """
     if not isinstance(args, tuple):
         raise TypeError('`args` must be tuple.')
@@ -875,7 +880,7 @@ def _set_all_handles(handles):
 # default action right after fork.
 _signals_to_reset = [getattr(signal, s) for s in
     set([s for s in dir(signal) if s.startswith("SIG")]) -
-    set(['SIG_DFL', 'SIGSTOP', 'SIGKILL'])]
+    set(['SIG_DFL', 'SIGSTOP', 'SIGKILL', 'SIGPIPE'])]
 
 
 def _reset_signal_handlers():
