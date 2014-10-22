@@ -4,11 +4,12 @@ A rather randomly ordered set of notes.
   messages in advance, but within the framework only complete messages
   are sent.)
 - Can gevent's FileObjectPosix be of any use?
-- Review buffer-implementation, consider, buffer() and memoryview().
 - hub.cancel_wait() (cf. gevent sockets) in close instead of lock check?
-- Work on portability between Python 2 and 3.
+- Ensure portability among Python 2/3 as soon as gevent is supported on Py3.
 - put() timeout? Relevant in case of pipe being full. However, put()
   duration cannot be controlled if write is blocking *after* partial
   msg write. Doesn't make sense I think.
 - Implementation on Windows based on NamedPipes with overlapping IO
-  could give useful control. Use libuv as backend instead of libev?
+  would provide more control oder larger performance. libuv backend instead
+  of libev would be helpful. gevent needs to make this progress, gipc would
+  take advantage.
