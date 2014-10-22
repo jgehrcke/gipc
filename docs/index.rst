@@ -187,7 +187,7 @@ Technical notes
   By default, a binary ``pickle`` protocol is used for transmitting arbitrary
   objects. Reading and writing on pipes is done with ``gevent``'s cooperative
   versions of ``os.read()`` and ``os.write()`` (on POSIX-compliant systems they
-  use non-blocking I/O, on Windows a threadpool is used). On Linux, my test
+  use non-blocking I/O, on Windows a thread pool is used). On Linux, my test
   system (Xeon E5630) achieved a payload transfer rate of 1200 MB/s and a
   message transmission rate of 100.000 messages/s through one pipe between two
   processes.
@@ -205,7 +205,7 @@ Technical notes
   controls based on ``gevent.Timeout`` are available.
 
 - Any read/write operation on a pipe is ``gevent.lock.Semaphore``-protected
-  and therefore greenlet-/threadsafe and atomic.
+  and therefore greenlet-/thread safe and atomic.
 
 - The auto-close behavior (gipc automatically closes handles in the parent
   if provided to the child, and also closes those in the child that were not
@@ -216,7 +216,7 @@ Technical notes
 
 - gipc obeys `semantic versioning 2 <http://semver.org/>`_.
 
-- Although gipc is in an early development phase, I found it to work very
+- Although gipc is in an early development phase, I found it to work
   stable already. The unit test suite aims to cover all of gipc's features
   within a clean gevent environment. More complex application scenarios,
   however, are not covered so far. Please let me know in which cases
@@ -227,19 +227,18 @@ Technical notes
 
 Is gipc reliable?
 =================
-As of version 0.3, I am not aware of any severe issues. To my
-knowledge, gipc has already been deployed in serious projects. Generally, you
-should be aware of the fact that mixing any of fork, threads, greenlets and an
-event loop library such as libev bears the potential for various kinds of
-corner-case disasters. One could argue that ``fork()`` in the
-context of libev without doing a clean ``exec`` in the child already *is*
-broken design. However, many people would like to do exactly this and gipc's
-basic approach has proven to work in such cases. gipc is developed with a
-strong focus on reliability and with best intentions in mind.
-Via unit testing it has been validated to work reliably in scenarios of
-low and medium complexity. Of course, gipc cannot rescue an a priori ill-posed
-approach. Now it is up to you to evaluate gipc in the context of your project
--- please let me know how it performs for you.
+As of version 0.3, I am not aware of severe issues. To my knowledge, gipc has
+already been deployed in serious projects. Generally, you should be aware of the
+fact that mixing any of fork, threads, greenlets and an event loop library such
+as libev bears the potential for various kinds of corner-case disasters. One
+could argue that ``fork()`` in the context of libev without doing a clean
+``exec`` in the child already *is* broken design. However, many people would
+like to do exactly this and gipc's basic approach has proven to work in such
+cases. gipc is developed with a strong focus on reliability and with best
+intentions in mind. Via unit testing it has been validated to work reliably in
+scenarios of low and medium complexity. Of course, gipc cannot rescue an a
+priori ill-posed approach. Now it is up to you to evaluate gipc in the context
+of your project -- please share your experience.
 
 
 .. _installation:
@@ -313,16 +312,16 @@ Examples
 - :ref:`Serving multiple clients (in child) from one server (in parent) <exampleserverclient>`
 - :ref:`Time-synchronization between processes <examplesync>`
 
-Note that these examples are invented with the motivation to demonstrate the API
-and capabilities of gipc rather than showing interesting use cases.
+Note that these examples are designed with the motivation to demonstrate the API
+and capabilities of gipc, rather than showing interesting use cases.
 
 .. _exampleipc:
 
 gipc.pipe()-based messaging from greenlet in parent to child
 ============================================================
 
-Very basic gevent and gipc concepts are explained by means of this simple
-messaging example:
+Very basic gevent and gipc concepts are explained by means of the following
+simple messaging example:
 
 .. code::
 
@@ -473,15 +472,15 @@ Time-synchronization between processes
 ======================================
 
 Child process creation may take a significant amount of time, especially on
-Windows. This time is not predictable.
+Windows. The exact amount of time is not predictable.
 
 When code in the parent should only proceed in the moment the code in the
 child has reached a certain state, the proper way to tackle this is a
 bidirectional synchronization handshake:
 
 - Process A sends a synchronization request to process B and waits for an
-  acknowledgement response. It proceeds upon retrieval.
-- Process B sends the acknowledgement in the moment it retrieves the sync
+  acknowledgment response. It proceeds upon retrieval.
+- Process B sends the acknowledgment in the moment it retrieves the sync
   request and proceeds.
 
 This concept can easily be implemented using a bidirectional ``gipc.pipe()``:
@@ -602,4 +601,3 @@ Exception types
 .. * :ref:`genindex`
 .. * :ref:`modindex`
 .. * :ref:`search`
-
