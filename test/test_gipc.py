@@ -431,10 +431,13 @@ class TestIPC(object):
         with raises(OSError) as excinfo:
             while True:
                 self.wh.put(0)
-        assert "Broken pipe" in str(excinfo.value)
+        if not WINDOWS:
+            assert "Broken pipe" in str(excinfo.value)
+        else:
+            assert "Invalid argument" in str(excinfo.value)
         self.wh.close()
         self.rh2.close()
-        self.wh2.close()        
+        self.wh2.close()
 
     def test_early_readchild_exit_write_from_child(self):
         pr = start_process(ipc_readonce_then_exit, (self.rh,))
@@ -457,13 +460,16 @@ class TestIPC(object):
 
 def ipc_readonce_then_exit(r):
     r.get()
-    
+
 
 def ipc_endless_write_for_early_reader_exit(w):
     with raises(OSError) as excinfo:
         while True:
             w.put(0)
-    assert "Broken pipe" in str(excinfo.value)
+    if not WINDOWS:
+        assert "Broken pipe" in str(excinfo.value)
+    else:
+        assert "Invalid argument" in str(excinfo.value)
 
 
 def ipc_handlecounter1(r1, r2):
