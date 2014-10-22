@@ -1,8 +1,10 @@
-Version 0.4.1 (xxx xx, 2014)
+Version 0.5.0 (xxx xx, 2014)
 ---------------------------
     - Improve large message throughput on Linux (see issue #13).
     - Work around read(2) system call flaw on Mac OS X (see issue #13).
     - Work around signal.NSIG-related problem on FreeBSD (see issue #10).
+    - Do not alter SIGPIPE action during child bootstrap (breaking change,
+      see issue #12).
 
 
 Version 0.4.0 (Dec 07, 2013)
