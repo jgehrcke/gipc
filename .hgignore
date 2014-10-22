@@ -1,0 +1,15 @@
+syntax: glob
+*~
+*.pyc
+*.pyo
+*.egg-info
+*.bak
+*.rej
+*.orig
+.coverage
+pyenv
+test/coverage_html
+docs/_build
+dist
+build
+
