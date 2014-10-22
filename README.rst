@@ -1,15 +1,15 @@
 
 What is gipc?
 =============
-Usage of Python's multiprocessing package in the context of a
-gevent-powered application may raise various problems and most likely breaks
-the application in many ways.
+Usage of Python's multiprocessing package in the context of a gevent-powered
+application may raise problems and most likely breaks the application in various
+subtle ways.
 
-gipc (pronunciation "gipsy") is developed with the motivation to solve many of these
-issues transparently. With gipc, multiprocessing.Process-based child processes
-can safely be created anywhere within your gevent-powered application. The API
-of multiprocessing.Process objects is provided in a gevent-cooperative fashion.
-Furthermore, gipc comes up with a pipe-based transport layer for
+gipc (pronunciation "gipsy") is developed with the motivation to solve many of
+these issues transparently. With gipc, multiprocessing.Process-based child
+processes can safely be created anywhere within your gevent-powered application.
+The API of multiprocessing.Process objects is provided in a gevent-cooperative
+fashion. Furthermore, gipc comes up with a pipe-based transport layer for
 gevent-cooperative inter-process communication and useful helper constructs.
 gipc is lightweight and simple to integrate.
 
@@ -17,8 +17,8 @@ gipc is lightweight and simple to integrate.
 What are the boundary conditions?
 =================================
 Currently, gipc is developed against gevent 1.0. It is tested on CPython 2.6
-& 2.7 on Linux as well as on Windows. Python 3 will be supported as soon as
-gevent supports it.
+& 2.7 on Linux as well as on Windows. Python 3 support will be ensured as soon
+as gevent officially supports it.
 
 
 Where are documentation and changelog?
