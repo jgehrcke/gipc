@@ -367,7 +367,7 @@ loop waits for objects on the read end of the pipe via the cooperatively
 blocking call to ``reader.get()``. Upon retrieval, it immediately writes their
 string representation to stdout.
 
-After invocation of the the child process (represented by an object bound to
+After invocation of the child process (represented by an object bound to
 name ``p``), a greenlet ``wg`` is spawned within the main process. This
 greenlet executes the function ``writegreenlet``, whereas the pipe write handle
 ``w`` is provided as an argument. Within this greenlet, one string per second
