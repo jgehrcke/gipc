@@ -769,15 +769,6 @@ class _PairContext(tuple):
     context enter and exit themselves. Returns 2-tuple upon entering the
     context, attempts to exit both tuple elements upon context exit.
     """
-
-    # _PairContext inherits from immutable type, so __new__ is the way to go
-    # for hooking into object creation.
-    def __new__(cls, (e1, e2)):
-        c = super(_PairContext, cls).__new__(cls, (e1, e2))
-        c._e1 = e1
-        c._e2 = e2
-        return c
-
     def __enter__(self):
         for e in self:
             e.__enter__()
@@ -795,12 +786,12 @@ class _PairContext(tuple):
         """
         e2_exit_exception = None
         try:
-            self._e2.__exit__(exc_type, exc_value, traceback)
+            self[1].__exit__(exc_type, exc_value, traceback)
         except:
             e2_exit_exception = sys.exc_info()
-        self._e1.__exit__(exc_type, exc_value, traceback)
+        self[0].__exit__(exc_type, exc_value, traceback)
         if e2_exit_exception:
-            raise e2_exit_exception[1], None, e2_exit_exception[2]
+            _reraise(e2_exit_exception[1], None, e2_exit_exception[2])
 
 
 class _GIPCDuplexHandle(_PairContext):
@@ -811,12 +802,10 @@ class _GIPCDuplexHandle(_PairContext):
     methods which are forwarded to the corresponding methods of
     :class:`gipc._GIPCWriter` and :class:`gipc._GIPCReader`.
     """
-    def __init__(self, (reader, writer)):
-        self._reader = reader
-        self._writer = writer
+    def __init__(self, rwpair):
+        self._reader, self._writer = rwpair
         self.put = self._writer.put
         self.get = self._reader.get
-        super(_GIPCDuplexHandle, self).__init__((reader, writer))
 
     def close(self):
         """Close associated `_GIPCHandle` instances. Tolerate if one of both
@@ -891,3 +880,34 @@ def _reset_signal_handlers():
         # in the signal module.
         if s < signal.NSIG:
             signal.signal(s, signal.SIG_DFL)
+
+
+PY3 = sys.version_info[0] == 3
+
+
+# Define reraise which works for both Python 2, and 3. Taken from project six.
+# The core issue here is that Python 2's raise syntax (with three arguments)
+# is a syntax error in Python 3, which is why a workaround requires exec.
+if PY3:
+    def _reraise(tp, value, tb=None):
+        if value is None:
+            value = tp()
+        if value.__traceback__ is not tb:
+            raise value.with_traceback(tb)
+        raise value
+else:
+    def __exec(_code_, _globs_=None, _locs_=None):
+        """Execute code in a namespace."""
+        if _globs_ is None:
+            frame = sys._getframe(1)
+            _globs_ = frame.f_globals
+            if _locs_ is None:
+                _locs_ = frame.f_locals
+            del frame
+        elif _locs_ is None:
+            _locs_ = _globs_
+        exec("""exec _code_ in _globs_, _locs_""")
+
+    __exec("""def _reraise(tp, value, tb=None):
+    raise tp, value, tb""")
+
