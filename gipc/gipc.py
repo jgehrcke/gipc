@@ -414,11 +414,12 @@ class _GProcess(multiprocessing.Process):
         # SIGCHLD handler and may win, resulting in libev not being able to
         # retrieve all SIGCHLD signals corresponding to started children. This
         # could make certain _GProcess.join() calls block forever.
-        # -> Prevent multiprocessing.forking.Popen.poll() from calling
+        # -> Prevent multiprocessing's Popen.poll() from calling
         # os.waitpid(). Let libev do the job.
-        if not PY3:
+        try:
             from multiprocessing.forking import Popen as _mp_Popen
-        else:
+        except ImportError:
+            # mp's internal structure has been changed form Py 3.3 to 3.4.
             from multiprocessing.popen_fork import Popen as _mp_Popen
         _mp_Popen.poll = lambda *a, **b: None
 
