@@ -807,13 +807,13 @@ class _PairContext(tuple):
 
     def __exit__(self, exc_type, exc_value, traceback):
         """
-        Call `__exit__()` for both, e1 and e2 entities, in any case,
-        as expected of a context manager. Exit e2 first, as it is used as
-        writer in case of `_PairContext((reader1, writer1))` and
-        `os.close()` on reader might block on Windows otherwise.
-        If an exception occurs during e2 exit, store it, exit e1 and raise it
-        afterwards. If an exception is raised during both, e1 and e2 exit, only
-        raise the e1 exit exception.
+        Call `__exit__()` for both, e1 and e2 entities, in any case, as
+        expected from a context manager. Exit e2 first, as it is used as
+        writer in case of `_PairContext((reader1, writer1))` and `os.close()`
+        on reader might block on Windows otherwise. If an exception occurs
+        during e2 exit, store it, exit e1 and re-raise it afterwards. If an
+        exception is raised during both, e1 and e2 exit, only raise the e1
+        exit exception.
         """
         e2_exit_exception = None
         try:
@@ -822,7 +822,7 @@ class _PairContext(tuple):
             e2_exit_exception = sys.exc_info()
         self[0].__exit__(exc_type, exc_value, traceback)
         if e2_exit_exception:
-            _reraise(e2_exit_exception[1], None, e2_exit_exception[2])
+            _reraise(*e2_exit_exception)
 
 
 class _GIPCDuplexHandle(_PairContext):
