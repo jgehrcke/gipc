@@ -20,7 +20,6 @@ import struct
 import signal
 import logging
 import multiprocessing
-import multiprocessing.forking
 import multiprocessing.process
 from itertools import chain
 try:
@@ -34,6 +33,9 @@ import gevent
 import gevent.os
 import gevent.lock
 import gevent.event
+
+
+PY3 = sys.version >= '3'
 
 
 # Logging for debugging purposes. Usage of logging in this simple form in the
@@ -358,10 +360,10 @@ class _GProcess(multiprocessing.Process):
         Any call to ``os.waitpid()`` would compete with that handler, so it
         is not recommended to call it in the context of this module.
         ``gipc`` prevents ``multiprocessing`` from calling ``os.waitpid()`` by
-        monkey-patching ``multiprocessing.forking.Popen.poll`` to always return
-        ``None``. Calling ``gipc._GProcess.join()`` is not required for
-        cleaning up after zombies (libev does). It just waits until the process
-        has terminated.
+        monkey-patching multiprocessing's ``Popen.poll`` to be no-op and to
+        always return ``None``. Calling ``gipc._GProcess.join()`` is not
+        required for cleaning up after zombies (libev does). It just waits
+        for the process to terminate.
     """
     # Remarks regarding child process monitoring on Unix:
     #
@@ -391,7 +393,7 @@ class _GProcess(multiprocessing.Process):
     if not WINDOWS:
         # multiprocessing.process.Process.start() and other methods may
         # call multiprocessing.process._cleanup(). This and other mp methods
-        # may call multiprocessing.forking.Popen.poll() which itself invokes
+        # may call multiprocessing's Popen.poll() which itself invokes
         # os.waitpid(). In extreme cases (high-frequent child process
         # creation, short-living child processes), this competes with libev's
         # SIGCHLD handler and may win, resulting in libev not being able to
@@ -399,7 +401,11 @@ class _GProcess(multiprocessing.Process):
         # could make certain _GProcess.join() calls block forever.
         # -> Prevent multiprocessing.forking.Popen.poll() from calling
         # os.waitpid(). Let libev do the job.
-        multiprocessing.forking.Popen.poll = lambda *a, **b: None
+        if not PY3:
+            from multiprocessing.forking import Popen as _mp_Popen
+        else:
+            from multiprocessing.popen_fork import Popen as _mp_Popen
+        _mp_Popen.poll = lambda *a, **b: None
 
         def start(self):
             # Start grabbing SIGCHLD in libev event loop.
