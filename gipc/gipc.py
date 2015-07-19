@@ -97,6 +97,11 @@ def pipe(duplex=False, encoder='default', decoder='default'):
     object by default). Data can be transmitted between greenlets within one
     process or across processes (created via :func:`start_process`).
 
+    The transport layer is based on ``os.pipe()`` (i.e.
+    `CreatePipe() <http://msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx>`_
+    on Windows and `pipe() <http://www.kernel.org/doc/man-pages/online/pages/man2/pipe.2.html>`_
+    on POSIX-compliant systems).
+
     :arg duplex:
         - If ``False`` (default), create a unidirectional pipe-based message
           transport channel and return the corresponding
@@ -106,20 +111,22 @@ def pipe(duplex=False, encoder='default', decoder='default'):
           ``(_GIPCDuplexHandle, _GIPCDuplexHandle)`` handle pair.
 
     :arg encoder:
-        Defines the entity used for data serialization before writing data to
-        the pipe. Must be a callable, ``None`` or ``'default'``. ``'default'``
-        translates to ``pickle.dumps`` (any pickleable Python object can be
-        transmitted in this mode). When setting this to ``None``, no data
-        encoding/serialization is performed (only byte strings can be
-        transmitted in this case, in all other cases a ``TypeError`` will be
-        thrown).
+        Defines the entity used for object serialization before writing object
+        ``o`` to the pipe via ``put(o)``. Must be either a callable returning
+        a byte string, ``None``, or ``'default'``. ``'default'`` translates to
+        ``pickle.dumps`` (in this mode, any pickleable Python object can be
+        provided to ``put()`` and transmitted through the pipe). When setting
+        this to ``None``, no automatic object serialization is performed. In
+        that case only byte strings are allowed to be provided to ``put()``,
+        and a ``TypeError`` is thrown otherwise. A ``TypeError`` will also be
+        thrown if the encoder callable does not return a byte string.
 
     :arg decoder:
-        Defines the entity used for data deserialization after reading raw data
-        from the pipe. Must be a callable, ``None`` or ``'default'``.
-        ``'default'`` translates to ``pickle.loads``. When setting this to
-        ``None``, no data decoding/deserialization is performed (a raw byte
-        string is returned).
+        Defines the entity used for data deserialization after reading raw
+        binary data from the pipe. Must be a callable retrieving a byte string
+        as first and only argument, ``None`` or ``'default'``. ``'default'``
+        translates to ``pickle.loads``. When setting this to ``None``, no data
+        decoding is performed, and a raw byte string is returned.
 
     :returns:
         - ``duplex=False``: ``(reader, writer)`` 2-tuple. The first element is
@@ -140,7 +147,6 @@ def pipe(duplex=False, encoder='default', decoder='default'):
     ::
 
         reader, writer = pipe()
-
         with reader:
             do_something(reader)
             with writer as w:
@@ -154,11 +160,19 @@ def pipe(duplex=False, encoder='default', decoder='default'):
             h2.put(2)
             assert h1.get() == 2
 
+    An example for using the encoder/decoder arguments for implementing JSON
+    (de)serialization::
 
-    The transport layer is based on ``os.pipe()`` (i.e.
-    `CreatePipe() <http://msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx>`_
-    on Windows and `pipe() <http://www.kernel.org/doc/man-pages/online/pages/man2/pipe.2.html>`_
-    on POSIX-compliant systems).
+        import json
+        enc = lambda o: json.dumps(o).encode("ascii")
+        dec = lambda b: json.loads(b.decode("ascii"))
+        with pipe(encoder=enc, decoder=dec) as (r, w):
+            ...
+    
+    Note that JSON representation is text whereas the encoder/decoder callables
+    must return/accept byte strings, as ensured by ASCII en/decoding. Also note
+    that in practice JSON serializaton has normally no advantage over pickling,
+    so this is just an educational example.
     """
     # Internally, `encoder` and `decoder` must always be callable. Translate
     # special values `None` and `'default'` to callables here.
