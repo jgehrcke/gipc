@@ -900,7 +900,11 @@ def _set_all_handles(handles):
 # default action right after fork.
 _signals_to_reset = [getattr(signal, s) for s in
     set([s for s in dir(signal) if s.startswith("SIG")]) -
-    set(['SIG_DFL', 'SIGSTOP', 'SIGKILL', 'SIGPIPE'])]
+    # Exclude constants that are not signals such as SIG_DFL and SIG_BLOCK.
+    set([s for s in dir(signal) if s.startswith("SIG_")]) -
+    # Leave handlers for SIG(STOP/KILL/PIPE) untouched.
+    set(['SIGSTOP', 'SIGKILL', 'SIGPIPE'])
+    ]
 
 
 def _reset_signal_handlers():
