@@ -923,7 +923,9 @@ class TestPipeCodecs(object):
     def test_json(self):
         import json
         data = {"a": 100}
-        with pipe(encoder=json.dumps, decoder=json.loads) as (r, w):
+        enc = lambda o: json.dumps(o).encode("ascii")
+        dec = lambda b: json.loads(b.decode("ascii"))
+        with pipe(encoder=enc, decoder=dec) as (r, w):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
             assert data == gr.get()
