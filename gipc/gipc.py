@@ -511,9 +511,11 @@ class _GProcess(multiprocessing.Process):
             # `self._returnevent.wait(timeout)`
             self._returnevent.wait(timeout)
             if self._popen.returncode is not None:
-                if PY3:
+                if hasattr(multiprocessing.process, '_children'):
+                    # This is for Python 3.4.
                     kids = multiprocessing.process._children
                 else:
+                    # For Python 2.6, 2.7, 3.3.
                     kids = multiprocessing.process._current_process._children
                 kids.discard(self)
             return
