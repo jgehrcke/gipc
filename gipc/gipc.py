@@ -475,8 +475,11 @@ class _GProcess(multiprocessing.Process):
             # `self._returnevent.wait(timeout)`
             self._returnevent.wait(timeout)
             if self._popen.returncode is not None:
-                multiprocessing.process._current_process._children.discard(
-                    self)
+                if PY3:
+                    kids = multiprocessing.process._children
+                else:
+                    kids = multiprocessing.process._current_process._children
+                kids.discard(self)
             return
         with gevent.Timeout(timeout, False):
             while self.is_alive():
