@@ -18,6 +18,7 @@ import io
 import sys
 import struct
 import signal
+import codecs
 import logging
 import multiprocessing
 import multiprocessing.process
@@ -498,7 +499,7 @@ class _GIPCHandle(object):
     """
     def __init__(self):
         global _all_handles
-        self._id = os.urandom(3).encode("hex")
+        self._id = codecs.encode(os.urandom(3), "hex")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
         self._lock = gevent.lock.Semaphore(value=1)
