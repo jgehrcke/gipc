@@ -5,4 +5,4 @@
 __version__ = '0.5.0'
 
 
-from gipc import pipe, start_process, GIPCError, GIPCClosed, GIPCLocked
+from .gipc import pipe, start_process, GIPCError, GIPCClosed, GIPCLocked
