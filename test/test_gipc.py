@@ -141,7 +141,7 @@ class TestComm(object):
         def gwrite(writer, m):
             writer.put(m)
         def gread(reader):
-            return [reader.get() for _ in xrange(2)]
+            return [reader.get() for _ in range(2)]
         gw1 = gevent.spawn(gwrite, self.wh, m)
         gw2 = gevent.spawn(gwrite, self.wh, m)
         gr = gevent.spawn(gread, self.rh)
@@ -853,7 +853,7 @@ class TestDuplexHandleIPC(object):
                         with raises(GIPCClosed):
                             h.put(0)
                     # Send messages on their journey through children.
-                    for _ in xrange(100):
+                    for _ in range(100):
                         p11.put("BABUUUZ")
                         assert p32.get() == "BABUUUZ"
                     p11.put("stop")
@@ -1010,7 +1010,7 @@ class TestSimpleUseCases(object):
         backpipe -> recvlist (greenlet, parent)
         assert sendlist == recvlist
         """
-        sendlist = [random.choice('UFTATA') for x in xrange(100)]
+        sendlist = [random.choice('UFTATA') for x in range(100)]
         sendlist.append("STOP")
         sendqueue = gevent.queue.Queue()
         def g_from_list_to_sendq():
@@ -1167,7 +1167,7 @@ class TestComplexUseCases(object):
                     assert r2.get() == "msg"
                     p.join()
 
-        duplexlets = [gevent.spawn(duplex) for _ in xrange(10)]
+        duplexlets = [gevent.spawn(duplex) for _ in range(10)]
         for g in duplexlets:
             g.get()
 
