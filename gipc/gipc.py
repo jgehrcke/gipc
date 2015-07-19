@@ -450,14 +450,35 @@ class _GProcess(multiprocessing.Process):
             return self._popen.returncode
 
         def __repr__(self):
-            """Based on original __repr__ from Python 2.7's mp package.
+            """Based on original __repr__ from Python 3.4's mp package.
+
+            Reasons for re-implementing:
+            
+            * The original code would invoke os.waitpid() through
+              _popen.poll(). This is forbidden in the context of gipc.
+              This method instead reads the exitcode property which is set by
+              a libev child watcher callback.
+
+            * The original code distinguishes 'initial' state from 'started'
+              state. This is not necessary, as gipc starts processes right
+              away.
+
+            * This method removes the `if self is _current_process` check
+              without changing behavior (that's still 'started' status).
             """
+            exitcodedict = multiprocessing.process._exitcode_to_name
             status = 'started'
-            if self.exitcode is not None:
+            if self._parent_pid != os.getpid():
+                status = 'unknown'
+            elif self.exitcode is not None:
                 status = self.exitcode
-            return '<%s(%s, %s%s)>' % (
-                type(self).__name__, self._name, status,
-                self._daemonic and ' daemon' or '')
+            if status == 0:
+                status = 'stopped'
+            elif isinstance(status, int):
+                status = 'stopped[%s]' % exitcodedict.get(status, status)
+            return '<%s(%s, %s%s)>' % (type(self).__name__, self._name,
+                status, self.daemon and ' daemon' or '')
+
 
     def join(self, timeout=None):
         """
