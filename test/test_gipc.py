@@ -635,7 +635,7 @@ class TestGetTimeout(object):
             try:
                 r.get(timeout=t)
                 assert False
-            except gevent.Timeout, raised_timeout:
+            except gevent.Timeout as raised_timeout:
                 if not t is raised_timeout:
                     raise
 
