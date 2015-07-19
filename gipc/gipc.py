@@ -538,7 +538,7 @@ class _GIPCHandle(object):
     """
     def __init__(self):
         global _all_handles
-        self._id = codecs.encode(os.urandom(3), "hex")
+        self._id = codecs.encode(os.urandom(3), "hex_codec")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
         self._lock = gevent.lock.Semaphore(value=1)
