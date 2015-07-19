@@ -902,7 +902,7 @@ class TestPipeCodecs(object):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
             assert data == gr.get()
-            gw.get()
+            gw.join()
 
     def test_callable_raw(self):
         data = os.urandom(10000)
@@ -910,7 +910,7 @@ class TestPipeCodecs(object):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
             assert data == gr.get()
-            gw.get()
+            gw.join()
 
     def test_raw(self):
         data = os.urandom(10000)
@@ -918,16 +918,16 @@ class TestPipeCodecs(object):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
             assert data == gr.get()
-            gw.get()
+            gw.join()
 
     def test_json(self):
         import json
-        data = {"a": 10 ** 10}
+        data = {"a": 100}
         with pipe(encoder=json.dumps, decoder=json.loads) as (r, w):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
             assert data == gr.get()
-            gw.get()
+            gw.join()
 
     def test_zlib(self):
         import zlib
@@ -936,7 +936,7 @@ class TestPipeCodecs(object):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
             assert data == gr.get()
-            gw.get()
+            gw.join()
 
     def test_not_callable_encoder(self):
         data = os.urandom(10000)
