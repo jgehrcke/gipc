@@ -1,15 +1,19 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2014 Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
 
 
 """
-gipc: child processes and IPC for gevent.
+gipc: child processes and inter-process communication (IPC) for gevent.
 
-With gipc (pronunciation “gipsy”), negative side-effects of multiprocessing
-based child process creation in the context of gevent are prevented. The API of
-multiprocessing.Process objects is provided in a gevent-cooperative fashion.
-Furthermore, gipc comes up with a pipe-based transport layer for efficient
-gevent-cooperative inter-process communication.
+gipc (pronunciation “gipsy”)
+
+* prevents negative side-effects ofmultiprocessing-based child process creation
+  in the context of gevent.
+
+* provides the multiprocessing.Process API in a gevent-cooperative fashion.
+
+* comes up with a pipe-based transport layer for efficient gevent-cooperative
+  inter-process communication.
 """
 
 
@@ -40,7 +44,8 @@ import gevent.event
 
 
 # Decide which method to use for transferring WinAPI pipe handles to children.
-WINAPI_HANDLE_TRANSFER_STEAL = hasattr(multiprocessing.reduction, "steal_handle")
+WINAPI_HANDLE_TRANSFER_STEAL = hasattr(
+    multiprocessing.reduction, "steal_handle")
 
 
 # Logging for debugging purposes. Usage of logging in this simple form in the
@@ -56,8 +61,7 @@ class GIPCError(Exception):
 
 
 class GIPCClosed(GIPCError):
-    """Is raised upon operation on closed handle.
-    """
+    """Is raised upon operation on closed handle."""
     pass
 
 
@@ -72,7 +76,7 @@ def _newpipe(encoder, decoder):
     """Create new pipe via `os.pipe()` and return `(_GIPCReader, _GIPCWriter)`
     tuple.
 
-    os.pipe() implementation on Windows (http://bit.ly/RDuKUm):
+    os.pipe() implementation on Windows (https://goo.gl/CiIWvo):
        - CreatePipe(&read, &write, NULL, 0)
        - anonymous pipe, system handles buffer size
        - anonymous pipes are implemented using named pipes with unique names
@@ -97,14 +101,13 @@ def pipe(duplex=False, encoder='default', decoder='default'):
     """Create a pipe-based message transport channel and return two
     corresponding handles for reading and writing data.
 
-    Allows for gevent-cooperative transmission of data (any picklable Python
-    object by default). Data can be transmitted between greenlets within one
-    process or across processes (created via :func:`start_process`).
+    Allows for gevent-cooperative transmission of data between greenlets within
+    one process or across processes (created via :func:`start_process`). The
+    default behavior allows for transmission of any picklable Python object.
 
     The transport layer is based on ``os.pipe()`` (i.e.
-    `CreatePipe() <http://msdn.microsoft.com/en-us/library/windows/desktop/aa365152%28v=vs.85%29.aspx>`_
-    on Windows and `pipe() <http://www.kernel.org/doc/man-pages/online/pages/man2/pipe.2.html>`_
-    on POSIX-compliant systems).
+    `CreatePipe() <https://goo.gl/CiIWvo>`_ on Windows and
+    `pipe() <http://goo.gl/it6rFW>`_ on POSIX-compliant systems).
 
     :arg duplex:
         - If ``False`` (default), create a unidirectional pipe-based message
@@ -174,11 +177,11 @@ def pipe(duplex=False, encoder='default', decoder='default'):
             ...
 
     Note that JSON representation is text whereas the encoder/decoder callables
-    must return/accept byte strings, as ensured by ASCII en/decoding. Also note
-    that in practice JSON serializaton has normally no advantage over pickling,
-    so this is just an educational example.
+    must return/accept byte strings, as ensured here by ASCII en/decoding. Also
+    note that in practice JSON serializaton has normally no advantage over
+    pickling, so this is just an educational example.
     """
-    # Internally, `encoder` and `decoder` must always be callable. Translate
+    # Internally, `encoder` and `decoder` must be callable. Translate
     # special values `None` and `'default'` to callables here.
     if encoder is None:
         encoder = lambda x: x
@@ -206,7 +209,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     Any existing instance of :class:`gipc._GIPCHandle` or
     :class:`gipc._GIPCDuplexHandle` can be passed to the child process via
     ``args`` and/or ``kwargs``. If any such instance is passed to the child,
-    the corresponding file descriptor is automatically closed in the parent.
+    gipc automatically closes the corresponding file descriptor in the parent.
 
     .. note::
 
@@ -221,16 +224,17 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         - does not accept the ``group`` argument (being an artifact from
           ``multiprocessing``'s compatibility with ``threading``).
         - starts the process, i.e. a subsequent call to the ``start()`` method
-          of the returned object is not needed.
+          of the returned object is not required.
 
     :arg target:
-        Function to be called in child. Signature: ``target(*args, **kwargs)``.
+        Function to be called in the child process. Signature:
+        ``target(*args, **kwargs)``.
 
     :arg args:
-        Tuple defining positional arguments provided to ``target``.
+        Tuple defining the positional arguments provided to ``target``.
 
     :arg kwargs:
-        Dictionary defining keyword arguments provided to ``target``.
+        Dictionary defining the keyword arguments provided to ``target``.
 
     :arg name:
         Forwarded to ``multiprocessing.Process.name``.
@@ -260,9 +264,9 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         ignored.
     """
     if not isinstance(args, tuple):
-        raise TypeError('`args` must be tuple.')
+        raise TypeError('`args` must be a tuple.')
     if not isinstance(kwargs, dict):
-        raise TypeError('`kwargs` must be dictionary.')
+        raise TypeError('`kwargs` must be a dictionary.')
     log.debug("Invoke target `%s` in child process.", target)
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if WINDOWS:
@@ -297,17 +301,16 @@ def _child(target, args, kwargs):
 
     After fork on POSIX-compliant systems, gevent's state is inherited by the
     child which may lead to undesired behavior, such as greenlets running in
-    both, the parent and the child. Therefore, on Unix, gevent's and libev's
-    state is reset before running the user-given function.
+    both, the parent and the child. Therefore, if not on Windows, gevent's and
+    libev's state is reset before running the user-given function.
     """
     log.debug("_child start. target: `%s`", target)
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if not WINDOWS:
-        # Restore default signal handlers (SIG_DFL).
-        # Orphaned libev signal watchers may not become properly deactivated
-        # otherwise.
-        # TODO/note: here, we could even reset sigprocmask (Python 2.x does not
-        # have API for it, but it could be done via ctypes).
+        # Restore default signal handlers (SIG_DFL). Orphaned libev signal
+        # watchers may not become properly deactivated otherwise. Note: here, we
+        # could even reset sigprocmask (Python 2.x does not have API for it, but
+        # it could be done via ctypes).
         _reset_signal_handlers()
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
         # the kernel state for backends that have one. Must be called in the
@@ -336,8 +339,7 @@ def _child(target, args, kwargs):
             if not h in childhandles:
                 log.debug("Invalidate %s in child.", h)
                 h._set_legit_process()
-                # At duplication time the handle might have been locked.
-                # Unlock.
+                # At duplication time the handle might have been locked. Unlock.
                 h._lock.counter = 1
                 h.close()
     else:
@@ -345,8 +347,7 @@ def _child(target, args, kwargs):
         # children. Set `_all_handles`.
         _set_all_handles(childhandles)
     # `_all_handles` now must contain only those handles that have been
-    # transferred to the child on purpose. TODO: remove this check in future
-    # versions.
+    # transferred to the child on purpose.
     for h in _all_handles:
         assert h in childhandles
     # Register transferred handles for current process.
@@ -393,14 +394,14 @@ class _GProcess(multiprocessing.Process):
     # `start()` method below. The modified `join()` method is adjusted to this
     # libev child watcher-based child monitoring.
     # `multiprocessing.Process.join()` is entirely surpassed, but resembled.
-    #
+
     # After initialization of the first libev child watcher, i.e. after
     # initialization of the first _GProcess instance, libev handles SIGCHLD
     # signals. Dead children become reaped by the libev event loop. The
     # children's status code is evaluated by libev. In conclusion, installation
     # of the libev SIGCHLD handler renders multiprocessing's child monitoring
     # useless and even hindering.
-    #
+
     # Any call to os.waitpid can make libev miss certain SIGCHLD
     # events. According to
     # http://pubs.opengroup.org/onlinepubs/009695399/functions/waitpid.html
@@ -409,9 +410,9 @@ class _GProcess(multiprocessing.Process):
     #  or waitpid() returns because the status of a child process is available,
     #  any pending SIGCHLD signal associated with the process ID of the child
     #  process shall be discarded."
-    #
-    # On Windows, cooperative `join()` is realized via frequent non-blocking
-    # calls to `Process.is_alive()` and the original `join()` method.
+
+    # On Windows, cooperative `join()` is realized via polling (non-blocking
+    # calls to `Process.is_alive()`) and the original `join()` method.
     if not WINDOWS:
         # multiprocessing.process.Process.start() and other methods may
         # call multiprocessing.process._cleanup(). This and other mp methods
@@ -424,14 +425,16 @@ class _GProcess(multiprocessing.Process):
         # -> Prevent multiprocessing's Popen.poll() from calling
         # os.waitpid(). Let libev do the job.
         try:
-            from multiprocessing.forking import Popen as _mp_Popen
+            from multiprocessing.forking import Popen as mp_Popen
         except ImportError:
-            # mp's internal structure has been changed form Py 3.3 to 3.4.
-            from multiprocessing.popen_fork import Popen as _mp_Popen
-        _mp_Popen.poll = lambda *a, **b: None
+            # multiprocessing's internal structure has changed from 3.3 to 3.4.
+            from multiprocessing.popen_fork import Popen as mp_Popen
+        # Monkey-patch and forget about the name.
+        mp_Popen.poll = lambda *a, **b: None
+        del mp_Popen
 
         def start(self):
-            # Start grabbing SIGCHLD in libev event loop.
+            # Start grabbing SIGCHLD within libev event loop.
             gevent.get_hub().loop.install_sigchld()
             # Run new process (based on `fork()` on POSIX-compliant systems).
             super(_GProcess, self).start()
@@ -449,7 +452,7 @@ class _GProcess(multiprocessing.Process):
             catches corresponding SIGCHLD signal.
             """
             watcher.stop()
-            # Status evaluation copied from `multiprocessing.forking`.
+            # Status evaluation copied from `multiprocessing.forking` in Py2.7.
             if os.WIFSIGNALED(watcher.rstatus):
                 self._popen.returncode = -os.WTERMSIG(watcher.rstatus)
             else:
@@ -472,21 +475,21 @@ class _GProcess(multiprocessing.Process):
             return self._popen.returncode
 
         def __repr__(self):
-            """Based on original __repr__ from Python 3.4's mp package.
+            """Based on original __repr__ from CPython 3.4's mp package.
 
             Reasons for re-implementing:
 
             * The original code would invoke os.waitpid() through
               _popen.poll(). This is forbidden in the context of gipc.
-              This method instead reads the exitcode property which is set by
-              a libev child watcher callback.
+              This method instead reads the exitcode property which is set
+              asynchronously by a libev child watcher callback.
 
             * The original code distinguishes 'initial' state from 'started'
               state. This is not necessary, as gipc starts processes right
               away.
 
             * This method removes the `if self is _current_process` check
-              without changing behavior (that's still 'started' status).
+              without changing output behavior (that's still 'started' status).
             """
             exitcodedict = multiprocessing.process._exitcode_to_name
             status = 'started'
@@ -528,7 +531,7 @@ class _GProcess(multiprocessing.Process):
             return
         with gevent.Timeout(timeout, False):
             while self.is_alive():
-                # Is the polling frequency reasonable?
+                # This frequency seems reasonable, but that's not 100 % certain.
                 gevent.sleep(0.01)
         # Clean up after child as designed by Process class (non-blocking).
         super(_GProcess, self).join(timeout=0)
@@ -547,7 +550,7 @@ class _GIPCHandle(object):
     """
     def __init__(self):
         global _all_handles
-        # Generate unicode label from three random bytes.
+        # Generate label of text/unicode type from three random bytes.
         self._id = codecs.encode(os.urandom(3), "hex_codec").decode("ascii")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
@@ -563,7 +566,7 @@ class _GIPCHandle(object):
             gevent.os.make_nonblocking(self._fd)
 
     def close(self):
-        """Close underlying file descriptor and de-register handle for further
+        """Close underlying file descriptor and de-register handle from further
         usage. Is called on context exit.
 
         Raises:
@@ -783,8 +786,8 @@ class _GIPCReader(_GIPCHandle):
 
     def _recv_in_buffer(self, n):
         """Cooperatively read `n` bytes from file descriptor to buffer."""
-        # Frequent creation of a new buffer is faster than re-using an existing
-        # buffer via seek(0) and truncate().
+        # In rudimentary tests I have observed frequent creation of a new buffer
+        # to be faster than re-using an existing  buffer via seek(0)/truncate().
         readbuf = io.BytesIO()
         remaining = n
         while remaining > 0:
