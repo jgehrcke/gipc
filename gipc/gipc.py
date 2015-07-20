@@ -168,7 +168,7 @@ def pipe(duplex=False, encoder='default', decoder='default'):
         dec = lambda b: json.loads(b.decode("ascii"))
         with pipe(encoder=enc, decoder=dec) as (r, w):
             ...
-    
+
     Note that JSON representation is text whereas the encoder/decoder callables
     must return/accept byte strings, as ensured by ASCII en/decoding. Also note
     that in practice JSON serializaton has normally no advantage over pickling,
@@ -468,7 +468,7 @@ class _GProcess(multiprocessing.Process):
             """Based on original __repr__ from Python 3.4's mp package.
 
             Reasons for re-implementing:
-            
+
             * The original code would invoke os.waitpid() through
               _popen.poll(). This is forbidden in the context of gipc.
               This method instead reads the exitcode property which is set by
@@ -540,7 +540,8 @@ class _GIPCHandle(object):
     """
     def __init__(self):
         global _all_handles
-        self._id = codecs.encode(os.urandom(3), "hex_codec")
+        # Generate unicode label from three random bytes.
+        self._id = codecs.encode(os.urandom(3), "hex_codec").decode("ascii")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
         self._lock = gevent.lock.Semaphore(value=1)
