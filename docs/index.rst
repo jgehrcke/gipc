@@ -42,24 +42,26 @@ gipc (pronunciation “gipsy”) provides convenient child process management in
 context of `gevent <http://gevent.org>`_. gipc is developed for and tested on
 CPython 2.6/2.7/3.3/3.4 on Linux as well as on Windows.
 
-Usage of Python's multiprocessing package in the context of a gevent-powered
-application may raise problems and most likely breaks the application in various
-subtle ways. gipc is developed with the motivation to solve many of these issues
-transparently. With gipc, multiprocessing.Process-based child processes can
-safely be created anywhere within your gevent-powered application. The API of
-multiprocessing.Process objects is provided in a gevent-cooperative fashion.
-Furthermore, gipc comes up with a pipe-based transport layer for
-gevent-cooperative inter-process communication and useful helper constructs.
-gipc is lightweight and simple to integrate.
+Usage of Python's
+`multiprocessing <https://docs.python.org/library/multiprocessing.html>`_
+package in the context of a gevent-powered application may raise problems and
+most likely breaks the application in various subtle ways. gipc is developed
+with the motivation to solve many of these issues transparently. With gipc,
+multiprocessing.Process-based child processes can safely be created anywhere
+within your gevent-powered application. The API of multiprocessing.Process
+objects is provided in a gevent-cooperative fashion. Furthermore, gipc
+comes up with a pipe-based transport layer for gevent-cooperative
+inter-process communication and useful helper constructs. gipc is lightweight
+and simple to integrate.
 
-As far as I know, gipc is happily used by, among others,:
+As far as I know gipc is happily used by, among others,
 
-    - `Quantopian <https://www.quantopian.com>`_
-    - `Ajenti <http://ajenti.org/>`_
-    - `Chronology <http://chronology.github.io>`_
-    - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_
+    - `Quantopian <https://www.quantopian.com>`_,
+    - `Ajenti <http://ajenti.org/>`_,
+    - `Chronology <http://chronology.github.io>`_,
+    - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_.
 
-Are you successfully using gipc in your project? I would appreciate if you
+Are you successfully applying gipc in your project? I would appreciate if you
 dropped me a quick line.
 
 
@@ -78,10 +80,11 @@ and to easily increase the performance of the application.
 
 The standard way of using multiple processes in a Python application is to use
 multiprocessing from Python's standard library. However, canonical usage of this
-module within a gevent-powered application most likely breaks the application in
-many ways. gipc is developed with the motivation to solve these issues
-transparently and to make using gevent in combination with multiprocessing-based
-child processes and inter-process communication (IPC) a no-brainer again:
+package within a gevent-powered application usually breaks the application
+in various non-obvious ways. gipc is developed with the motivation to solve
+these issues transparently and to make using gevent in combination with
+multiprocessing-based child processes and inter-process communication (IPC) a
+no-brainer again:
 
 - With gipc, multiprocessing.Process-based child processes can safely be created
   and monitored anywhere within your gevent-powered application. Malicious
@@ -110,7 +113,7 @@ main process through a pipe to a child process::
             writelet.join()
             readchild.join()
 
-Although quite simple, this code would have various side-effects if
+Although quite simple, this code would have various unwanted side-effects if
 used with the canonical multiprocessing API instead of ``gipc.start_process()``
 and ``gipc.pipe()``, as outlined in the next paragraph.
 
@@ -266,10 +269,10 @@ Code, requirements, download, installation
 gipc's Mercurial repository is hosted at
 `Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
 
-gipc requires:
+gipc supports Linux and Windows and requires:
 
 - `gevent <https://pypi.python.org/pypi/gevent>`_ >= 1.1
- (currently, gipc is developed and tested against gevent 1.1).
+  (currently, gipc is developed and tested against gevent 1.1).
 - CPython 2.6, 2.7, 3.3, or 3.4.
 
 The latest gipc release from PyPI can be downloaded and installed via
