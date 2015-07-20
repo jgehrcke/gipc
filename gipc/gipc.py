@@ -217,7 +217,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
         function
 
         - returns a :class:`gipc._GProcess` instance which is compatible with
-          the `multiprocessing.Process` API.
+          the ``multiprocessing.Process`` API.
         - just as well takes the ``target``, ``arg=()``, and ``kwargs={}``
           arguments.
         - introduces the ``daemon=None`` argument.
