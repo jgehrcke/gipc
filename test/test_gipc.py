@@ -1,5 +1,13 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2014 Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
+
+
+"""
+gipc unit tests, written for py.test.
+
+py.test runs tests by order of definition. This is useful for running simple,
+fundamental tests first and more complex tests later.
+"""
 
 
 import sys
@@ -19,8 +27,7 @@ from gipc.gipc import _signals_to_reset as signals_to_reset
 
 WINDOWS = sys.platform == "win32"
 
-# py.test runs tests by order of definition. This is useful for running simple,
-# fundamental tests first and more complex tests later.
+
 from py.test import raises, mark
 
 
