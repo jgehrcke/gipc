@@ -643,7 +643,7 @@ class TestGetTimeout(object):
                 r.get(timeout=t)
                 assert False
             except gevent.Timeout as raised_timeout:
-                if not t is raised_timeout:
+                if t is not raised_timeout:
                     raise
 
     def test_simpletimeout_expires_contextmanager(self):
