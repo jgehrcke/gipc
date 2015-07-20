@@ -619,12 +619,11 @@ class _GIPCHandle(object):
         of the multiprocessing module in Python 2.6 up to the development
         version of Python 3.4 as of 2012-10-20.
         """
-        from multiprocessing.reduction import duplicate
         # Get Windows file handle from C file descriptor.
         win32handle = msvcrt.get_osfhandle(self._fd)
         # Duplicate file handle, rendering the duplicate inheritable by
         # processes created by the current process.
-        self._inheritable_win32handle = duplicate(
+        self._inheritable_win32handle = multiprocessing.reduction.duplicate(
             handle=win32handle, inheritable=True)
         # Close "old" (in-inheritable) file descriptor.
         os.close(self._fd)
