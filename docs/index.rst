@@ -1,5 +1,5 @@
 .. gipc documentation master file
-   Copyright 2012-2014 Jan-Philip Gehrcke. See LICENSE file for details.
+   Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
 
 .. toctree::
     :maxdepth: 2
@@ -38,12 +38,33 @@ About gipc
 
 .. _what:
 
-gipc provides convenient child process management in the context of
-`gevent <http://gevent.org>`_. gipc (pronunciation “gipsy”) is a Python package
-tested on CPython 2.6 and 2.7 on Linux as well as on Windows.
+gipc (pronunciation “gipsy”) provides convenient child process management in the
+context of `gevent <http://gevent.org>`_. gipc is developed for and tested on
+CPython 2.6/2.7/3.3/3.4 on Linux as well as on Windows.
 
-What is gipc good for?
-======================
+Usage of Python's multiprocessing package in the context of a gevent-powered
+application may raise problems and most likely breaks the application in various
+subtle ways. gipc is developed with the motivation to solve many of these issues
+transparently. With gipc, multiprocessing.Process-based child processes can
+safely be created anywhere within your gevent-powered application. The API of
+multiprocessing.Process objects is provided in a gevent-cooperative fashion.
+Furthermore, gipc comes up with a pipe-based transport layer for
+gevent-cooperative inter-process communication and useful helper constructs.
+gipc is lightweight and simple to integrate.
+
+As far as I know, gipc is happily used by, among others,:
+
+    - `Quantopian <https://www.quantopian.com>`_
+    - `Ajenti <http://ajenti.org/>`_
+    - `Chronology <http://chronology.github.io>`_
+    - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_
+
+Are you successfully using gipc in your project? I would appreciate if you
+dropped me a quick line.
+
+
+What is gipc good for, specifically?
+====================================
 
 There is plenty of motivation for using multiple processes in event-driven
 architectures. The assumption behind gipc is that applying multiple processes
@@ -51,27 +72,27 @@ that communicate among each other (whereas each process has its own event loop)
 can be a decent solution for many types of problems. First of all, it helps
 decoupling system components by making each process responsible for one part of
 the architecture only. Furthermore, even a generally I/O-intense application
-might at some point become CPU bound. In these cases, the distribution of tasks
+can at some point become CPU bound. In these cases, the distribution of tasks
 among multiple processes is an efficient way to make use of multi-core machines
-and easily increases the application's performance.
+and to easily increase the performance of the application.
 
-However, canonical usage of Python's multiprocessing module within a
-gevent-powered application may raise various problems and most likely breaks
-the application in many ways. gipc is developed with the motivation to solve
-these issues transparently and make using gevent in combination with
-multiprocessing-based child processes and inter-process communication (IPC) a
-no-brainer again:
+The standard way of using multiple processes in a Python application is to use
+multiprocessing from Python's standard library. However, canonical usage of this
+module within a gevent-powered application most likely breaks the application in
+many ways. gipc is developed with the motivation to solve these issues
+transparently and to make using gevent in combination with multiprocessing-based
+child processes and inter-process communication (IPC) a no-brainer again:
 
-- **With gipc, multiprocessing.Process-based child
-  processes can safely be created and monitored anywhere within your
-  gevent-powered application. Malicious side-effects of child process creation
-  in the context of gevent are prevented.**
-- **The API of multiprocessing.Process objects is provided in a
-  gevent-cooperative fashion.**
-- **gevent natively works in children.**
-- **gipc comes up with a pipe-based transport layer for gevent-cooperative
-  IPC.**
-- **gipc is lightweight and simple to integrate.**
+- With gipc, multiprocessing.Process-based child processes can safely be created
+  and monitored anywhere within your gevent-powered application. Malicious
+  side-effects of child process creation in the context of gevent are
+  prevented.
+- The API of multiprocessing.Process objects is provided in a gevent-cooperative
+  fashion.
+- gevent natively works in children.
+- gipc comes up with a pipe-based transport layer for gevent-cooperative
+  IPC.
+- gipc is lightweight and simple to integrate.
 
 In the following code snippet, a Python object is sent from a greenlet in the
 main process through a pipe to a child process::
@@ -89,7 +110,7 @@ main process through a pipe to a child process::
             writelet.join()
             readchild.join()
 
-Although quite simple, this code would have various negative side-effects if
+Although quite simple, this code would have various side-effects if
 used with the canonical multiprocessing API instead of ``gipc.start_process()``
 and ``gipc.pipe()``, as outlined in the next paragraph.
 
@@ -216,29 +237,25 @@ Technical notes
 
 - gipc obeys `semantic versioning 2 <http://semver.org/>`_.
 
-- Although gipc is in an early development phase, I found it to work
-  stable already. The unit test suite aims to cover all of gipc's features
-  within a clean gevent environment. More complex application scenarios,
-  however, are not covered so far. Please let me know in which cases
-  gipc + gevent fails for you.
-
 
 .. _reliable:
 
 Is gipc reliable?
 =================
-As of version 0.3, I am not aware of severe issues. To my knowledge, gipc has
-already been deployed in serious projects. Generally, you should be aware of the
-fact that mixing any of fork, threads, greenlets and an event loop library such
-as libev bears the potential for various kinds of corner-case disasters. One
-could argue that ``fork()`` in the context of libev without doing a clean
-``exec`` in the child already *is* broken design. However, many people would
-like to do exactly this and gipc's basic approach has proven to work in such
-cases. gipc is developed with a strong focus on reliability and with best
-intentions in mind. Via unit testing it has been validated to work reliably in
-scenarios of low and medium complexity. Of course, gipc cannot rescue an a
-priori ill-posed approach. Now it is up to you to evaluate gipc in the context
-of your project -- please share your experience.
+gipc is developed with a strong focus on reliability and with best intentions in
+mind. Although gipc handles a delicate combination of processes, signals,
+threads, and forking, I have observed it to work reliably. The unit test suite
+covers all of gipc's features within a clean gevent environment, but also covers
+scenarios of medium complexity. To my knowledge, gipc is being deployed in
+serious production scenarios.
+
+But still, generally, you should be aware of the fact that mixing any of fork,
+threads, greenlets and an event loop library such as libev bears the potential
+for various kinds of corner-case disasters. One could argue that ``fork()`` in
+the context of libev without doing a clean ``exec`` in the child already *is*
+broken design. However, many people would like to do exactly this and gipc's
+basic approach has proven to work in such cases. Now it is up to you
+to evaluate gipc in the context of your project -- please share your experience.
 
 
 .. _installation:
@@ -251,15 +268,12 @@ gipc's Mercurial repository is hosted at
 
 gipc requires:
 
-- `gevent <http://gevent.org>`_ >= 1.0 (currently, gipc is tested against
-  gevent 1.0). Download recent gevent releases
-  `here <https://github.com/surfly/gevent/downloads>`_ or from
-  `PyPI <https://pypi.python.org/pypi/gevent>`_.
-- CPython 2.6 or 2.7 (Python 3 will be supported as soon as gevent supports
-  it). Unit tests are made sure to work on Linux as well as Windows.
+- `gevent <https://pypi.python.org/pypi/gevent>`_ >= 1.1
+ (currently, gipc is developed and tested against gevent 1.1).
+- CPython 2.6, 2.7, 3.3, or 3.4.
 
-The latest gipc release from PyPI can be pulled and installed via
-`pip <http://www.pip-installer.org>`_::
+The latest gipc release from PyPI can be downloaded and installed via
+`pip <https://pip.pypa.io/en/stable/>`_::
 
     $ pip install gipc
 
