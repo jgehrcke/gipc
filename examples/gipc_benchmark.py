@@ -45,6 +45,10 @@ else:
     TIMER = time.time
 
 
+if sys.version_info[0] == 3:
+    xrange = range
+
+
 def main():
     repetitions = 3
 
