@@ -14,24 +14,39 @@ gevent-cooperative inter-process communication and useful helper constructs.
 gipc is lightweight and simple to integrate.
 
 
-What are the boundary conditions?
-=================================
-Currently, gipc is developed against gevent 1.0. It is tested on CPython 2.6
-& 2.7 on Linux as well as on Windows. Python 3 support will be ensured as soon
-as gevent officially supports it.
+Which Python and gevent versions are supported?
+===============================================
+The latest version of gipc is developed against gevent 1.1. On Linux, gipc has
+been tested on CPython 2.6.9, 2.7.10, 3.3.6, and 3.4.3. On Windows, gipc has
+been tested on CPython 2.7 and 3.4.
 
 
 Where are documentation and changelog?
 ======================================
     - API documentation and further details: http://gehrcke.de/gipc.
-    - Changelog: `Here <https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst>`_,
+    - `Changelog <https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst>`_,
       hosted at Bitbucket.
 
 
 Where to download gipc?
 =======================
-    - Releases: `PyPI <http://pypi.python.org/pypi/gipc>`_.
-    - Development version: `Hg repository <https://bitbucket.org/jgehrcke/gipc>`_.
+    - Official releases: `PyPI <http://pypi.python.org/pypi/gipc>`_.
+    - Development version: `Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
+
+
+Is gipc reliable? Who uses it?
+==============================
+That's an important question, because gipc deals with a delicate combination of
+signals, leightweight threads, processes, and inter-process communication on a
+number of different platforms. AFAIK, these projects are happy with using gipc:
+
+    - `Quantopian <https://www.quantopian.com>`_
+    - `Ajenti <http://ajenti.org/>`_
+    - `Chronology <http://chronology.github.io>`_
+    - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_
+
+Are you successfully using gipc in your project? I would appreciate if you
+dropped me a quick line.
 
 
 How can the unit tests be run?
