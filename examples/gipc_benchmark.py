@@ -25,7 +25,6 @@ import os
 import sys
 import logging
 import time
-import numpy
 import math
 
 import gevent
@@ -86,8 +85,8 @@ def benchmark_manager(msg, repetitions):
         log.info("  --> Payload transfer rate: %.3f MB/s" % datarate_mb)
 
     # Evaluate stats of all runs
-    e_mean = numpy.mean(elapsed_values)
-    e_err = numpy.std(elapsed_values)/math.sqrt(len(elapsed_values)-1)
+    e_mean = mean(elapsed_values)
+    e_err = pstdev(elapsed_values)/math.sqrt(len(elapsed_values)-1)
     e_rel_err = e_err/e_mean
     datarate_mb_mean = datasize_mb/e_mean
     datarate_mb_err = datarate_mb_mean * e_rel_err
@@ -131,6 +130,30 @@ def writer_process(writer, syncr, N, msg):
         for i in xrange(N):
             writer.put(msg)
         writer.put('stop')
+
+
+# Credit: http://stackoverflow.com/a/27758326/145400
+def mean(data):
+    """Return the sample arithmetic mean of data."""
+    n = len(data)
+    if n < 1:
+        raise ValueError('mean requires at least one data point')
+    return sum(data)/float(n)
+
+def _ss(data):
+    """Return sum of square deviations of sequence data."""
+    c = mean(data)
+    ss = sum((x-c)**2 for x in data)
+    return ss
+
+def pstdev(data):
+    """Calculates the population standard deviation."""
+    n = len(data)
+    if n < 2:
+        raise ValueError('variance requires at least two data points')
+    ss = _ss(data)
+    pvar = ss/n # the population variance
+    return pvar**0.5
 
 
 if __name__ == "__main__":
