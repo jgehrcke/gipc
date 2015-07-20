@@ -263,7 +263,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     childhandles = list(_filter_handles(chain(args, kwargs.values())))
     if WINDOWS:
         for h in childhandles:
-            h._pre_createprocess_windows()
+            h._win32_childhandle_prepare_transfer()
     p = _GProcess(
         target=_child,
         name=name,
@@ -279,7 +279,7 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     for h in childhandles:
         log.debug("Invalidate %s in parent.", h)
         if WINDOWS:
-            h._post_createprocess_windows()
+            h._win32_childhandle_after_createprocess_parent()
         h.close()
     return p
 
@@ -346,7 +346,7 @@ def _child(target, args, kwargs):
     for h in childhandles:
         h._set_legit_process()
         if WINDOWS:
-            h._post_createprocess_windows()
+            h._win32_childhandle_after_createprocess_child()
         log.debug("Handle `%s` is now valid in child.", h)
     # Invoke user-given function.
     target(*args, **kwargs)
@@ -600,7 +600,7 @@ class _GIPCHandle(object):
                 "GIPCHandle %s not registered for current process %s." % (
                 self, os.getpid()))
 
-    def _pre_createprocess_windows(self):
+    def _win32_childhandle_prepare_transfer(self):
         """Prepare file descriptor for transfer to child process on Windows.
 
         By default, file descriptors are not inherited by child processes on
@@ -627,15 +627,23 @@ class _GIPCHandle(object):
             self._ihfd = duplicate(handle=h, inheritable=True)
             # Close "old" (in-inheritable) file descriptor.
             os.close(self._fd)
-            self._fd = False
+            # Mark file descriptor as "already closed".
+            self._fd = None
 
-    def _post_createprocess_windows(self):
-        """Restore file descriptor on Windows.
+    def _win32_childhandle_after_createprocess_parent(self):
+        """Restore file descriptor. This is required for closing the handle.
         """
-        if WINDOWS:
-            # Get C file descriptor from Windows file handle.
-            self._fd = msvcrt.open_osfhandle(self._ihfd, self._fd_flag)
-            del self._ihfd
+        # Get C file descriptor from Windows file handle.
+        self._fd = msvcrt.open_osfhandle(self._ihfd, self._fd_flag)
+        del self._ihfd
+
+    def _win32_childhandle_after_createprocess_child(self):
+        """Restore file descriptor. This is required for using the handle
+        in the child.
+        """
+        # Get C file descriptor from Windows file handle.
+        self._fd = msvcrt.open_osfhandle(self._ihfd, self._fd_flag)
+        del self._ihfd
 
     def __enter__(self):
         return self
