@@ -336,7 +336,7 @@ def _child(target, args, kwargs):
         # `_all_handles` is inherited from the parent. Close dispensable gipc-
         # related file descriptors in child.
         for h in _all_handles[:]:
-            if not h in childhandles:
+            if h not in childhandles:
                 log.debug("Invalidate %s in child.", h)
                 h._set_legit_process()
                 # At duplication time the handle might have been locked. Unlock.
@@ -460,7 +460,7 @@ class _GProcess(multiprocessing.Process):
                 self._popen.returncode = os.WEXITSTATUS(watcher.rstatus)
             self._returnevent.set()
             log.debug("SIGCHLD watcher callback for %s invoked. Exitcode "
-                       "stored: %s", self.pid, self._popen.returncode)
+                      "stored: %s", self.pid, self._popen.returncode)
 
         def is_alive(self):
             assert self._popen is not None, "Process not yet started."
@@ -608,7 +608,7 @@ class _GIPCHandle(object):
         if os.getpid() != self._legit_pid:
             raise GIPCError(
                 "GIPCHandle %s not registered for current process %s." % (
-                self, os.getpid()))
+                    self, os.getpid()))
 
     def _winapi_childhandle_prepare_transfer(self):
         """Prepare file descriptor for transfer to child process on Windows.
@@ -1032,8 +1032,7 @@ _signals_to_reset = [getattr(signal, s) for s in
     # Exclude constants that are not signals such as SIG_DFL and SIG_BLOCK.
     set([s for s in dir(signal) if s.startswith("SIG_")]) -
     # Leave handlers for SIG(STOP/KILL/PIPE) untouched.
-    set(['SIGSTOP', 'SIGKILL', 'SIGPIPE'])
-    ]
+    set(['SIGSTOP', 'SIGKILL', 'SIGPIPE'])]
 
 
 def _reset_signal_handlers():
