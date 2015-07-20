@@ -1,5 +1,10 @@
+Version 0.6.0 (xxx xx, 2015)
+----------------------------
+    - Add support for Python 3.
+
+
 Version 0.5.0 (Oct 22, 2014)
----------------------------
+----------------------------
     - Improve large message throughput on Linux (see issue #13).
     - Work around read(2) system call flaw on Mac OS X (see issue #13).
     - Work around signal.NSIG-related problem on FreeBSD (see issue #10).
