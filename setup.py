@@ -19,7 +19,7 @@ setup(
     packages = ["gipc"],
     version = gipcversion,
     description = "gevent-cooperative child processes and inter-process communication.",
-    long_description=open("README.rst").read().decode('utf-8'),
+    long_description=open("README.rst", "rb").read().decode('utf-8'),
     author = "Jan-Philip Gehrcke",
     author_email = "jgehrcke@googlemail.com",
     url = "http://gehrcke.de/gipc",
