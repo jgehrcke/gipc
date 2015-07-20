@@ -621,10 +621,11 @@ class _GIPCHandle(object):
         """
         from multiprocessing.reduction import duplicate
         # Get Windows file handle from C file descriptor.
-        h = msvcrt.get_osfhandle(self._fd)
+        win32handle = msvcrt.get_osfhandle(self._fd)
         # Duplicate file handle, rendering the duplicate inheritable by
         # processes created by the current process.
-        self._ihfd = duplicate(handle=h, inheritable=True)
+        self._inheritable_win32handle = duplicate(
+            handle=win32handle, inheritable=True)
         # Close "old" (in-inheritable) file descriptor.
         os.close(self._fd)
         # Mark file descriptor as "already closed".
@@ -634,16 +635,18 @@ class _GIPCHandle(object):
         """Restore file descriptor. This is required for closing the handle.
         """
         # Get C file descriptor from Windows file handle.
-        self._fd = msvcrt.open_osfhandle(self._ihfd, self._fd_flag)
-        del self._ihfd
+        self._fd = msvcrt.open_osfhandle(
+            self._inheritable_win32handle, self._fd_flag)
+        del self._inheritable_win32handle
 
     def _win32_childhandle_after_createprocess_child(self):
         """Restore file descriptor. This is required for using the handle
         in the child.
         """
         # Get C file descriptor from Windows file handle.
-        self._fd = msvcrt.open_osfhandle(self._ihfd, self._fd_flag)
-        del self._ihfd
+        self._fd = msvcrt.open_osfhandle(
+            self._inheritable_win32handle, self._fd_flag)
+        del self._inheritable_win32handle
 
     def __enter__(self):
         return self
