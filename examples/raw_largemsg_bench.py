@@ -45,11 +45,11 @@ log.info("Mbytes: %s" % mbytes)
 
 def spawn_child_transfer(childhandler, parenthandler):
     p = gipc.start_process(target=child, args=(childhandler,))
-    assert parenthandler.get() == "start"
+    assert parenthandler.get() == b"start"
     log.info("Sending data.")
     t0 = time.time()
     parenthandler.put(DATA)
-    assert parenthandler.get() == "done"
+    assert parenthandler.get() == b"done"
     delta = time.time() - t0
     log.info("Data received, verifying...")
     p.join()
@@ -60,9 +60,9 @@ def spawn_child_transfer(childhandler, parenthandler):
 
 
 def child(childhandler):
-    childhandler.put("start")
+    childhandler.put(b"start")
     d = childhandler.get()
-    childhandler.put("done")
+    childhandler.put(b"done")
     # `DATA` is available only on POSIX-compliant systems (after fork()).
     assert DATA == d
 
@@ -75,3 +75,4 @@ with gipc.pipe(duplex=True, encoder=None, decoder=None) as (c, p):
 with gipc.pipe(duplex=True) as (c, p):
     log.info("Test with default pipe...")
     spawn_child_transfer(c, p)
+
