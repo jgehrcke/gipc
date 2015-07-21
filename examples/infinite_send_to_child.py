@@ -26,7 +26,7 @@ def writegreenlet(writer):
 
 def child_process(reader):
     while True:
-        print "Child process got message from pipe:\n\t'%s'" % reader.get()
+        print("Child process got message from pipe:\n\t'%s'" % reader.get())
 
 
 if __name__ == "__main__":
