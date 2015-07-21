@@ -111,11 +111,12 @@ def pipe(duplex=False, encoder='default', decoder='default'):
 
     :arg duplex:
         - If ``False`` (default), create a unidirectional pipe-based message
-          transport channel and return the corresponding
-          ``(_GIPCReader, _GIPCWriter)`` handle pair.
+          transport channel and return the corresponding handle pair, a 2-tuple
+          with the first element of type  ``_GIPCReader`` and the second
+          element of type ``_GIPCWriter``.
         - If ``True``, create a bidirectional message transport channel (using
-          two pipes internally) and return the corresponding
-          ``(_GIPCDuplexHandle, _GIPCDuplexHandle)`` handle pair.
+          two pipes internally) and return the corresponding 2-tuple with both
+          elements being of type ``_GIPCDuplexHandle``.
 
     :arg encoder:
         Defines the entity used for object serialization before writing object
