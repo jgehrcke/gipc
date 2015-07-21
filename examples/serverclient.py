@@ -2,12 +2,6 @@
 # Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
 
 
-import gevent
-from gevent.server import StreamServer
-from gevent import socket
-import gipc
-import time
-
 """
 gipc example: TCP communication between a server in the parent process and
 multiple clients in a child process:
@@ -32,13 +26,22 @@ Output on my test machine:
 1000 clients served within 0.54 s.
 """
 
+
+import gevent
+from gevent.server import StreamServer
+from gevent import socket
+import gipc
+import time
+import sys
+
+
 PORT = 1337
 N_CLIENTS = 1000
 MSG = "HELLO\n"
 
 
 def serve(sock, addr):
-    f = sock.makefile()
+    f = sock.makefile(mode="rw")
     f.write(f.readline())
     f.flush()
     f.close()
@@ -50,16 +53,16 @@ def server():
 
 def clientprocess():
     t1 = time.time()
-    clients = [gevent.spawn(client) for _ in xrange(N_CLIENTS)]
+    clients = [gevent.spawn(client) for _ in range(N_CLIENTS)]
     gevent.joinall(clients)
     duration = time.time()-t1
-    print "%s clients served within %.2f s." % (N_CLIENTS, duration)
+    print("%s clients served within %.2f s." % (N_CLIENTS, duration))
 
 
 def client():
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.connect(('localhost', PORT))
-    f = sock.makefile()
+    f = sock.makefile(mode="wr")
     f.write(MSG)
     f.flush()
     assert f.readline() == MSG
