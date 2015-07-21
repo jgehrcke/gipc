@@ -2,12 +2,6 @@
 # Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
 
 
-import gevent
-from gevent.wsgi import WSGIServer
-import gipc
-import urllib2
-import time
-
 """
 Multiple clients (running in greenlets that concurrently run in a child
 process) request a response from a WSGIServer running in the parent. Each
@@ -26,12 +20,22 @@ Output on my test system: 100 clients were served within 0.43 s.
 """
 
 
-MSG = "response"
+MSG = u"YO".encode("ascii")
 N = 100
 
 
+import gevent
+from gevent.wsgi import WSGIServer
+import gipc
+import time
+try:
+    import urllib.request as urllib2
+except ImportError:
+    import urllib2
+
+
 def main():
-    http_server = WSGIServer(('localhost', 0), hello_world, log=False)
+    http_server = WSGIServer(('localhost', 0), hello_world, log=None)
     servelet = gevent.spawn(serve, http_server)
     # Wait for server being bound to socket.
     while True:
@@ -52,14 +56,14 @@ def serve(http_server):
 
 def hello_world(environ, start_response):
     # Generate response in child process.
+    start_response('200 OK', [('Content-Type', 'text/html')])
     with gipc.pipe() as (reader, writer):
-        start_response('200 OK', [('Content-Type', 'text/html')])
         rg = gipc.start_process(
             target=child_test_wsgi_scenario_respgen,
             args=(writer, ))
         response = reader.get()
         rg.join()
-    yield response
+    return [response]
 
 
 def child_test_wsgi_scenario_respgen(writer):
@@ -69,13 +73,13 @@ def child_test_wsgi_scenario_respgen(writer):
 def child_test_wsgi_scenario_client(server_address):
     def get():
         assert urllib2.urlopen("http://%s:%s/" % server_address).read() == MSG
-
     t1 = time.time()
-    clientlets = [gevent.spawn(get) for _ in xrange(N)]
+    clientlets = [gevent.spawn(get) for _ in range(N)]
     gevent.joinall(clientlets)
     duration = time.time() - t1
-    print "%s clients were served within %.2f s." % (N, duration)
+    print("%s clients were served within %.2f s." % (N, duration))
 
 
 if __name__ == "__main__":
     main()
+
