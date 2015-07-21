@@ -11,8 +11,8 @@ gipc: child processes and IPC for gevent
 **Table of contents:**
 
     - :ref:`About gipc <about>`
-        - :ref:`What is gipc good for? <what>`
         - :ref:`Usage <usage>`
+        - :ref:`What is gipc good for? <what>`
         - :ref:`Technical notes <technotes>`
         - :ref:`Is gipc reliable? <reliable>`
         - :ref:`Code, requirements, download, installation <installation>`
@@ -39,8 +39,8 @@ About gipc
 .. _what:
 
 gipc (pronunciation “gipsy”) provides convenient child process management in the
-context of `gevent <http://gevent.org>`_. gipc is developed for and tested on
-CPython 2.6/2.7/3.3/3.4 on Linux as well as on Windows.
+context of `gevent <http://gevent.org>`_. Currently, gipc is developed for
+CPython 2.6/2.7/3.3/3.4 on Linux as well as on Windows. It requires gevent 1.1.
 
 Usage of Python's
 `multiprocessing <https://docs.python.org/library/multiprocessing.html>`_
@@ -64,6 +64,52 @@ As far as I know gipc is happily used by, among others,
 Are you successfully applying gipc in your project? I would appreciate if you
 dropped me a quick line.
 
+.. _usage:
+
+Usage
+=====
+
+gipc's usage is pretty simple. Its interface is clear and slim. All you will
+probably ever interact with are ``gipc.start_process()``, ``gipc.pipe()``,
+and their returned objects. Make yourself comfortable with gipc's behavior
+by going through the :ref:`API <api>` section as well as through
+the code :ref:`examples <examples>`.
+
+Example. The following code snippet uses gipc for spawning a child process and
+for creating a pipe, and then sends a Python object from a greenlet in the main
+(parent) process through the pipe to the child::
+
+    import gevent
+    import gipc
+
+    def writelet(w):
+        # This function runs as a greenlet in the parent process.
+        # Put a Python object into the write end of the transport channel.
+        w.put(0)
+
+    def readchild(r):
+        # This function runs in a child process.
+        # Read and validate object from the read end of the transport channel.
+        assert r.get() == 0
+
+    def main():
+        with gipc.pipe() as (readend, writeend):
+            # Start 'writer' greenlet. Provide it with the pipe write end.
+            g = gevent.spawn(writelet, writeend)
+            # Start 'reader' child process. Provide it with the pipe read end.
+            p = gipc.start_process(target=readchild, args=(readend,))
+            # Wait for both to finish.
+            g.join()
+            p.join()
+
+    # Protect entry point from being executed upon import; crucial on Windows.
+    if __name__ == "__main__":
+        main()
+
+Although quite simple, this code would have various unwanted side-effects if
+used with the canonical multiprocessing API instead of ``gipc.start_process()``
+and ``gipc.pipe()``, as outlined in the next paragraph.
+
 
 What is gipc good for, specifically?
 ====================================
@@ -71,12 +117,12 @@ What is gipc good for, specifically?
 There is plenty of motivation for using multiple processes in event-driven
 architectures. The assumption behind gipc is that applying multiple processes
 that communicate among each other (whereas each process has its own event loop)
-can be a decent solution for many types of problems. First of all, it helps
+can be a decent solution for many types of problems: first of all, it helps
 decoupling system components by making each process responsible for one part of
 the architecture only. Furthermore, even a generally I/O-intense application
-can at some point become CPU bound. In these cases, the distribution of tasks
-among multiple processes is an efficient way to make use of multi-core machines
-and to easily increase the performance of the application.
+can at some point become CPU bound in which case the distribution of tasks
+among processes is a great way to make efficient use of multi-core machines
+and to easily increase application performance.
 
 The standard way of using multiple processes in a Python application is to use
 multiprocessing from Python's standard library. However, canonical usage of this
@@ -87,66 +133,49 @@ multiprocessing-based child processes and inter-process communication (IPC) a
 no-brainer again:
 
 - With gipc, multiprocessing.Process-based child processes can safely be created
-  and monitored anywhere within your gevent-powered application. Malicious
+  and monitored **anywhere** within your gevent-powered application. Negative
   side-effects of child process creation in the context of gevent are
   prevented.
 - The API of multiprocessing.Process objects is provided in a gevent-cooperative
   fashion.
 - gevent natively works in children.
-- gipc comes up with a pipe-based transport layer for gevent-cooperative
-  IPC.
-- gipc is lightweight and simple to integrate.
-
-In the following code snippet, a Python object is sent from a greenlet in the
-main process through a pipe to a child process::
-
-    import gevent
-    import gipc
-
-    def child(reader):
-        assert reader.get() == 0
-
-    if __name__ == "__main__":
-        with gipc.pipe() as (reader, writer):
-            writelet = gevent.spawn(lambda w: w.put(0), writer)
-            readchild = gipc.start_process(target=child, args=(reader,))
-            writelet.join()
-            readchild.join()
-
-Although quite simple, this code would have various unwanted side-effects if
-used with the canonical multiprocessing API instead of ``gipc.start_process()``
-and ``gipc.pipe()``, as outlined in the next paragraph.
+- gipc provides a pipe-based transport layer for gevent-cooperative IPC so that
+  application developers can easily make the processes talk to each other.
+- gipc is lightweight and simple to integrate, really!
 
 
-What are the challenges and what is gipc's approach?
+What are the challenges and what is gipc's solution?
 ----------------------------------------------------
 
 **Challenges:**
 
-Depending on the operating system, child process creation via Python's
-multiprocessing in the context of gevent requires special treatment. Most care
-is needed on POSIX-compliant systems. There, a fork might yield a faulty libev
-event loop state in the child. Most noticeable, greenlets spawned before
-forking are cloned and haunt in the child upon context switch. Consider this
-code running on Unix (tested with Python 2.7 & gevent 1.0)::
+Depending on the operating system in use, the creation of child processes via
+Python's multiprocessing in the context of a gevent application requires special
+treatment. Most care is needed on POSIX-compliant systems: most notably,
+greenlets spawned in the parent before forking obviously become cloned, too, and
+haunt in the child, which usually is undesired behavior. The following code
+snippet clarifies this behavior by implementing the example from above, but
+this time by directly using multiprocessing instead of gipc (this has been
+tested on Linux with Python 3.4 & gevent 1.1)::
 
     import gevent
     import multiprocessing
 
-    def child(c):
+    def writelet(c):
+        c.send(0)
+
+    def readchild(c):
         gevent.sleep(0)
         assert c.recv() == 0
         assert c.recv() == 0
 
     if __name__ == "__main__":
-        def writelet(c):
-            c.send(0)
         c1, c2 = multiprocessing.Pipe()
-        writelet = gevent.spawn(writelet, c1)
-        readchild = multiprocessing.Process(target=child, args=(c2,))
-        readchild.start()
-        writelet.join()
-        readchild.join()
+        g = gevent.spawn(writelet, c1)
+        p = multiprocessing.Process(target=readchild, args=(c2,))
+        p.start()
+        g.join()
+        p.join()
 
 It runs without error. Although the code intends to send only one message to
 the child through a multiprocessing ``Pipe``, the two ``assert`` statements
@@ -157,49 +186,58 @@ The other message is sent from the spooky writelet clone in the child. It is
 also written to the ``c1`` end of the pipe which has implicitly been duplicated
 during forking. Greenlet clones in the child of course only run when a context
 switch is triggered; in this case via ``gevent.sleep(0)``. As you can imagine,
-this behavior in general might lead to a wide range of side-effects and tedious
-debugging sessions.
+this behavior may lead to a wide range of side-effects including race
+conditions, and therefore almost guarantees especially tedious debugging
+sessions.
 
-In addition, the code above contains several non-cooperatively blocking method
-calls: ``readchild.join()`` as well as the ``send()``/``recv()`` calls (of
-``multiprocessing.Connection`` objects in general) block the calling greenlet
-non-cooperatively and do not allow for context switches into other greenlets.
+The second class of serious issues in the code above is that it contains several
+non-cooperatively blocking function calls: ``p.join()`` as well as the
+``send()``/``recv()`` calls (of ``multiprocessing.Connection`` objects) block
+the calling greenlet non-cooperatively, i.e. they do not allow for a context
+switch into other greenlets. While this does not lead to an error in the simple
+example code above, this behavior is **not tolerable** in any serious gevent
+application.
 
 **Solution:**
 
 gipc overcomes these and other issues for you transparently and in a straight-
-forward fashion: basically, children start off with a fresh gevent state before
-entering the user-given target function. More specifically, as one of the first
-actions, children destroy the inherited gevent hub as well as the inherited
-libev event loop and create their own fresh versions of these objects. This
-way, inherited greenlets as well as libev watchers become orphaned -- the fresh
-hub and event loop are not connected to them anymore. Consequently, execution
-of code related to these inherited greenlets and watchers is efficiently
-prevented without the need to deactivate or kill them one by one.
+forward fashion.
+
+First of all, the most basic design assumption behind gipc is that application
+developers never actually want to duplicate all running greenlets during fork.
+This leads to the rational of first destroying the inherited "gevent state" in
+the child and then creating a fresh gevent context, before invoking the target
+function.
+
+So, the goal is that children start off with a fresh gevent state before
+entering the user-given target function. Consequently, as one of the first
+actions, children created via gipc destroy the inherited gevent hub as well as
+the inherited libev event loop and create their own fresh versions of these
+entities. This way, inherited greenlets as well as libev watchers become
+orphaned -- the fresh hub and event loop are not connected to them anymore.
+Consequently, execution of code related to these inherited greenlets and
+watchers is efficiently prevented without the need to deactivate or kill them
+actively, one by one.
 
 Furthermore, on POSIX-compliant systems, gipc entirely avoids multiprocessing's
-child monitoring implementation (which is based on ``wait``) and instead uses
-libev's wonderful child watcher system (based on SIGCHLD signal transmission),
-enabling gevent-cooperative waiting for child termination.
+child monitoring implementation (which is based on the class of ``wait`` system
+calls) and instead uses libev's wonderful child watcher system (based on SIGCHLD
+signal transmission), enabling gevent-cooperative waiting for child termination.
+That's how ``p.join()`` from the example above can be made cooperative.
 
-For the sake of gevent-cooperative inter-process communication, gipc uses
-efficient pipe-based data transport channels with non-blocking I/O. gipc takes
-care of closing dispensable pipe handles (file descriptors) in the parent as
-well as in the child after forking.
+For implementing gevent-cooperative inter-process communication, gipc uses
+efficient pipe-based data transport channels with *non-blocking* I/O system
+calls. gipc's transport channel system has been carefully designed (for
+instance, it takes care of closing dispensable file descriptors in the parent
+as well as in the child after forking) and also abstracts away the difficulties
+of passing pipe handles among processes on Windows. gipc also abstracts away
+the implementation differences of the multiprocessing package between Python 2
+and 3.
 
 Overall, gipc's main goal is to allow for the integration of child processes in
 your gevent-powered application via a simple API -- on POSIX-compliant systems
-as well as on Windows.
+as well as on Windows, and on Python 2 and 3.
 
-
-.. _usage:
-
-Usage
-=====
-
-gipc's usage is pretty simple. Its interface is clear and slim. Make yourself
-comfortable with ``gipc.start_process()`` and ``gipc.pipe()`` by going through
-the :ref:`examples <examples>` and the :ref:`API <api>` section.
 
 
 .. _technotes:
