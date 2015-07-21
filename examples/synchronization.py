@@ -18,7 +18,7 @@ def main():
         ptime = time.time()
         ctime = pend.get()
         p.join()
-        print "Time delta: %.8f s." % abs(ptime - ctime)
+        print("Time delta: %.8f s." % abs(ptime - ctime))
 
 
 def writer_process(cend):
@@ -31,3 +31,4 @@ def writer_process(cend):
 
 if __name__ == "__main__":
     main()
+
