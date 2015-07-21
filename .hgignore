@@ -8,9 +8,11 @@ syntax: glob
 *.orig
 .coverage
 pyenv
-test/coverage_html
+test/htmlcov
 docs/_build
+docs/_sphinx_rtd_theme
 dist
 build
 stuff
 coverage_html
+
