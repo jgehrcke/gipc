@@ -21,7 +21,6 @@ import sys, os
 sys.path.insert(0, os.path.abspath('..'))
 import gipc
 
-
 # -- General configuration -----------------------------------------------------
 
 # If your documentation needs a minimal Sphinx version, state it here.
@@ -95,9 +94,6 @@ pygments_style = 'sphinx'
 
 # -- Options for HTML output ---------------------------------------------------
 
-#html_theme_path = ["."]
-#html_theme = 'new_minimal_theme'
-
 html_theme = "sphinx_rtd_theme"
 html_theme_path = ["_themes", ]
 
@@ -108,7 +104,7 @@ html_theme_path = ["_themes", ]
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-html_theme_options = {}
+#html_theme_options = {}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -162,7 +158,7 @@ html_last_updated_fmt = '%b %d, %Y'
 #html_show_sourcelink = True
 
 # If true, "Created using Sphinx" is shown in the HTML footer. Default is True.
-#html_show_sphinx = True
+html_show_sphinx = False
 
 # If true, "(C) Copyright ..." is shown in the HTML footer. Default is True.
 #html_show_copyright = True

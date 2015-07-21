@@ -1,6 +1,14 @@
 .. gipc documentation master file
    Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
 
+.. |br| raw:: html
+
+   <br />
+
+.. |space| raw:: html
+
+   &nbsp;&nbsp;
+
 .. toctree::
     :maxdepth: 2
 
@@ -8,41 +16,28 @@
 gipc: child processes and IPC for gevent
 ========================================
 
-**Table of contents:**
+.. rst-class:: byline
 
-    - :ref:`About gipc <about>`
-        - :ref:`Usage <usage>`
-        - :ref:`What is gipc good for? <what>`
-        - :ref:`Technical notes <technotes>`
-        - :ref:`Is gipc reliable? <reliable>`
-        - :ref:`Code, requirements, download, installation <installation>`
-        - :ref:`Notes for Windows users <winnotes>`
-        - :ref:`Author, license, contact <contact>`
-    - :ref:`Code examples <examples>`
-    - :ref:`API documentation <api>`
-        - :ref:`Spawning child processes <api_spawn>`
-        - :ref:`Creating a pipe and its handle-pair <api_pipe_create>`
-        - :ref:`Handling handles <api_handles>`
-        - :ref:`Controlling child processes <api_control_childs>`
-        - :ref:`Exception types <api_exceptions>`
+    An open source software project created by
+    `Jan-Philip Gehrcke <https://gehrcke.de>`_ |br|
+    `Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_ |space| | |space|
+    `PyPI <https://pypi.python.org/pypi/gipc>`_
 
+.. raw:: html
+
+   <hr />
+
+gipc (pronunciation “gipsy”) provides reliable child process management and
+inter-process communication (IPC) in the context of
+`gevent <http://gevent.org>`_. The current version of gipc has been tested on
+CPython 2.6/2.7/3.3/3.4. It requires gevent 1.1 and supports both, Linux and
+Windows.
 
 This documentation applies to gipc |release|. It was built on |today|.
 
+**Overview**
 
-.. _about:
-
-About gipc
-##########
-
-
-.. _what:
-
-gipc (pronunciation “gipsy”) provides convenient child process management in the
-context of `gevent <http://gevent.org>`_. Currently, gipc is developed for
-CPython 2.6/2.7/3.3/3.4 on Linux as well as on Windows. It requires gevent 1.1.
-
-Usage of Python's
+Direct usage of Python's
 `multiprocessing <https://docs.python.org/library/multiprocessing.html>`_
 package in the context of a gevent-powered application may raise problems and
 most likely breaks the application in various subtle ways. gipc is developed
@@ -54,30 +49,52 @@ comes up with a pipe-based transport layer for gevent-cooperative
 inter-process communication and useful helper constructs. gipc is lightweight
 and simple to integrate.
 
-As far as I know gipc is happily used by, among others,
+gipc is happily used by, among others,
+`Quantopian's <https://www.quantopian.com>`_
+`remote Python debugger <https://github.com/quantopian/qdb>`_,
+`Ajenti <http://ajenti.org/>`_,
+`Chronology <http://chronology.github.io>`_,
+`gipcrpc <https://github.com/studio-ousia/gipcrpc>`_,
+`NetCall <https://github.com/aglyzov/netcall>`_,
+and `GDriveFS <https://github.com/dsoprea/GDriveFS>`_.
+Are you successfully applying gipc in your project? That is always great
+to hear, so please :ref:`drop me a line <contact>`!
 
-    - `Quantopian <https://www.quantopian.com>`_,
-    - `Ajenti <http://ajenti.org/>`_,
-    - `Chronology <http://chronology.github.io>`_,
-    - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_.
 
-Are you successfully applying gipc in your project? I would appreciate if you
-dropped me a quick line.
+**Contents of this documentation:**
+
+    - :ref:`Usage <usage>`
+    - :ref:`Which problem does gipc address, specifically? <what>`
+    - :ref:`Architecture notes <archnotes>`
+    - :ref:`Is gipc reliable? <reliable>`
+    - :ref:`Requirements, download & installation <installation>`
+    - :ref:`Notes for Windows users <winnotes>`
+    - :ref:`Author, license, contact <contact>`
+    - :ref:`Code examples <examples>`
+    - :ref:`API documentation <api>`
+        - :ref:`Spawning child processes <api_spawn>`
+        - :ref:`Creating a pipe and its handle-pair <api_pipe_create>`
+        - :ref:`Handling handles <api_handles>`
+        - :ref:`Controlling child processes <api_control_childs>`
+        - :ref:`Exception types <api_exceptions>`
+
 
 .. _usage:
 
 Usage
-=====
+#####
+gipc's interface is clear and slim. All you will probably ever interact with
+are ``gipc.start_process()``, ``gipc.pipe()``, and their returned objects.
+Make yourself comfortable with gipc's behavior by going through the
+:ref:`API <api>` section as well as through the code
+:ref:`examples <examples>`.
 
-gipc's usage is pretty simple. Its interface is clear and slim. All you will
-probably ever interact with are ``gipc.start_process()``, ``gipc.pipe()``,
-and their returned objects. Make yourself comfortable with gipc's behavior
-by going through the :ref:`API <api>` section as well as through
-the code :ref:`examples <examples>`.
 
-Example. The following code snippet uses gipc for spawning a child process and
-for creating a pipe, and then sends a Python object from a greenlet in the main
-(parent) process through the pipe to the child::
+Quick start example
+===================
+The following code snippet uses gipc for spawning a child process and for
+creating a pipe, and then sends a Python object from a greenlet in the main
+(parent) process through the pipe to the child process::
 
     import gevent
     import gipc
@@ -108,12 +125,14 @@ for creating a pipe, and then sends a Python object from a greenlet in the main
 
 Although quite simple, this code would have various unwanted side-effects if
 used with the canonical multiprocessing API instead of ``gipc.start_process()``
-and ``gipc.pipe()``, as outlined in the next paragraph.
+and ``gipc.pipe()``, as outlined in the :ref:`Challenges <challenges>`
+paragraph.
 
 
-What is gipc good for, specifically?
-====================================
+.. _what:
 
+Which problem does gipc address, specifically?
+##############################################
 There is plenty of motivation for using multiple processes in event-driven
 architectures. The assumption behind gipc is that applying multiple processes
 that communicate among each other (whereas each process has its own event loop)
@@ -127,8 +146,8 @@ and to easily increase application performance.
 The standard way of using multiple processes in a Python application is to use
 multiprocessing from Python's standard library. However, canonical usage of this
 package within a gevent-powered application usually breaks the application
-in various non-obvious ways. gipc is developed with the motivation to solve
-these issues transparently and to make using gevent in combination with
+in various non-obvious ways (see below). gipc is developed with the motivation to
+solve these issues transparently and to make using gevent in combination with
 multiprocessing-based child processes and inter-process communication (IPC) a
 no-brainer again:
 
@@ -144,15 +163,17 @@ no-brainer again:
 - gipc is lightweight and simple to integrate, really!
 
 
+.. _challenges:
+
 What are the challenges and what is gipc's solution?
-----------------------------------------------------
+====================================================
 
 **Challenges:**
 
 Depending on the operating system in use, the creation of child processes via
 Python's multiprocessing in the context of a gevent application requires special
-treatment. Most care is needed on POSIX-compliant systems: most notably,
-greenlets spawned in the parent before forking obviously become cloned, too, and
+treatment. Most care is required on POSIX-compliant systems: greenlets spawned
+in the current process before forking obviously become cloned by ``fork()`` and
 haunt in the child, which usually is undesired behavior. The following code
 snippet clarifies this behavior by implementing the example from above, but
 this time by directly using multiprocessing instead of gipc (this has been
@@ -195,8 +216,8 @@ non-cooperatively blocking function calls: ``p.join()`` as well as the
 ``send()``/``recv()`` calls (of ``multiprocessing.Connection`` objects) block
 the calling greenlet non-cooperatively, i.e. they do not allow for a context
 switch into other greenlets. While this does not lead to an error in the simple
-example code above, this behavior is **not tolerable** in any serious gevent
-application.
+example code above, this behavior is not tolerable in real-world gevent
+applications.
 
 **Solution:**
 
@@ -239,11 +260,19 @@ your gevent-powered application via a simple API -- on POSIX-compliant systems
 as well as on Windows, and on Python 2 and 3.
 
 
+.. _archnotes:
 
-.. _technotes:
+Condensed notes on gipc's architecture
+######################################
+- Child process creation and invocation is done via a thin wrapper around
+  ``multiprocessing.Process``. On Unix, the inherited gevent hub as well as the
+  inherited libev event loop become destroyed and re-initialized in the child
+  before execution of the user-given target function.
 
-Technical notes
-===============
+- On POSIX-compliant systems, gevent-cooperative child process monitoring is
+  based on libev child watchers (this affects the ``is_alive()`` and
+  ``join()`` methods).
+
 - gipc uses classical anonymous pipes as transport layer for
   gevent-cooperative communication between greenlets and/or processes.
   By default, a binary ``pickle`` protocol is used for transmitting arbitrary
@@ -254,41 +283,30 @@ Technical notes
   message transmission rate of 100.000 messages/s through one pipe between two
   processes.
 
-- Child process creation and invocation is done via a thin wrapper around
-  ``multiprocessing.Process``. On Unix, the inherited gevent hub as well as the
-  libev event loop become destroyed and re-initialized in the child before
-  execution of the target function.
-
-- On POSIX-compliant systems, gevent-cooperative child process monitoring is
-  based on libev child watchers (this affects the ``is_alive()`` and
-  ``join()`` methods).
-
-- Convenience features such as a context manager for pipe handles or timeout
-  controls based on ``gevent.Timeout`` are available.
-
-- Any read/write operation on a pipe is ``gevent.lock.Semaphore``-protected
-  and therefore greenlet-/thread safe and atomic.
-
-- The auto-close behavior (gipc automatically closes handles in the parent
-  if provided to the child, and also closes those in the child that were not
-  explicitly transferred to it) might be a limitation in some cases. At the
-  same time, it automatically prevents file descriptor leakage and forces
+- gipc automatically closes handles in the parent if provided to the child,
+  and also closes those in the child that were not  explicitly transferred to
+  it. This auto-close behavior might be a limitation in certain special cases.
+  However, it automatically prevents file descriptor leakage and forces
   developers to make deliberate choices about which handles should be
   transferred explicitly.
 
-- gipc obeys `semantic versioning 2 <http://semver.org/>`_.
+- gipc provides convenience features such as a context manager for pipe
+  handles or timeout controls based on ``gevent.Timeout``.
+
+- Read/write operations on a pipe are ``gevent.lock.Semaphore``-protected
+  and therefore greenthread-safe.
 
 
 .. _reliable:
 
 Is gipc reliable?
-=================
+#################
 gipc is developed with a strong focus on reliability and with best intentions in
-mind. Although gipc handles a delicate combination of processes, signals,
-threads, and forking, I have observed it to work reliably. The unit test suite
-covers all of gipc's features within a clean gevent environment, but also covers
-scenarios of medium complexity. To my knowledge, gipc is being deployed in
-serious production scenarios.
+mind. Although gipc handles a delicate combination of signals, threads, and
+forking, I have observed it to work reliably. The unit test suite covers all of
+gipc's features within a clean gevent environment, but also covers scenarios of
+medium complexity. To my knowledge, gipc is being deployed in serious production
+scenarios.
 
 But still, generally, you should be aware of the fact that mixing any of fork,
 threads, greenlets and an event loop library such as libev bears the potential
@@ -301,12 +319,8 @@ to evaluate gipc in the context of your project -- please share your experience.
 
 .. _installation:
 
-Code, requirements, download, installation
-==========================================
-
-gipc's Mercurial repository is hosted at
-`Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
-
+Requirements, download & installation
+######################################
 gipc supports Linux and Windows and requires:
 
 - `gevent <https://pypi.python.org/pypi/gevent>`_ >= 1.1
@@ -322,12 +336,13 @@ pip can also install the current development version of gipc::
 
     $ pip install hg+https://bitbucket.org/jgehrcke/gipc
 
+gipc obeys `semantic versioning <http://semver.org/>`_.
+
 
 .. _winnotes:
 
 Notes for Windows users
-=======================
-
+#######################
 - The ``_GIPCReader.get()`` timeout feature is not available.
 - "Non-blocking I/O" is imitated by outsourcing blocking I/O calls to threads
   in a gevent thread pool. Compared to native non-blocking I/O as is available
@@ -349,10 +364,9 @@ to such a transition and the first steps are already
 .. _contact:
 
 Author, license, contact
-========================
-
+########################
 gipc is written and maintained by
-`Jan-Philip Gehrcke <http://gehrcke.de>`_ and licensed under an MIT license
+`Jan-Philip Gehrcke`_ and licensed under an MIT license
 (see LICENSE file for details). Your feedback is highly appreciated. You can
 contact me at jgehrcke@googlemail.com or use the
 `Bitbucket issue tracker <https://bitbucket.org/jgehrcke/gipc/issues>`_.
@@ -362,23 +376,22 @@ contact me at jgehrcke@googlemail.com or use the
 
 Examples
 ########
+Note that the following examples are designed with the motivation to demonstrate
+the API and capabilities of gipc, rather than showing interesting use cases.
 
-- :ref:`gipc.pipe()-based IPC <exampleipc>`
-- :ref:`Serving multiple clients (in child) from one server (in parent) <exampleserverclient>`
-- :ref:`Time-synchronization between processes <examplesync>`
-
-Note that these examples are designed with the motivation to demonstrate the API
-and capabilities of gipc, rather than showing interesting use cases.
+- :ref:`exampleipc`
+- :ref:`exampleserverclient`
+- :ref:`examplesync`
 
 .. _exampleipc:
 
-gipc.pipe()-based messaging from greenlet in parent to child
-============================================================
+Example 1: gipc.pipe()-based messaging from greenlet in parent to child
+=======================================================================
 
 Very basic gevent and gipc concepts are explained by means of the following
 simple messaging example:
 
-.. code::
+.. code-block:: python
 
     import gevent
     import gipc
@@ -446,8 +459,8 @@ cooperatively until it has stopped. Then it terminates the child process (via
 
 .. _exampleserverclient:
 
-Serving multiple clients (in child) from one server (in parent)
-===============================================================
+Example 2: serving multiple clients (in child) from one server (in parent)
+==========================================================================
 
 For pure API and reliability demonstration purposes, this example implements
 TCP communication between a server in the parent process and multiple clients
@@ -469,7 +482,7 @@ in one child process:
 
 6)  The server greenlet is joined.
 
-.. code::
+.. code-block:: python
 
     import gevent
     from gevent.server import StreamServer
@@ -523,8 +536,8 @@ Output on my test machine: ``1000 clients served within 0.54 s``.
 
 .. _examplesync:
 
-Time-synchronization between processes
-======================================
+Example 3: time-synchronization between processes
+=================================================
 
 Child process creation may take a significant amount of time, especially on
 Windows. The exact amount of time is not predictable.
@@ -540,7 +553,7 @@ bidirectional synchronization handshake:
 
 This concept can easily be implemented using a bidirectional ``gipc.pipe()``:
 
-.. code::
+.. code-block:: python
 
     import gevent
     import gipc
