@@ -1,6 +1,7 @@
-Version 0.6.0 (xxx xx, 2015)
+Version 0.6.0 (Jul 22, 2015)
 ----------------------------
-    - Add support for Python 3.
+    - Add support for CPython 3.3 and 3.4.
+    - Require gevent >= 1.1b1.
 
 
 Version 0.5.0 (Oct 22, 2014)
