@@ -210,12 +210,13 @@ def start_process(target, args=(), kwargs={}, daemon=None, name=None):
     Any existing instance of :class:`gipc._GIPCHandle` or
     :class:`gipc._GIPCDuplexHandle` can be passed to the child process via
     ``args`` and/or ``kwargs``. If any such instance is passed to the child,
-    gipc automatically closes the corresponding file descriptor in the parent.
+    gipc automatically closes the corresponding file descriptor(s) in the
+    parent.
 
     .. note::
 
-        Compared to the canonical `multiprocessing.Process()` constructor, this
-        function
+        Compared to the canonical ``multiprocessing.Process()`` constructor,
+        this function
 
         - returns a :class:`gipc._GProcess` instance which is compatible with
           the ``multiprocessing.Process`` API.
