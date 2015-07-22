@@ -28,7 +28,7 @@ examples, and in-depth information.
 Supported platforms
 ===================
 The current version of gipc has been tested on CPython 2.6/2.7/3.3/3.4. It
-requires gevent 1.1 and supports both, Linux and Windows.
+requires gevent 1.1 and supports both, Unix-like systems and Windows.
 
 
 Is gipc reliable?
