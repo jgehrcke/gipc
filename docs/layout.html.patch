@@ -1,5 +1,5 @@
---- layout.html.orig	2015-07-21 15:57:35.784000000 +0200
-+++ layout.html	2015-07-22 00:47:11.384000000 +0200
+--- _sphinx_rtd_theme/sphinx_rtd_theme/layout.html.orig	2015-07-21 15:57:35.784000000 +0200
++++ _sphinx_rtd_theme/sphinx_rtd_theme/layout.html	2015-07-22 20:11:30.888000000 +0200
 @@ -6,7 +6,6 @@
  {%- else %}
    {%- set titlesuffix = "" %}
@@ -44,7 +44,7 @@
    {%- block linktags %}
      {%- if hasdoc('about') %}
          <link rel="author" title="{{ _('About these documents') }}"
-@@ -77,119 +56,98 @@
+@@ -77,119 +56,103 @@
    {# Keep modernizr in head - http://modernizr.com/docs/#installing #}
    <script src="{{ pathto('_static/js/modernizr.min.js', 1) }}"></script>
  
@@ -215,6 +215,11 @@
 -    </section>
 -
 +      {% include "footer.html" %}
++      This website was built with a
++      <a href="https://bitbucket.org/jgehrcke/gipc/src/tip/docs/layout.html.patch">
++      brutally simplified</a>
++      version of the <a href="https://github.com/snide/sphinx_rtd_theme">
++      Read the Docs Sphinx Theme</a>.
 +    </div>
    </div>
 -  {% include "versions.html" %}
