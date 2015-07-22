@@ -1,56 +1,56 @@
+`Changelog <https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst>`_ |
+`gipc @ PyPI <https://pypi.python.org/pypi/gipc>`_ |
+`gipc @ Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_
 
-What is gipc?
-=============
+
+Overview
+========
+gipc (pronunciation “gipsy”) provides reliable child process management and
+inter-process communication (IPC) in the context of gevent.
+
 Usage of Python's multiprocessing package in the context of a gevent-powered
 application may raise problems and most likely breaks the application in various
-subtle ways.
-
-gipc (pronunciation "gipsy") is developed with the motivation to solve many of
-these issues transparently. With gipc, multiprocessing.Process-based child
-processes can safely be created anywhere within your gevent-powered application.
-The API of multiprocessing.Process objects is provided in a gevent-cooperative
-fashion. Furthermore, gipc comes up with a pipe-based transport layer for
+subtle ways. gipc is developed with the motivation to solve many of these issues
+transparently. With gipc, multiprocessing.Process-based child processes can
+safely be created anywhere within your gevent-powered application. The API of
+multiprocessing.Process objects is provided in a gevent-cooperative fashion.
+Furthermore, gipc comes up with a pipe-based transport layer for
 gevent-cooperative inter-process communication and useful helper constructs.
 gipc is lightweight and simple to integrate.
 
 
-Which Python and gevent versions are supported?
-===============================================
-The latest version of gipc is developed against gevent 1.1. On Linux, gipc has
-been tested on CPython 2.6.9, 2.7.10, 3.3.6, and 3.4.3. On Windows, gipc has
-been tested on CPython 2.7 and 3.4.
+Documentation
+=============
+Please visit https://gehrcke.de/gipc for finding API documentation, code
+examples, and in-depth information.
 
 
-Where are documentation and changelog?
-======================================
-    - API documentation and further details: http://gehrcke.de/gipc.
-    - `Changelog <https://bitbucket.org/jgehrcke/gipc/src/tip/CHANGELOG.rst>`_,
-      hosted at Bitbucket.
+Supported platforms
+===================
+The current version of gipc has been tested on CPython 2.6/2.7/3.3/3.4. It
+requires gevent 1.1 and supports both, Linux and Windows.
 
 
-Where to download gipc?
-=======================
-    - Official releases: `PyPI <http://pypi.python.org/pypi/gipc>`_.
-    - Development version: `Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_.
+Is gipc reliable?
+=================
+This is an important question, because the matter gipc is dealing with (a
+delicate combination of fork, threads, leightweight threads, signals, and an
+event loop library) bears the potential for various kinds of corner-case
+disasters. The best answer probably is that gipc is backed by an extensive unit
+test suite and the following projects are happily making use of it:
 
-
-Is gipc reliable? Who uses it?
-==============================
-That's an important question, because gipc deals with a delicate combination of
-signals, leightweight threads, processes, and inter-process communication on a
-number of different platforms. AFAIK, these projects are happy with using gipc:
-
-    - `Quantopian <https://www.quantopian.com>`_
+    - `Quantopian’s remote Python debugger <https://github.com/quantopian/qdb>`_
     - `Ajenti <http://ajenti.org/>`_
     - `Chronology <http://chronology.github.io>`_
     - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_
+    - `NetCall <https://github.com/aglyzov/netcall>`_
 
 Are you successfully using gipc in your project? I would appreciate if you
 dropped me a quick line.
 
 
-How can the unit tests be run?
-==============================
+Unit tests and code audit
+=========================
 If you run into troubles with gipc, it is a good idea to run the unit test suite
 under your conditions. gipc's unit tests are written for
 `pytest <http://pytest.org>`_. With ``gipc/test`` (included in the release)
@@ -58,22 +58,19 @@ being the current working directory, I usually run tests like this::
 
     $ py.test -v
 
-
-How is code audit perfomed?
-===========================
-I use `pep8 <http://pypi.python.org/pypi/pep8>`_ and
-`pylint <http://pypi.python.org/pypi/pylint>`_. Have a look at ``audit.sh`` in
-the code repository. Unit test code coverage analysis requires
-`coverage <http://pypi.python.org/pypi/coverage>`_ and
-`pytest-cov <http://pypi.python.org/pypi/pytest-cov>`_. ``audit.sh`` leaves
-behind a coverage HTML report in the ``coverage_html`` directory.
+Other than that, I use `pep8 <http://pypi.python.org/pypi/pep8>`_ and `pylint
+<http://pypi.python.org/pypi/pylint>`_ for code audit. Have a look at
+``audit.sh`` in the code repository. Unit test code coverage analysis requires
+`coverage <http://pypi.python.org/pypi/coverage>`_ and `pytest-cov
+<http://pypi.python.org/pypi/pytest-cov>`_. ``audit.sh`` leaves behind a
+coverage HTML report in the test directory.
 
 
 Contact & help
 ==============
-Your feedback and questions are highly appreciated. For now, please contact me
-via mail at jgehrcke@googlemail.com or use the
-`Bitbucket issue tracker <https://bitbucket.org/jgehrcke/gipc/issues>`_.
+Your feedback and questions are highly appreciated. Please contact me via mail
+at jgehrcke@googlemail.com or use the `Bitbucket issue tracker
+<https://bitbucket.org/jgehrcke/gipc/issues>`_.
 
 
 Author & license
