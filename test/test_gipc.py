@@ -10,12 +10,14 @@ fundamental tests first and more complex tests later.
 """
 
 
-import sys
 import os
+import sys
 import time
 import signal
-import multiprocessing
 import random
+import logging
+import multiprocessing
+
 
 import gevent
 import gevent.queue
@@ -25,19 +27,18 @@ from gipc.gipc import _get_all_handles as get_all_handles
 from gipc.gipc import _set_all_handles as set_all_handles
 from gipc.gipc import _signals_to_reset as signals_to_reset
 
-WINDOWS = sys.platform == "win32"
-
 
 from py.test import raises, mark
 
 
-import logging
 logging.basicConfig(
     format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
     datefmt='%H:%M:%S')
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
+
+WINDOWS = sys.platform == "win32"
 LONG = 999999
 SHORTTIME = 0.01
 ALMOSTZERO = 0.00001
