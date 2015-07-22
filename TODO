@@ -5,7 +5,6 @@ A rather randomly ordered set of notes.
   are sent.)
 - Can gevent's FileObjectPosix be of any use?
 - hub.cancel_wait() (cf. gevent sockets) in close instead of lock check?
-- Ensure portability among Python 2/3 as soon as gevent is supported on Py3.
 - put() timeout? Relevant in case of pipe being full. However, put()
   duration cannot be controlled if write is blocking *after* partial
   msg write. Doesn't make sense I think.
