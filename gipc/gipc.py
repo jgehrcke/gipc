@@ -7,7 +7,7 @@ gipc: child processes and inter-process communication (IPC) for gevent.
 
 gipc (pronunciation “gipsy”)
 
-* prevents negative side-effects ofmultiprocessing-based child process creation
+* prevents negative side-effects of multiprocessing-based child process creation
   in the context of gevent.
 
 * provides the multiprocessing.Process API in a gevent-cooperative fashion.
