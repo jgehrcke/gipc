@@ -1152,7 +1152,8 @@ class TestComplexUseCases(object):
                     args=(writer, ))
                 response = reader.get()
                 rg.join()
-            yield response
+                assert rg.exitcode == 0
+            return [response]
 
         http_server = WSGIServer(('localhost', 0), hello_world)
         servelet = gevent.spawn(serve, http_server)
@@ -1165,6 +1166,7 @@ class TestComplexUseCases(object):
             target=complchild_test_wsgi_scenario_client,
             args=(http_server.address, ))
         client.join()
+        assert client.exitcode == 0
         servelet.kill()
         servelet.get()  # get() is join and re-raises Exception.
 
@@ -1176,6 +1178,7 @@ class TestComplexUseCases(object):
                     w.put("msg")
                     assert r2.get() == "msg"
                     p.join()
+                    assert p.exitcode == 0
 
         duplexlets = [gevent.spawn(duplex) for _ in range(10)]
         for g in duplexlets:
@@ -1187,13 +1190,16 @@ def complchild_test_multi_duplex(r, w):
 
 
 def complchild_test_wsgi_scenario_respgen(writer):
-    writer.put("response")
+    writer.put(b"response")
 
 
 def complchild_test_wsgi_scenario_client(http_server_address):
-    import urllib2
+    try:
+        import urllib.request as urllib2
+    except ImportError:
+        import urllib2    
     result = urllib2.urlopen("http://%s:%s/" % http_server_address)
-    assert result.read() == "response"
+    assert result.read() == b"response"
 
 
 def complchild_test_threadpool_resolver_mp():
