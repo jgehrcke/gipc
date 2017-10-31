@@ -291,7 +291,7 @@ class TestProcess(object):
     def test_exitcode_previous_to_join(self):
         p = start_process(lambda: gevent.sleep(SHORTTIME))
         assert p.exitcode is None
-        gevent.sleep(10 * SHORTTIME)
+        gevent.sleep(50 * SHORTTIME)
         assert p.exitcode == 0
         p.join()
 
