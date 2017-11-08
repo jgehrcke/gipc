@@ -1,2 +1,4 @@
 pytest==3.2.3
 pytest-cov==2.5.1
+rst2html5
+flake8

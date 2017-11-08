@@ -21,3 +21,4 @@ script:
     - python --version
     - uname -a
     - pytest -vv test/
+    - bash audit.sh
