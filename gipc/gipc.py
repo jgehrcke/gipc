@@ -26,7 +26,6 @@ import codecs
 import logging
 import multiprocessing
 import multiprocessing.process
-import multiprocessing.reduction
 from itertools import chain
 try:
     import cPickle as pickle
@@ -34,6 +33,7 @@ except ImportError:
     import pickle
 WINDOWS = sys.platform == "win32"
 if WINDOWS:
+    import multiprocessing.reduction
     import msvcrt
 
 
@@ -44,8 +44,9 @@ import gevent.event
 
 
 # Decide which method to use for transferring WinAPI pipe handles to children.
-WINAPI_HANDLE_TRANSFER_STEAL = hasattr(
-    multiprocessing.reduction, "steal_handle")
+if WINDOWS:
+    WINAPI_HANDLE_TRANSFER_STEAL = hasattr(
+        multiprocessing.reduction, "steal_handle")
 
 
 # Logging for debugging purposes. Usage of logging in this simple form in the
