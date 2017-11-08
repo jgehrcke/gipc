@@ -1,5 +1,6 @@
 # -*- coding: utf-8 -*-
 # Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
+# flake8: noqa
 
 
 __version__ = '0.6.0'
