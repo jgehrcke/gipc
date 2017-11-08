@@ -27,15 +27,17 @@ import logging
 import multiprocessing
 import multiprocessing.process
 from itertools import chain
+
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
+
 WINDOWS = sys.platform == "win32"
+
 if WINDOWS:
     import multiprocessing.reduction
     import msvcrt
-
 
 import gevent
 import gevent.os
@@ -504,9 +506,12 @@ class _GProcess(multiprocessing.Process):
                 status = 'stopped'
             elif isinstance(status, int):
                 status = 'stopped[%s]' % exitcodedict.get(status, status)
-            return '<%s(%s, %s%s)>' % (type(self).__name__, self._name,
-                status, self.daemon and ' daemon' or '')
-
+            return '<%s(%s, %s%s)>' % (
+                type(self).__name__,
+                self._name,
+                status,
+                self.daemon and ' daemon' or ''
+                )
 
     def join(self, timeout=None):
         """
@@ -899,13 +904,13 @@ class _GIPCWriter(_GIPCHandle):
     def _write_py26_fallback(self, bindata):
         # memoryview() is not available in Python 2.6, buffer() has been
         # removed from Python 3. The API of buffer/memview objects differs.
-        bindata = buffer(bindata)
+        bindata = buffer(bindata)  # noqa: F821
         while True:
             bytes_written = _write_nonblocking(self._fd, bindata)
             if len(bindata) == bytes_written:
                 break
             # Get new buffer with `bytes_written` offset of previous buffer.
-            bindata = buffer(bindata, bytes_written)
+            bindata = buffer(bindata, bytes_written)  # noqa: F821
 
     def put(self, o):
         """Encode object ``o`` and write it to the pipe.
@@ -948,11 +953,14 @@ class _PairContext(tuple):
         exit exception.
         """
         e2_exit_exception = None
+
         try:
             self[1].__exit__(exc_type, exc_value, traceback)
-        except:
+        except:  # noqa: E722
             e2_exit_exception = sys.exc_info()
+
         self[0].__exit__(exc_type, exc_value, traceback)
+
         if e2_exit_exception:
             _reraise(*e2_exit_exception)
 
@@ -1030,7 +1038,8 @@ def _set_all_handles(handles):
 
 # Inspect signal module for signals whose action is to be restored to the
 # default action right after fork.
-_signals_to_reset = [getattr(signal, s) for s in
+_signals_to_reset = [
+    getattr(signal, s) for s in
     set([s for s in dir(signal) if s.startswith("SIG")]) -
     # Exclude constants that are not signals such as SIG_DFL and SIG_BLOCK.
     set([s for s in dir(signal) if s.startswith("SIG_")]) -
