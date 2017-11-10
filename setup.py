@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2017 Jan-Philip Gehrcke. See LICENSE file for details.
 
 import re
 try:
@@ -28,11 +28,13 @@ setup(
     classifiers = [
         "License :: OSI Approved :: MIT License",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 2.6",
         "Programming Language :: Python :: 2.7",
         "Programming Language :: Python :: 3.3",
         "Programming Language :: Python :: 3.4",
+        "Programming Language :: Python :: 3.5",
+        "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: Implementation :: CPython",
+        "Programming Language :: Python :: Implementation :: PyPy",
         "Operating System :: MacOS :: MacOS X",
         "Operating System :: POSIX",
         "Operating System :: Microsoft :: Windows",
@@ -40,5 +42,5 @@ setup(
         "Topic :: System :: Hardware :: Symmetric Multi-processing",
         "Intended Audience :: Developers",
         ],
-    install_requires=("gevent>=1.1b1"),
+    install_requires=("gevent>=1.2"),
     )
