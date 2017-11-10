@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2015 Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2017 Jan-Philip Gehrcke. See LICENSE file for details.
 
 
 """
@@ -1215,7 +1215,7 @@ def complchild_test_wsgi_scenario_client(http_server_address):
     try:
         import urllib.request as urllib2
     except ImportError:
-        import urllib2    
+        import urllib2
     result = urllib2.urlopen("http://%s:%s/" % http_server_address)
     assert result.read() == b"response"
 

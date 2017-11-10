@@ -1,3 +1,22 @@
+Version 0.7.0 (in development)
+------------------------------
+
+    Breaking changes:
+
+    - Require gevent 1.2 or newer.
+
+    New platform support:
+
+    - Add support for PyPy on Linux. Thanks to Oliver Margetts and to Heungsub
+      Lee.
+
+    Test / CI changes:
+
+    - Do not test on CPython 3.3 anymore, but test on 3.5 and 3.6.
+    - Test on PyPy2.7 and PyPy3.
+    - Fix WSGI-related test, stabilize ``test_exitcode_previous_to_join``.
+
+
 Version 0.6.0 (Jul 22, 2015)
 ----------------------------
     - Add support for CPython 3.3 and 3.4.
