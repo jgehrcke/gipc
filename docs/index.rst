@@ -18,10 +18,10 @@ gipc: child processes and IPC for gevent
 
 .. rst-class:: byline
 
-    An open source software project created by
-    `Jan-Philip Gehrcke <https://gehrcke.de>`_ |br|
     `GitHub <https://github.com/jgehrcke/gipc>`_ |space| | |space|
-    `PyPI <https://pypi.python.org/pypi/gipc>`_
+    `PyPI <https://pypi.python.org/pypi/gipc>`_ |br|
+    An open source software project created by
+    `Jan-Philip Gehrcke <https://gehrcke.de>`_
 
 .. raw:: html
 
@@ -33,8 +33,7 @@ and inter-process communication in the context of `gevent
 
 gipc works on CPython 2.7/3.4/3.5/3.6. It requires gevent 1.2 and supports both,
 Unix-like systems as well as Windows. On Unix-like systems, gipc also runs on
-PyPy2.7 and PyPy3. Tests are not yet automatically run for the Windows and
-Darwin platforms and corresponding community feedback is greatly appreciated.
+PyPy2.7 and PyPy3.
 
 This documentation applies to gipc |release|. It was built on |today|.
 
@@ -72,7 +71,8 @@ to hear: please :ref:`drop me a line <contact>`!
     - :ref:`Which problem does gipc address, specifically? <what>`
     - :ref:`Architecture notes <archnotes>`
     - :ref:`Is gipc reliable? <reliable>`
-    - :ref:`Requirements, download & installation <installation>`
+    - :ref:`Download & installation <installation>`
+    - :ref:`Platform support <platforms>`
     - :ref:`Notes for Windows users <winnotes>`
     - :ref:`Author, license, contact <contact>`
     - :ref:`Code examples <examples>`
@@ -88,7 +88,7 @@ to hear: please :ref:`drop me a line <contact>`!
 
 Usage
 #####
-gipc's interface is slim. All you will probably ever interact with are
+gipc's interface is slim. All you will probably interact with are
 ``gipc.start_process()``, ``gipc.pipe()``, and their returned objects. Make
 yourself familiar with gipc's behavior by going through the code
 :ref:`examples <examples>` as well as through the :ref:`API <api>` section.
@@ -163,14 +163,14 @@ child processes and inter-process communication (IPC) a no-brainer again:
 
 - With gipc, ``multiprocessing.Process``-based child processes can safely be
   created and monitored anywhere within your gevent-powered application.
-  Negative side-effects of child process creation in the context of gevent are
-  prevented.
+  Non-obvious side-effects of child process creation in the context of gevent
+  are prevented.
 - The API of ``multiprocessing.Process`` objects is provided in a
   gevent-cooperative fashion.
 - gevent natively works in children.
 - gipc provides a pipe-based transport layer for gevent-cooperative IPC so that
   application developers can easily make greenlets exchange information in a
-  stream-like fashion, within one process or across process boundaries.
+  stream-like fashion; across process boundaries or within a process.
 - gipc is lightweight and simple to integrate, really!
 
 
@@ -178,8 +178,6 @@ child processes and inter-process communication (IPC) a no-brainer again:
 
 What are the challenges and what is gipc's solution?
 ====================================================
-
-**Challenges:**
 
 Depending on the operating system in use, the creation of child processes via
 Python's multiprocessing in the context of a gevent application requires special
@@ -337,14 +335,8 @@ to evaluate gipc in the context of your project -- please share your experience.
 
 .. _installation:
 
-Requirements, download & installation
+Download & installation
 ######################################
-gipc supports Linux and Windows and requires:
-
-- `gevent <https://pypi.python.org/pypi/gevent>`_ >= 1.2
-  (currently, gipc is developed and tested against gevent 1.2).
-- CPython 2.7, 3.4, 3.5, or 3.6.
-
 The latest gipc release from PyPI can be downloaded and installed via
 `pip <https://pip.pypa.io/en/stable/>`_::
 
@@ -355,6 +347,17 @@ pip can also install the current development version of gipc::
     $ pip install git+https://github.com/jgehrcke/gipc
 
 gipc obeys `semantic versioning <http://semver.org/>`_.
+
+
+.. _platforms:
+
+Platform support
+################
+The current version of gipc works on CPython 2.7/3.4/3.5/3.6. It has been tested
+against gevent 1.2 and supports both, Unix-like systems as well as Windows. On
+Unix-like systems, gipc also works with PyPy2.7 and PyPy3. Tests are not
+automatically run for the Windows and Darwin platforms and corresponding
+community feedback is greatly appreciated.
 
 
 .. _winnotes:

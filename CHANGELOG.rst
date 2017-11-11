@@ -1,5 +1,5 @@
-Version 0.7.0 (in development)
-------------------------------
+master (in development)
+-----------------------
 
     Breaking changes:
 
