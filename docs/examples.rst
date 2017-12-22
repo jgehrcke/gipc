@@ -3,8 +3,9 @@
 ********
 Examples
 ********
-The following examples are meant to demonstrate the API and capabilities of
-gipc, rather than showing interesting use cases. I hope they are useful!
+This section shows three example programs using gipc. These examples have been
+created mainly for educational purposes and might therefore lack real-world
+purpose :-). I hope they are useful!
 
 - :ref:`exampleipc`
 - :ref:`exampleserverclient`
