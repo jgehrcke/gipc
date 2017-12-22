@@ -12,9 +12,9 @@
 .. toctree::
     :maxdepth: 2
 
-========================================
+########################################
 gipc: child processes and IPC for gevent
-========================================
+########################################
 
 .. rst-class:: byline
 
@@ -86,8 +86,9 @@ to hear: please :ref:`drop me a line <contact>`!
 
 .. _usage:
 
+*****
 Usage
-#####
+*****
 gipc's interface is slim. All you will probably interact with are
 ``gipc.start_process()``, ``gipc.pipe()``, and their returned objects. Make
 yourself familiar with gipc's behavior by going through the code
@@ -141,8 +142,9 @@ and ``gipc.pipe()``. These side effects are described below in the
 
 .. _what:
 
+**********************************************
 When would you want to use gipc, specifically?
-##############################################
+**********************************************
 There is plenty of motivation for using multiple processes in event-driven
 architectures. The rationale behind gipc is that applying multiple processes
 that communicate among each other can be a decent solution for various types of
@@ -176,9 +178,9 @@ child processes and inter-process communication (IPC) a no-brainer again:
 
 .. _challenges:
 
+****************************************************
 What are the challenges and what is gipc's solution?
-====================================================
-
+****************************************************
 Depending on the operating system in use, the creation of child processes via
 Python's multiprocessing in the context of a gevent application requires special
 treatment. Most care is required on POSIX-compliant systems: greenlets spawned
@@ -277,8 +279,9 @@ Python 2 or Python 3, Windows, or a Unix-like system such as Linux or Darwin.
 
 .. _archnotes:
 
+*********************************
 gipc's architecture in a nutshell
-#################################
+*********************************
 - Child process creation and invocation is done via a thin wrapper around
   ``multiprocessing.Process``. On Unix-like systems, the inherited gevent hub as
   well as the inherited libev event loop become destroyed and re-initialized in
@@ -315,8 +318,9 @@ gipc's architecture in a nutshell
 
 .. _reliable:
 
+*****************
 Is gipc reliable?
-#################
+*****************
 gipc is developed with a strong focus on reliability and with best intentions in
 mind. Although gipc handles a delicate combination of signals, threads, and
 forking, I have observed it to work reliably. The unit test suite covers all of
@@ -335,8 +339,9 @@ to evaluate gipc in the context of your project -- please share your experience.
 
 .. _installation:
 
+***********************
 Download & installation
-######################################
+***********************
 The latest gipc release from PyPI can be downloaded and installed via
 `pip <https://pip.pypa.io/en/stable/>`_::
 
@@ -351,8 +356,9 @@ gipc obeys `semantic versioning <http://semver.org/>`_.
 
 .. _platforms:
 
+****************
 Platform support
-################
+****************
 The current version of gipc works on CPython 2.7/3.4/3.5/3.6. It has been tested
 against gevent 1.2 and supports both, Unix-like systems as well as Windows. On
 Unix-like systems, gipc also works with PyPy2.7 and PyPy3. Tests are not
@@ -362,8 +368,9 @@ community feedback is greatly appreciated.
 
 .. _winnotes:
 
+***********************
 Notes for Windows users
-#######################
+***********************
 - The ``_GIPCReader.get()`` timeout feature is not available.
 - "Non-blocking I/O" is imitated by outsourcing blocking I/O calls to threads
   in a gevent thread pool. Compared to native non-blocking I/O as is available
@@ -384,8 +391,9 @@ to such a transition and the first steps are already
 
 .. _contact:
 
+************************
 Author, license, contact
-########################
+************************
 gipc is written and maintained by
 `Jan-Philip Gehrcke`_ and licensed under an MIT license
 (see LICENSE file for details). Your feedback is highly appreciated. You can
@@ -395,8 +403,9 @@ contact me at jgehrcke@googlemail.com or use the
 
 .. _examples:
 
+********
 Examples
-########
+********
 The following examples are meant to demonstrate the API and capabilities of
 gipc, rather than showing interesting use cases. I hope they are useful!
 
@@ -615,8 +624,9 @@ processes).
 
 .. _api:
 
+********
 gipc API
-########
+********
 
 - :ref:`Spawning child processes <api_spawn>`
 - :ref:`Creating a pipe and its handle-pair <api_pipe_create>`
