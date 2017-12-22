@@ -27,6 +27,7 @@ This documentation applies to gipc |release|. It was built on |today|.
     :maxdepth: 2
 
     overview
+    background
     usage
     when
     challenges
