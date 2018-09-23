@@ -28,62 +28,64 @@ import platform
 sys.path.insert(0, os.path.abspath('..'))
 import gipc
 
+log = logging.getLogger()
 logging.basicConfig(
-    format='%(asctime)s,%(msecs)-6.1f [%(process)d] %(message)s',
-    datefmt='%H:%M:%S')
-log = logging.getLogger()
-log = logging.getLogger()
-log.setLevel(logging.INFO)
-
+    level=logging.INFO,
+    format="%(asctime)s.%(msecs)03d %(levelname)s: %(message)s",
+    datefmt="%y%m%d-%H:%M:%S"
+    )
 
 N = 10**7
 n = 80
 
-
-# This example seems to suffer from a severe performance problem on PyPy. On my
-# machine I got 890 MBytes/s on CPython 3.6.3 / gevent 1.3.6, whereas with
-# PyPy35-6.0.0 (everything else constant) I saw 3 MB/s. Adopt to this so that
-# this executes within reasonable time during CI.
 if platform.python_implementation() == 'PyPy':
+    # This example seems to suffer from a severe performance problem on PyPy. On
+    # my machine I got 890 MBytes/s on CPython 3.6.3 / gevent 1.3.6, whereas
+    # with PyPy35-6.0.0 (everything else constant) I saw 3 MB/s. Adopt to this
+    # so that this executes within reasonable time during CI.
     N = 10**6
+    n = 20
 
-
-log.info("Creating data...")
-DATA = os.urandom(N)*n
-mbytes = n*N / 1024.0 / 1024
-log.info("Mbytes: %s" % mbytes)
+log.info('Creating data ...')
+DATA = os.urandom(N) * n
+mbytes = N * n / 1024.0 / 1024
+log.info('MBytes: %s' % mbytes)
 
 
 def spawn_child_transfer(childhandler, parenthandler):
+
     p = gipc.start_process(target=child, args=(childhandler,))
-    assert parenthandler.get() == b"start"
-    log.info("Sending data.")
+
+    assert parenthandler.get() == b'start'
+
+    log.info('Sending data')
     t0 = time.time()
     parenthandler.put(DATA)
-    assert parenthandler.get() == b"done"
+    assert parenthandler.get() == b'done'
     delta = time.time() - t0
-    log.info("Data received, verifying...")
+
+    log.info('Child confirmed that it received data')
+
     p.join()
     assert p.exitcode == 0
-    log.info("Duration: %.3f s" % delta)
+    log.info('Duration: %.3f s' % delta)
     rate = mbytes/delta
-    log.info("Rate: %.2f MBytes/s" % rate)
+    log.info('Rate: %.2f MBytes/s' % rate)
 
 
 def child(childhandler):
-    childhandler.put(b"start")
+    childhandler.put(b'start')
     d = childhandler.get()
-    childhandler.put(b"done")
+    childhandler.put(b'done')
     # `DATA` is available only on POSIX-compliant systems (after fork()).
     assert DATA == d
 
 
 with gipc.pipe(duplex=True, encoder=None, decoder=None) as (c, p):
-    log.info("Test with raw pipe...")
+    log.info('Test with raw pipe...')
     spawn_child_transfer(c, p)
 
 
 with gipc.pipe(duplex=True) as (c, p):
-    log.info("Test with default pipe...")
+    log.info('Test with default pipe...')
     spawn_child_transfer(c, p)
-
