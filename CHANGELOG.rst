@@ -3,7 +3,7 @@ master (in development)
 
     Breaking changes:
 
-    - Require gevent 1.2.x.
+    - gevent 1.1 is not supported anymore.
 
     New platform support:
 
@@ -12,9 +12,11 @@ master (in development)
 
     Test / CI changes:
 
+    - Test against both, gevent 1.2.x and gevent 1.3.x.
     - Do not test on CPython 3.3 anymore, but test on 3.5 and 3.6.
     - Test on PyPy2.7 and PyPy3.
-    - Fix WSGI-related test, stabilize ``test_exitcode_previous_to_join``.
+    - Fix WSGI-related test.
+    - Stabilize ``test_exitcode_previous_to_join``.
 
 
 Version 0.6.0 (Jul 22, 2015)

@@ -1,4 +1,4 @@
-# Instruct Travis to build PRs ass well as merges
+# Instruct Travis to build PRs as well as merges
 # to master. See https://stackoverflow.com/a/31882307/145400.
 branches:
   only:
@@ -26,5 +26,8 @@ script:
     - python --version
     - pip list
     - uname -a
+    - pytest -vv test/
+    - echo "Re-test with gevent 1.2.x"
+    - pip install 'gevent>=1.2,<1.3' --upgrade
     - pytest -vv test/
     - bash audit.sh
