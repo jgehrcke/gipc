@@ -1156,7 +1156,7 @@ class TestComplexUseCases(object):
         assert p.exitcode == 0
 
     def test_wsgi_scenario(self):
-        from gevent.wsgi import WSGIServer
+        from gevent.pywsgi import WSGIServer
 
         def serve(http_server):
             http_server.serve_forever()
