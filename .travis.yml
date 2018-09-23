@@ -24,6 +24,7 @@ install:
 
 script:
     - python --version
+    - pip list
     - uname -a
     - pytest -vv test/
     - bash audit.sh
