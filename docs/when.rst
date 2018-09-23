@@ -3,6 +3,7 @@
 **********************************************
 When would you want to use gipc, specifically?
 **********************************************
+
 There is plenty of motivation for using multiple processes in event-driven
 architectures. The rationale behind gipc is that applying multiple processes
 that communicate among each other can be a decent solution for various types of
@@ -10,8 +11,8 @@ that communicate among each other can be a decent solution for various types of
 process responsible for just one architectural aspect ("separation of
 concerns"). Furthermore, even a generally I/O-intense application can at some
 point become CPU-bound in which case the distribution of tasks across multiple
-loosely coupled processes is a way to make efficient use of multi-core machine
-architectures and to easily increase application performance.
+loosely or tightly coupled processes is a way to make efficient use of
+multi-core machine architectures and to easily increase application performance.
 
 The canonical way for running Python code in multiple processes in a Python
 application is to use ``multiprocessing`` from Python's standard library.
