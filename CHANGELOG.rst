@@ -3,7 +3,7 @@ Version 0.7.0 (in development)
 
     Breaking changes:
 
-    - Require gevent 1.2 or newer.
+    - Require gevent 1.2.x.
 
     New platform support:
 
