@@ -10,3 +10,6 @@ flake8 gipc/
 
 # The pylint result is not to be interpreted in a binary fashion.
 # pylint --reports=n --disable=C0103,W0212,W0511,W0142,R0903 gipc/gipc.py
+
+# Build documentation.
+cd docs && make html
