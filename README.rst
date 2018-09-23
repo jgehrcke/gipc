@@ -1,7 +1,16 @@
 `Changelog <https://github.com/jgehrcke/gipc/blob/master/CHANGELOG.rst>`_ |
 `gipc @ PyPI <https://pypi.python.org/pypi/gipc>`_ |
-`gipc @ GitHub <https://github.com/jgehrcke/gipc>`_ |
-`gipc @ Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_ (inactive)
+`gipc @ GitHub <https://github.com/jgehrcke/gipc>`_
+
+Travis CI status (master branch): |traviscibadge|
+
+.. |TRAVISCIBADGE| image:: https://travis-ci.org/jgehrcke/gipc.svg?branch=master
+    :target: https://travis-ci.org/jgehrcke/gipc
+    :align: middle
+
+From 2012 to 2018 gipc was developed on `bitbucket.org/jgehrcke/gipc
+<https://bitbucket.org/jgehrcke/gipc>`_. Since 2018, gipc's new home is on
+GitHub.
 
 
 Overview
