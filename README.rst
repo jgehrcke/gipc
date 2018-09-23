@@ -10,7 +10,7 @@ gipc (pronunciation as in “gipsy”) provides reliable child process managemen
 and inter-process communication in the context of `gevent
 <https://github.com/gevent/gevent>`_.
 
-Usage of CPython's `multiprocessing package
+Direct usage of Python's `multiprocessing package
 <https://docs.python.org/3/library/multiprocessing.html>`_ in the context of a
 gevent-powered application is error-prone and may break the application in
 various `subtle ways
@@ -19,7 +19,8 @@ various `subtle ways
 created anywhere within your gevent-powered application. The API of
 ``multiprocessing.Process`` objects is provided in a gevent-cooperative fashion.
 Also, gipc provides a pipe-based transport layer for gevent-cooperative
-inter-process communication. gipc is lightweight and easy to integrate.
+inter-greenlet and inter-process communication. gipc is lightweight and easy to
+integrate.
 
 
 Documentation
@@ -28,31 +29,33 @@ Visit https://gehrcke.de/gipc for installation instructions, API docs, code
 examples, and in-depth information.
 
 
-Supported platforms
-===================
-The current version of gipc has been tested on CPython 2.7/3.3/3.4/3.5/3.6. It
-requires gevent 1.2 and supports both, Unix-like systems as well as Windows.
+Platform support
+================
+The current version of gipc works on CPython 2.7/3.4/3.5/3.6. It requires gevent
+1.2 and supports both, Unix-like systems as well as Windows. On Unix-like
+systems, gipc also works with PyPy2.7 and PyPy3. Tests are not yet automatically
+run for the Windows and Darwin platforms and corresponding community feedback is
+greatly appreciated.
 
 
-Is gipc reliable?
-=================
-Good question :-). The matter gipc is dealing with (a delicate combination of
-fork, threads, coroutines, signals, and an event loop library) bears the
-potential for various kinds of corner-case disasters. The best answer probably
-is that gipc has been engineered with care, that it is backed by an extensive
-test suite and that the following projects are happily making use of it:
+Who uses it?
+============
 
+    - `Wishbone <https://wishbone.readthedocs.io>`_
     - `Quantopian’s remote Python debugger <https://github.com/quantopian/qdb>`_
     - `Ajenti <http://ajenti.org/>`_
+    - `PokeAlarm <https://github.com/PokeAlarm/PokeAlarm>`_
     - `Chronology <http://chronology.github.io>`_
     - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_
     - `NetCall <https://github.com/aglyzov/netcall>`_
+    - `gipcrpc <https://github.com/studio-ousia/gipcrpc>`_
 
-Are you successfully using gipc in your project? Please drop me a line -- that would be much appreciated.
+
+Are you successfully using gipc in your project? Please drop me a line!
 
 
-How to run tests and code audit
-===============================
+How to run tests and code audit?
+================================
 gipc's tests are written for `pytest <http://pytest.org>`_. With the
 repository's root directory being the current working directory, run tests and
 audit like this::
