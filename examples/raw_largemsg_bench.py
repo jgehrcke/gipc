@@ -23,6 +23,7 @@ import os
 import sys
 import time
 import logging
+import platform
 
 sys.path.insert(0, os.path.abspath('..'))
 import gipc
@@ -37,6 +38,16 @@ log.setLevel(logging.INFO)
 
 N = 10**7
 n = 80
+
+
+# This example seems to suffer from a severe performance problem on PyPy. On my
+# machine I got 890 MBytes/s on CPython 3.6.3 / gevent 1.3.6, whereas with
+# PyPy35-6.0.0 (everything else constant) I saw 3 MB/s. Adopt to this so that
+# this executes within reasonable time during CI.
+if platform.python_implementation() == 'PyPy':
+    N = 10**6
+
+
 log.info("Creating data...")
 DATA = os.urandom(N)*n
 mbytes = n*N / 1024.0 / 1024
