@@ -23,11 +23,12 @@ install:
   - pip install -r requirements-tests.txt
 
 script:
-    - python --version
-    - pip list
-    - uname -a
+    - python --version && uname -a && pip list
+    - echo "Test with gevent 1.3.x"
     - pytest -vv test/
+    - bash examples/run-all.sh
     - echo "Re-test with gevent 1.2.x"
     - pip install 'gevent>=1.2,<1.3' --upgrade
     - pytest -vv test/
+    - bash examples/run-all.sh
     - bash audit.sh
