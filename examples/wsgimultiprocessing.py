@@ -25,7 +25,7 @@ N = 100
 
 
 import gevent
-from gevent.wsgi import WSGIServer
+from gevent.pywsgi import WSGIServer
 import gipc
 import time
 try:
