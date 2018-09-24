@@ -16,7 +16,9 @@ master (in development)
     - Do not test on CPython 3.3 anymore, but test on 3.5 and 3.6.
     - Test on PyPy2.7 and PyPy3.
     - Fix WSGI-related test.
-    - Stabilize ``test_exitcode_previous_to_join``.
+    - Stabilize ``test_exitcode_previous_to_join``../
+    - Consolidate example programs, run them as part of CI.
+
 
 
 Version 0.6.0 (Jul 22, 2015)
