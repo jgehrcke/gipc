@@ -95,6 +95,31 @@ matrix:
         - PYENV_VERSION=2.7.15
         - GEVENT_VERSION="gevent>=1.2,<1.3"
 
+  # The way I understand allow_failures: duplicate everything from `include` in
+  # here. Only then it works.
+  allow_failures:
+    - os: osx
+      language: generic
+      env:
+        - PYENV_VERSION=3.6.6
+        - GEVENT_VERSION="default"
+    - os: osx
+      language: generic
+      env:
+        - PYENV_VERSION=3.6.6
+        - GEVENT_VERSION="gevent>=1.2,<1.3"
+
+    - os: osx
+      language: generic
+      env:
+        - PYENV_VERSION=2.7.15
+        - GEVENT_VERSION="default"
+    - os: osx
+      language: generic
+      env:
+        - PYENV_VERSION=2.7.15
+        - GEVENT_VERSION="gevent>=1.2,<1.3"
+
 
 cache:
   # Follow recommendation from praekeltfoundation/travis-pyenv
