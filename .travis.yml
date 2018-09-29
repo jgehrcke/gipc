@@ -6,48 +6,102 @@ branches:
 
 language: python
 
+
 # Try to work around Travis' lack of Python support on OS X.
 # https://github.com/travis-ci/travis-ci/issues/2312#issuecomment-289140791
+# The Travis CI build matrix is a thing mean for two dimensions. It's not a
+# thing that is doing the right combinatorics for us. So, we have to those
+# combinatorics ourselves.
+
+# Two dimensions for Linux:
+#   - gevent version: default, gevent>=1.2,<1.3
+#   - python version: 2.7, 3.4, 3.5, pypy, pypy3
+
+# Two dimensions for MacOS:
+#   - gevent version: default, gevent>=1.2,<1.3
+#   - python version: 2.7, 3.6
+
+
 matrix:
   include:
     - os: linux
       python: 2.7
+      env: GEVENT_VERSION="default"
+    - os: linux
+      python: 2.7
+      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+
     - os: linux
       python: 3.4
+      env: GEVENT_VERSION="default"
+    - os: linux
+      python: 3.4
+      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+
     - os: linux
       python: 3.5
+      env: GEVENT_VERSION="default"
+    - os: linux
+      python: 3.5
+      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+
     - os: linux
       python: 3.6
+      env: GEVENT_VERSION="default"
+    - os: linux
+      python: 3.6
+      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+
+    - os: linux
+      python: 3.6
+      env: GEVENT_VERSION="default"
+    - os: linux
+      python: 3.6
+      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+
     - os: linux
       python: pypy
+      env: GEVENT_VERSION="default"
+    - os: linux
+      python: pypy
+      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+
     - os: linux
       python: pypy3
+      env: GEVENT_VERSION="default"
+    - os: linux
+      python: pypy3
+      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+
     - os: osx
       language: generic
-      env: PYENV_VERSION=3.6.6
+      env:
+        - PYENV_VERSION=3.6.6
+        - GEVENT_VERSION="default"
     - os: osx
       language: generic
-      env: PYENV_VERSION=2.7.15
+      env:
+        - PYENV_VERSION=3.6.6
+        - GEVENT_VERSION="gevent>=1.2,<1.3"
+
+    - os: osx
+      language: generic
+      env:
+        - PYENV_VERSION=2.7.15
+        - GEVENT_VERSION="default"
+    - os: osx
+      language: generic
+      env:
+        - PYENV_VERSION=2.7.15
+        - GEVENT_VERSION="gevent>=1.2,<1.3"
 
 
 install:
-  - source ./ci/env.sh
-  - pip install .
-  - pip install -r requirements-tests.txt
+  - source ./ci/prepare-ci-env.sh
 
 
 script:
     - python --version && uname -a
-
-    - echo "Test with gevent 1.2.x"
-    - pip install 'gevent>=1.2,<1.3' --upgrade
-    - pip list
-    - pytest -vv test/
-    - bash examples/run-all.sh
-    - bash audit.sh
-
-    - echo "Test with gevent 1.3.x"
-    - pip install 'gevent>=1.3' --upgrade
     - pip list
     - pytest -vv test/
     - bash examples/run-all.sh
