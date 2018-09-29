@@ -96,6 +96,12 @@ matrix:
         - GEVENT_VERSION="gevent>=1.2,<1.3"
 
 
+cache:
+  # Follow recommendation from praekeltfoundation/travis-pyenv
+  - directories:
+    - $HOME/.pyenv_cache
+
+
 install:
   - source ./ci/prepare-ci-env.sh
 
