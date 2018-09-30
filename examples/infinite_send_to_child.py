@@ -4,6 +4,13 @@
 
 import gevent
 import gipc
+import platform
+
+print("Platform: %s" % (platform.platform(), ))
+print("gevent version: %s" % (gevent.__version__, ))
+print("Python version: %s %s" % (
+    platform.python_implementation(), platform.python_version(), )
+)
 
 
 def main():
@@ -15,8 +22,19 @@ def main():
         except KeyboardInterrupt:
             # `kill()` always returns None and never raises an exception.
             wg.kill(block=True)
+            print('Send SIGTERM to child process')
             p.terminate()
-        p.join()
+
+    # Wait for child to terminate, expect some more SIGINTs but ignore them.
+    # Note: there are still time windows when SIGINT is not handled by us but by
+    # the interpreter but when assumung that a human sends them via keyboard
+    # input this is fine.
+    while p.exitcode is None:
+        try:
+            p.join()
+        except KeyboardInterrupt:
+            pass
+    print('Child process terminated. Exit code: %s' % (p.exitcode, ))
 
 
 def writegreenlet(writer):
@@ -31,8 +49,11 @@ def child_process(reader):
     which is undesired here). The parent handles it, and instructs the child to
     clean up as part of handling it.
     """
+    def inthandler(_, __):
+        print('Ignored SIGINT in child')
+
     import signal
-    signal.signal(signal.SIGINT, signal.SIG_IGN)
+    signal.signal(signal.SIGINT, inthandler)
 
     while True:
         print("Child process got message through pipe:\n\t'%s'" % reader.get())
