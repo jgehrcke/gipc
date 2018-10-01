@@ -1173,6 +1173,19 @@ class TestComplexUseCases(object):
                 assert rg.exitcode == 0
             return [response]
 
+        # Call `urlopen` with `None` in the parent before forking. This works
+        # around a special type of segfault in the child after fork on MacOS.
+        # Doh! See https://bugs.python.org/issue27126 and
+        # https://github.com/jgehrcke/gipc/issues/52
+        try:
+            import urllib.request as request
+        except ImportError:
+            import urllib2 as request
+        try:
+            result = request.urlopen(None)
+        except AttributeError:
+            pass
+
         http_server = WSGIServer(('localhost', 0), hello_world)
         servelet = gevent.spawn(serve, http_server)
         # Wait for server being bound to socket.
@@ -1212,11 +1225,17 @@ def complchild_test_wsgi_scenario_respgen(writer):
 
 
 def complchild_test_wsgi_scenario_client(http_server_address):
+    # On MacOS doing the usage of `urlopen` might crash right after fork because
+    # it reads proxy settings from the OS via some special system calls. We
+    # (hope that we can) prevent this crash by calling `urlopen` already in the
+    # parent. See https://github.com/jgehrcke/gipc/issues/52
     try:
-        import urllib.request as urllib2
+        # Python 3
+        import urllib.request as request
     except ImportError:
-        import urllib2
-    result = urllib2.urlopen("http://%s:%s/" % http_server_address)
+        # Python 2
+        import urllib2 as request
+    result = request.urlopen("http://%s:%s/" % http_server_address)
     assert result.read() == b"response"
 
 
