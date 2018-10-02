@@ -15,6 +15,11 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     # this shell, so that the `script` part in .travis.yml executes in the same
     # shell.
     source setup-pyenv.sh
+
+    # https://github.com/jgehrcke/gipc/issues/56
+    echo "ulimit -n: $(ulimit -n)"
+    ulimit -n 1500
+    echo "ulimit -n: $(ulimit -n)"
 fi
 
 # Install newer pip and setuptools (newer than bundles with certain Python
