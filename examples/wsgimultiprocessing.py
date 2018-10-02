@@ -81,5 +81,19 @@ def child_test_wsgi_scenario_client(server_address):
 
 
 if __name__ == "__main__":
+
+    # Call `urlopen` with `None` in the parent before forking. This works
+    # around a special type of segfault in the child after fork on MacOS.
+    # Doh! See https://bugs.python.org/issue27126 and
+    # https://github.com/jgehrcke/gipc/issues/52
+    try:
+        import urllib.request as request
+    except ImportError:
+        import urllib2 as request
+    try:
+        result = request.urlopen(None)
+    except AttributeError:
+        pass
+
     main()
 
