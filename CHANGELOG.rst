@@ -13,6 +13,7 @@ master (in development)
 
     Fixes:
 
+    - Fix ``can't pickle gevent._semaphore.Semaphore`` error on Windows.
     - Fix ``ModuleNotFoundError`` in ``test_wsgi_scenario``.
     - Fix a rare instability in ``test_exitcode_previous_to_join``.
     - Fix signal handling in example ``infinite_send_to_child.py``.
@@ -21,13 +22,13 @@ master (in development)
 
     Test / continuous integration changes:
 
-    - On all platforms test gipc with both, gevent 1.2.x and gevent 1.3.x.
     - On all platforms run the example programs as part of CI.
-    - On Linux:
-        - Test against CPython 2.7, 3.4, 3.5, 3.6
-        - Test against PyPy2.7 and PyPy3.
-    - On Mac OS X:
-        - Test against self-built CPython 2.7, 3.6
+    - Linux test matrix (all combinations are covered):
+        - gevent dimension: gevent 1.2.x, gevent 1.3.x.
+        - Python implementation dimension: CPython 2.7, 3.4, 3.5, 3.6, PyPy2.7, PyPy3.
+    - Mac OS X test matrix (all combinations are covered):
+        - gevent dimension: gevent 1.2.x, gevent 1.3.x.
+        - Python implementation dimension: self-built CPython 2.7, 3.6
 
 
 Version 0.6.0 (Jul 22, 2015)
