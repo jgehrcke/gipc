@@ -61,9 +61,9 @@ def main():
     log.info('Data size: %s MBytes' % mbytes)
     checksum = hashlib.md5(data).digest()
 
-    #with gipc.pipe(duplex=True, encoder=None, decoder=None) as (c, p):
-    #    log.info('Test with raw pipe...')
-    #    spawn_child_transfer(c, p, data, checksum)
+    with gipc.pipe(duplex=True, encoder=None, decoder=None) as (c, p):
+       log.info('Test with raw pipe...')
+       spawn_child_transfer(c, p, data, checksum)
 
     with gipc.pipe(duplex=True) as (c, p):
         log.info('Test with default pipe...')
