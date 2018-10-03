@@ -982,10 +982,10 @@ class TestPipeCodecs(object):
         data = b'abc'
 
         with pipe(encoder=None, decoder=None) as (r, w):
-            start_process(test_raw_pipe_across_processes_child, (r, ))
+            start_process(child_test_raw_pipe_across_processes, (r, ))
 
 
-def test_raw_pipe_across_processes_child(r):
+def child_test_raw_pipe_across_processes(r):
     assert r.get() == b'abc'
 
 
