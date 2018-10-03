@@ -1,0 +1,49 @@
+version: '{build}'
+
+
+# This is against the following error message: "The build phase is set to
+# "MSBuild" mode (default), but no Visual Studio project or solution files were
+# found in the root directory. If you are not building Visual Studio project
+# switch build mode to "Script" and provide your custom build command."
+build: off
+
+environment:
+
+  matrix:
+
+    # AppVeyor-provided CPython. Can move to a newer point release at any point
+    # in time (desirable).
+    - PYTHON: "C:\\Python36-x64"
+      PYTHON_VERSION: "3.6.x"
+      PYTHON_ARCH: "64"
+
+
+install:
+
+  # Adjust environment to build matrix cell (make use of variable set by build
+  # matrix).
+  - "SET PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%"
+
+  - "python --version"
+  - dir
+
+  # Install newer pip and setuptools (newer than bundles with certain Python
+  # releases and newer than what Travis brings) -- but still pin the versions so
+  # that there are no moving dependencies.
+  - "python -m pip install pip==18.0 --upgrade"
+  - "python -m pip install setuptools==40.4.3 --upgrade"
+
+  # Simulate case where a normal user sets up gevent and gipc (install gevent
+  # and greenlet binaries via wheel files).
+  - "pip install ."
+  - "pip install -r requirements-tests.txt"
+
+
+test_script:
+
+  - python --version && uname -a
+  - pip list
+  - pytest -vv test/
+  # For now, run only one example. TODO: build `run-all.sh` analogue for Win32.
+  - python examples/synchronization.py
+  # Do not run audit.sh analogue for now.
