@@ -20,6 +20,11 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     echo "ulimit -n: $(ulimit -n)"
     ulimit -n 1500
     echo "ulimit -n: $(ulimit -n)"
+
+    # https://github.com/jgehrcke/gipc/issues/59
+    # https://stackoverflow.com/a/21118126/145400
+    # The Travis CI Mac environment has coreutils installed.
+    export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 fi
 
 # Install newer pip and setuptools (newer than bundles with certain Python
