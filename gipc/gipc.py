@@ -562,6 +562,13 @@ class _GIPCHandle(object):
         self._id = codecs.encode(os.urandom(3), "hex_codec").decode("ascii")
         self._legit_pid = os.getpid()
         self._make_nonblocking()
+
+        # Define lock for synchronizing access to this handle within the current
+        # process. Note that the `gevent.lock.Semaphore` lives on the heap of
+        # the current process and cannot be used to synchronize access across
+        # multiple processes. That is, this lock is only meaningful in the
+        # current process. This is especially important to consider when the
+        # platform supports  fork()ing.
         self._lock = gevent.lock.Semaphore(value=1)
         self._closed = False
         _all_handles.append(self)
@@ -691,18 +698,24 @@ class _GIPCHandle(object):
         https://msdn.microsoft.com/en-us/library/ks2530z6.aspx
         https://msdn.microsoft.com/en-us/library/bdts1c9x.aspx
         """
+
         if WINAPI_HANDLE_TRANSFER_STEAL:
             self._parent_winapihandle = msvcrt.get_osfhandle(self._fd)
             self._parent_pid = os.getpid()
             return
+
         # Get Windows file handle from C file descriptor.
         winapihandle = msvcrt.get_osfhandle(self._fd)
+
         # Duplicate file handle, rendering the duplicate inheritable by
         # processes created by the current process.
+
         self._inheritable_winapihandle = multiprocessing.reduction.duplicate(
             handle=winapihandle, inheritable=True)
+
         # Close "old" (in-inheritable) file descriptor.
         os.close(self._fd)
+
         # Mark file descriptor as "already closed".
         self._fd = None
 
@@ -739,6 +752,7 @@ class _GIPCHandle(object):
         """Called on Windows in the child process after the CreateProcess()
         system call. This is required for making the handle usable in the child.
         """
+
         if WINAPI_HANDLE_TRANSFER_STEAL:
             # In this case the handle has not been inherited by the child
             # process during CreateProcess(). Steal it from the parent.
@@ -749,12 +763,34 @@ class _GIPCHandle(object):
             # Restore C file descriptor with (read/write)only flag.
             self._fd = msvcrt.open_osfhandle(new_winapihandle, self._fd_flag)
             return
+
         # In this case the handle has been inherited by the child process during
         # the CreateProcess() system call. Get C file descriptor from Windows
         # file handle.
         self._fd = msvcrt.open_osfhandle(
             self._inheritable_winapihandle, self._fd_flag)
+
         del self._inheritable_winapihandle
+
+    def __getstate__(self):
+        # Hook into the pickling process. The default state which is pickled is
+        # self.__dict__. Remove the lock from it. The general motivation is:
+        # conceptually, the lock's state becomes meaningless in the moment the
+        # handle is pickled around. The specific motivation is:
+        # `gevent.lock.Semaphore` is not picklable with some versions of gevent
+        # on Windows, see https://github.com/jgehrcke/gipc/issues/36. Hence, do
+        # not even try to pickle it to the child process.
+        state = self.__dict__.copy()
+        del state['_lock']
+        return state
+
+    def __setstate__(self, state):
+        # Restore instance attributes.
+        self.__dict__.update(state)
+
+        # Create a fresh lock for synchronizing the access to this handle in the
+        # current process.
+        self._lock = gevent.lock.Semaphore(value=1)
 
     def __enter__(self):
         return self
