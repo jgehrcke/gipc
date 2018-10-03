@@ -2,7 +2,7 @@
 set -x
 
 if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    echo "Linux: use Travis-provides Python"
+    echo "Linux: use Travis-provided Python"
 fi
 
 
@@ -26,6 +26,7 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     # The Travis CI Mac environment has coreutils installed.
     export PATH="/usr/local/opt/coreutils/libexec/gnubin:$PATH"
 fi
+
 
 # Install newer pip and setuptools (newer than bundles with certain Python
 # releases and newer than what Travis brings) -- but still pin the versions so

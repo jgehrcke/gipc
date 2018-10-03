@@ -3,22 +3,31 @@ master (in development)
 
     Breaking changes:
 
-    - gevent 1.1 is not supported anymore.
+    - gevent 1.1 is not tested anymore.
+    - CPython 3.3 is not tested anymore.
 
     New platform support:
 
     - Add support for PyPy on Linux. Thanks to Oliver Margetts and to Heungsub
       Lee.
 
-    Test / CI changes:
+    Fixes:
 
-    - Test against both, gevent 1.2.x and gevent 1.3.x.
-    - Do not test on CPython 3.3 anymore, but test on 3.5 and 3.6.
-    - Test on PyPy2.7 and PyPy3.
-    - Fix WSGI-related test.
-    - Stabilize ``test_exitcode_previous_to_join``../
-    - Consolidate example programs, run them as part of CI.
+    - Fix ``ModuleNotFoundError`` in ``test_wsgi_scenario``.
+    - Fix a rare instability in ``test_exitcode_previous_to_join``.
+    - Fix signal handling in example ``infinite_send_to_child.py``.
+    - Work around segmentation fault after fork on Mac OS X (affected
+      ``test_wsgi_scenario`` and example program ``wsgimultiprocessing.py``).
 
+    Test / continuous integration changes:
+
+    - On all platforms test gipc with both, gevent 1.2.x and gevent 1.3.x.
+    - On all platforms run the example programs as part of CI.
+    - On Linux:
+        - Test against CPython 2.7, 3.4, 3.5, 3.6
+        - Test against PyPy2.7 and PyPy3.
+    - On Mac OS X:
+        - Test against self-built CPython 2.7, 3.6
 
 
 Version 0.6.0 (Jul 22, 2015)
@@ -29,11 +38,14 @@ Version 0.6.0 (Jul 22, 2015)
 
 Version 0.5.0 (Oct 22, 2014)
 ----------------------------
-    - Improve large message throughput on Linux (see issue #13).
-    - Work around read(2) system call flaw on Mac OS X (see issue #13).
-    - Work around signal.NSIG-related problem on FreeBSD (see issue #10).
+    - Improve large message throughput on Linux (see
+      `issue #13 <https://github.com/jgehrcke/gipc/issues/13>`_).
+    - Work around read(2) system call flaw on Mac OS X (see
+      `issue #13 <https://github.com/jgehrcke/gipc/issues/13>`_)
+    - Work around signal.NSIG-related problem on FreeBSD (see
+      `issue #10 <https://github.com/jgehrcke/gipc/issues/10>`_)
     - Do not alter SIGPIPE action during child bootstrap (breaking change,
-      see issue #12).
+      (see `issue #12 <https://github.com/jgehrcke/gipc/issues/12>`_)).
 
 
 Version 0.4.0 (Dec 07, 2013)
@@ -41,9 +53,9 @@ Version 0.4.0 (Dec 07, 2013)
     - Implement data (de)serialization pipe API (allowing for raw byte
       transmission and for custom encoders/decoders).
     - Restore default signal disposition in child wrapper for all signals (see
-      `issue #7 <https://bitbucket.org/jgehrcke/gipc/issue/7>`_).
+      `issue #7 <https://github.com/jgehrcke/gipc/issues/7>`_).
     - Fix DeprecationWarning related to _PairContext class (see
-      `issue #5 <https://bitbucket.org/jgehrcke/gipc/issue/5>`_).
+      `issue #5 <https://github.com/jgehrcke/gipc/issues/5>`_).
     - Significantly improve large message write performance by using Python's
       buffer interface.
     - Require gevent 1.0 final release version via setup.py.
@@ -59,7 +71,7 @@ Version 0.3.2 (July 14, 2013)
 
 Version 0.3.1 (Apr 22, 2013)
 ----------------------------
-    - Fix `issue #1 <https://bitbucket.org/jgehrcke/gipc/issue/1>`_: don't
+    - Fix `issue #1 <https://github.com/jgehrcke/gipc/issues/1>`_: don't
       import gipc from setup.py anymore.
     - Fix: make GProcess' exitcode return ``None`` if ``Popen`` object still
       not existing.
