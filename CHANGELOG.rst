@@ -11,14 +11,23 @@ master (in development)
     - Add support for PyPy on Linux. Thanks to Oliver Margetts and to Heungsub
       Lee.
 
-    Test / CI changes:
+    Fixes:
 
-    - Test against both, gevent 1.2.x and gevent 1.3.x.
-    - Do not test on CPython 3.3 anymore, but test on 3.5 and 3.6.
-    - Test on PyPy2.7 and PyPy3.
-    - Fix WSGI-related test.
-    - Stabilize ``test_exitcode_previous_to_join``../
-    - Consolidate example programs, run them as part of CI.
+    - Fix ``ModuleNotFoundError`` in ``test_wsgi_scenario``.
+    - Fix a rare instability in ``test_exitcode_previous_to_join``.
+    - Fix signal handling in example ``infinite_send_to_child.py``.
+    - Work around segmentation fault after fork on Mac OS X (affected
+      ``test_wsgi_scenario`` and example program ``wsgimultiprocessing.py``).
+
+    Test / continuous integration changes:
+
+    - On all platforms test gipc with both, gevent 1.2.x and gevent 1.3.x.
+    - On all platforms run the example programs as part of CI.
+    - On Linux:
+        - Test against CPython 2.7, 3.4, 3.5, 3.6
+        - Test against PyPy2.7 and PyPy3.
+    - On Mac OS X:
+        - Test against self-built CPython 2.7, 3.6
 
 
 Version 0.6.0 (Jul 22, 2015)
@@ -29,12 +38,12 @@ Version 0.6.0 (Jul 22, 2015)
 
 Version 0.5.0 (Oct 22, 2014)
 ----------------------------
-    - Improve large message throughput on Linux (see `
-      issue #13 <https://github.com/jgehrcke/gipc/issues/13>`_).
-    - Work around read(2) system call flaw on Mac OS X (see `
-      issue #13 <https://github.com/jgehrcke/gipc/issues/13>`_)
-    - Work around signal.NSIG-related problem on FreeBSD (see `
-      issue #10 <https://github.com/jgehrcke/gipc/issues/10>`_)
+    - Improve large message throughput on Linux (see
+      `issue #13 <https://github.com/jgehrcke/gipc/issues/13>`_).
+    - Work around read(2) system call flaw on Mac OS X (see
+      `issue #13 <https://github.com/jgehrcke/gipc/issues/13>`_)
+    - Work around signal.NSIG-related problem on FreeBSD (see
+      `issue #10 <https://github.com/jgehrcke/gipc/issues/10>`_)
     - Do not alter SIGPIPE action during child bootstrap (breaking change,
       (see `issue #12 <https://github.com/jgehrcke/gipc/issues/12>`_)).
 
