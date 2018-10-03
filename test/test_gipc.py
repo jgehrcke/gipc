@@ -978,6 +978,16 @@ class TestPipeCodecs(object):
             with pipe(encoder=lambda x: x, decoder=1) as (r, w):
                 pass
 
+    def test_raw_pipe_across_processes(self):
+        data = b'abc'
+
+        with pipe(encoder=None, decoder=None) as (r, w):
+            start_process(test_raw_pipe_across_processes_child, (r, ))
+
+
+def test_raw_pipe_across_processes_child(r):
+    assert r.get() == b'abc'
+
 
 class TestSimpleUseCases(object):
     """Test very basic usage scenarios of gipc (pure gipc+gevent).
