@@ -187,21 +187,31 @@ def pipe(duplex=False, encoder='default', decoder='default'):
     """
     # Internally, `encoder` and `decoder` must be callable. Translate
     # special values `None` and `'default'` to callables here.
+
+    def noop_encoder(x):
+        return x
+
+    def noop_decoder(x):
+        return x
+
     if encoder is None:
-        encoder = lambda x: x
+        encoder = noop_encoder
     elif encoder == 'default':
         encoder = _default_encoder
     elif not callable(encoder):
         raise GIPCError("pipe 'encoder' argument must be callable.")
+
     if decoder is None:
-        decoder = lambda x: x
+        decoder = noop_decoder
     elif decoder == 'default':
         decoder = _default_decoder
     elif not callable(decoder):
         raise GIPCError("pipe 'decoder' argument must be callable.")
+
     pair1 = _newpipe(encoder, decoder)
     if not duplex:
         return _PairContext(pair1)
+
     pair2 = _newpipe(encoder, decoder)
     return _PairContext((
         _GIPCDuplexHandle((pair1[0], pair2[1])),
