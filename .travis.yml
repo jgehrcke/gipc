@@ -111,4 +111,4 @@ script:
     - pip list
     - pytest -vv test/
     - bash examples/run-all.sh
-    - bash audit.sh
+    - bash ci/audit.sh
