@@ -564,11 +564,11 @@ class _GIPCHandle(object):
         self._make_nonblocking()
 
         # Define lock for synchronizing access to this handle within the current
-        # process. Note that the `gevent.lock.Semaphore` lives on the heap of
-        # the current process and cannot be used to synchronize access across
-        # multiple processes. That is, this lock is only meaningful in the
-        # current process. This is especially important to consider when the
-        # platform supports  fork()ing.
+        # process. Note that a `gevent.lock.Semaphore` instance lives on the
+        # heap of the current process and cannot be used to synchronize access
+        # across multiple processes. That is, this lock is only meaningful in
+        # the current process. This is especially important to consider when the
+        # platform supports fork()ing.
         self._lock = gevent.lock.Semaphore(value=1)
         self._closed = False
         _all_handles.append(self)
