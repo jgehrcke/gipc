@@ -39,10 +39,9 @@ log = logging.getLogger()
 log.setLevel(logging.INFO)
 
 
-if sys.platform == 'win32':
-    TIMER = time.clock
-else:
-    TIMER = time.time
+timer = time.time
+if hasattr(time, 'perf_counter'):
+    timer = time.perf_counter
 
 
 if sys.version_info[0] == 3:
@@ -119,10 +118,10 @@ def benchmark(N, msg):
              # Synchronize with child process
             syncw.put("SYN")
             assert reader.get() == "ACK"
-            t = TIMER()
+            t = timer()
             while result != 'stop':
                 result = reader.get()
-            elapsed = TIMER() - t
+            elapsed = timer() - t
             p.join()
     return N, elapsed
 
