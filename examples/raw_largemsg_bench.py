@@ -54,6 +54,13 @@ def main():
         N = 10**6
         n = 20
 
+    if platform.python_implementation() == 'CPython' and sys.platform == 'win32':
+        # Temporarily work around the inability to send large messages on
+        # Windows. Fixing that is tracked here:
+        # https://github.com/jgehrcke/gipc/issues/69
+        N = 10**4
+        n = 20
+
     # Concatenate a smaller chunk of random data multiple times (that's faster
     # than creating a big chunk of random data).
     data = os.urandom(N) * n
@@ -77,8 +84,6 @@ def spawn_child_transfer(childhandler, parenthandler, data, checksum):
     assert parenthandler.get() == b'start'
     log.info('Sending data')
     t0 = time.time()
-
-    parenthandler.put(b'123')
 
     parenthandler.put(data)
     assert parenthandler.get() == b'done'
