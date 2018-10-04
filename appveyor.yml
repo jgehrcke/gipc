@@ -36,19 +36,20 @@ install:
   # Simulate case where a normal user sets up gevent and gipc (install gevent
   # and greenlet binaries via wheel files).
   - "pip install ."
-  - "pip install -r requirements-tests.txt"
 
 
 test_script:
 
   - python --version && uname -a
   - pip list
-  - pytest -vv test/
   - python examples/synchronization.py
-  - python examples/gipc_benchmark.py
   - python examples/raw_largemsg_bench.py
+  - python examples/gipc_benchmark.py
   - python examples/serverclient.py
   - python examples/wsgimultiprocessing.py
+  - pip install -r requirements-tests.txt
+  - pytest -vv test/
+
 
   # TODO: run infinite_send_to_child.py example.
   # Do not run audit.sh analogue for now. It's sufficient to run on Linux.
