@@ -35,21 +35,24 @@ install:
 
   # Simulate case where a normal user sets up gevent and gipc (install gevent
   # and greenlet binaries via wheel files).
-  - "pip install ."
-
+  - pip install .
+  - pip install -r requirements-tests.txt
 
 test_script:
 
   - python --version && uname -a
   - pip list
+  - pytest -vv test/
+
   - python examples/synchronization.py
   - python examples/raw_largemsg_bench.py
   - python examples/gipc_benchmark.py
   - python examples/serverclient.py
-  - python examples/wsgimultiprocessing.py
-  - pip install -r requirements-tests.txt
-  - pytest -vv test/
 
+  # The wsgimultiprocessing example is not adjusted to the very different
+  # method of how state is re-generated in the child on Windows. Leave this
+  # untested for now.
+  #- python examples/wsgimultiprocessing.py
 
   # TODO: run infinite_send_to_child.py example.
   # Do not run audit.sh analogue for now. It's sufficient to run on Linux.
