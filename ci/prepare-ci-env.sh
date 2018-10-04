@@ -1,12 +1,10 @@
 #!/bin/bash
 set -x
 
-if [[ "$TRAVIS_OS_NAME" == "linux" ]]; then
-    echo "Linux: use Travis-provided Python"
-fi
 
-
-if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
+if [[ -z "${PYENV_VERSION}" ]]; then
+    echo "Use Travis-provided Python"
+else
     echo "Use praekelt.org's setup-pyenv."
     export PYENV_RELEASE="v1.2.7"
     wget https://raw.githubusercontent.com/jgehrcke/travis-pyenv/develop/setup-pyenv.sh
@@ -15,6 +13,10 @@ if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
     # this shell, so that the `script` part in .travis.yml executes in the same
     # shell.
     source setup-pyenv.sh
+fi
+
+
+if [[ "$TRAVIS_OS_NAME" == "osx" ]]; then
 
     # https://github.com/jgehrcke/gipc/issues/56
     echo "ulimit -n: $(ulimit -n)"
