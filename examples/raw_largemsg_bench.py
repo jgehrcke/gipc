@@ -37,6 +37,13 @@ logging.basicConfig(
     )
 
 
+timer = time.time
+WINDOWS = False
+if sys.platform == 'win32':
+    WINDOWS = True
+    # `time.clock()` has higher precison on Windows than `time.time()`
+    timer = time.clock
+
 
 def main():
 
@@ -54,11 +61,11 @@ def main():
         N = 10**6
         n = 20
 
-    if platform.python_implementation() == 'CPython' and sys.platform == 'win32':
+    if platform.python_implementation() == 'CPython' and WINDOWS:
         # Temporarily work around the inability to send large messages on
         # Windows. Fixing that is tracked here:
         # https://github.com/jgehrcke/gipc/issues/69
-        N = 10**4
+        N = 10**6
         n = 20
 
     # Concatenate a smaller chunk of random data multiple times (that's faster
@@ -83,11 +90,11 @@ def spawn_child_transfer(childhandler, parenthandler, data, checksum):
 
     assert parenthandler.get() == b'start'
     log.info('Sending data')
-    t0 = time.time()
+    t0 = timer()
 
     parenthandler.put(data)
     assert parenthandler.get() == b'done'
-    delta = time.time() - t0
+    delta = timer() - t0
 
     log.info('Child confirmed that it received data, checksum matches')
     p.join()
@@ -95,9 +102,11 @@ def spawn_child_transfer(childhandler, parenthandler, data, checksum):
 
     log.info('Duration: %.3f s' % delta)
     mbytes = len(data) / 1024.0 / 1024
-    rate = mbytes / delta
-    log.info('Rate: %.2f MBytes/s' % rate)
-
+    if delta < 10 ** -7:
+        log.info('Clock resolution to small to calculate meaningful rate')
+    else:
+        rate = mbytes / delta
+        log.info('Rate: %.2f MBytes/s' % rate)
 
 def child(childhandler, reference_checksum):
     childhandler.put(b'start')
