@@ -15,7 +15,7 @@ timer = time.time
 # measure a time difference across two processes. `perf_counter` is new since
 # Python 3.3 and should do the job for all platforms. It is documented with "It
 # does include time elapsed during sleep and is system-wide".
-if hasattr(time, perf_counter):
+if hasattr(time, 'perf_counter'):
     timer = time.perf_counter
 
 
