@@ -77,6 +77,9 @@ def spawn_child_transfer(childhandler, parenthandler, data, checksum):
     assert parenthandler.get() == b'start'
     log.info('Sending data')
     t0 = time.time()
+
+    parenthandler.put(b'123')
+
     parenthandler.put(data)
     assert parenthandler.get() == b'done'
     delta = time.time() - t0
