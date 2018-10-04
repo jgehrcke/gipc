@@ -861,8 +861,10 @@ class TestDuplexHandleIPC(object):
             assert pend.get() == "ACK"
             ptime = time.time()
             ctime = pend.get()
-            # Require small time delta.
-            assert abs(ptime - ctime) < 0.01
+            # Require small time delta. Note: on Windows on a machine with
+            # diverse load I have seen this time difference to be 0.02 seconds.
+            # See https://github.com/jgehrcke/gipc/issues/70.
+            assert abs(ptime - ctime) < 0.03
             p.join()
 
     def test_circular_forward(self):
