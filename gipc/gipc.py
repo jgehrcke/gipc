@@ -100,6 +100,14 @@ def _default_encoder(o):
 _default_decoder = pickle.loads
 
 
+def _noop_encoder(o):
+    return o
+
+
+def _noop_decoder(o):
+    return o
+
+
 def pipe(duplex=False, encoder='default', decoder='default'):
     """Create a pipe-based message transport channel and return two
     corresponding handles for reading and writing data.
@@ -187,21 +195,23 @@ def pipe(duplex=False, encoder='default', decoder='default'):
     """
     # Internally, `encoder` and `decoder` must be callable. Translate
     # special values `None` and `'default'` to callables here.
-    if encoder is None:
-        encoder = lambda x: x
-    elif encoder == 'default':
-        encoder = _default_encoder
-    elif not callable(encoder):
-        raise GIPCError("pipe 'encoder' argument must be callable.")
-    if decoder is None:
-        decoder = lambda x: x
-    elif decoder == 'default':
-        decoder = _default_decoder
-    elif not callable(decoder):
-        raise GIPCError("pipe 'decoder' argument must be callable.")
+
+    if encoder is not None:
+        if encoder == 'default':
+            encoder = _default_encoder
+        elif not callable(encoder):
+            raise GIPCError("pipe 'encoder' argument must be callable.")
+
+    if decoder is not None:
+        if decoder == 'default':
+            decoder = _default_decoder
+        elif not callable(decoder):
+            raise GIPCError("pipe 'decoder' argument must be callable.")
+
     pair1 = _newpipe(encoder, decoder)
     if not duplex:
         return _PairContext(pair1)
+
     pair2 = _newpipe(encoder, decoder)
     return _PairContext((
         _GIPCDuplexHandle((pair1[0], pair2[1])),
@@ -564,11 +574,11 @@ class _GIPCHandle(object):
         self._make_nonblocking()
 
         # Define lock for synchronizing access to this handle within the current
-        # process. Note that the `gevent.lock.Semaphore` lives on the heap of
-        # the current process and cannot be used to synchronize access across
-        # multiple processes. That is, this lock is only meaningful in the
-        # current process. This is especially important to consider when the
-        # platform supports  fork()ing.
+        # process. Note that a `gevent.lock.Semaphore` instance lives on the
+        # heap of the current process and cannot be used to synchronize access
+        # across multiple processes. That is, this lock is only meaningful in
+        # the current process. This is especially important to consider when the
+        # platform supports fork()ing.
         self._lock = gevent.lock.Semaphore(value=1)
         self._closed = False
         _all_handles.append(self)
@@ -826,7 +836,13 @@ class _GIPCReader(_GIPCHandle):
         self._fd = pipe_read_fd
         self._fd_flag = os.O_RDONLY
         _GIPCHandle.__init__(self)
+
+        # Note that an arbitray decoder function cannot be pickled with the
+        # handle object to a child process. Document this limitation.
         self._decoder = decoder
+        if decoder is None:
+            # Pass data through as-is (assume byte sequence).
+            self._decoder = _noop_decoder
 
     def _recv_in_buffer(self, n):
         """Cooperatively read `n` bytes from file descriptor to buffer."""
@@ -909,7 +925,14 @@ class _GIPCWriter(_GIPCHandle):
         self._fd = pipe_write_fd
         self._fd_flag = os.O_WRONLY
         _GIPCHandle.__init__(self)
+
+        # Note that an arbitray encoder function cannot be pickled with the
+        # handle object to a child process. Document this limitation.
         self._encoder = encoder
+        if encoder is None:
+            # Pass data through as-is (assume byte sequence)
+            self._encoder = _noop_encoder
+
         if sys.version_info[:2] == (2, 6):
             self._write = self._write_py26_fallback
 

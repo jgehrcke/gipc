@@ -861,8 +861,10 @@ class TestDuplexHandleIPC(object):
             assert pend.get() == "ACK"
             ptime = time.time()
             ctime = pend.get()
-            # Require small time delta.
-            assert abs(ptime - ctime) < 0.01
+            # Require small time delta. Note: on Windows on a machine with
+            # diverse load I have seen this time difference to be 0.02 seconds.
+            # See https://github.com/jgehrcke/gipc/issues/70.
+            assert abs(ptime - ctime) < 0.03
             p.join()
 
     def test_circular_forward(self):
@@ -977,6 +979,16 @@ class TestPipeCodecs(object):
         with raises(GIPCError):
             with pipe(encoder=lambda x: x, decoder=1) as (r, w):
                 pass
+
+    def test_raw_pipe_across_processes(self):
+        data = b'abc'
+
+        with pipe(encoder=None, decoder=None) as (r, w):
+            start_process(child_test_raw_pipe_across_processes, (r, ))
+
+
+def child_test_raw_pipe_across_processes(r):
+    assert r.get() == b'abc'
 
 
 class TestSimpleUseCases(object):
