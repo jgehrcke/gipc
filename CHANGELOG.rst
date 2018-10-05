@@ -31,9 +31,11 @@ master (in development)
     - Linux test matrix (all combinations are covered):
         - gevent dimension: gevent 1.2.x, gevent 1.3.x.
         - Python implementation dimension: CPython 2.7, 3.4, 3.5, 3.6, PyPy2.7, PyPy3.
+    - Also test on Linux with CPython 3.7 and gevent 1.3.x.
     - Mac OS X test matrix (all combinations are covered):
         - gevent dimension: gevent 1.2.x, gevent 1.3.x.
         - Python implementation dimension: self-built CPython 2.7, 3.6
+    - On Windows, test with gevent 1.3.x and CPython 2.7, 3.4, 3.5, 3.6, 3.7.
 
 
 Version 0.6.0 (Jul 22, 2015)
