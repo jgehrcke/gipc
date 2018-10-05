@@ -37,12 +37,14 @@ logging.basicConfig(
     )
 
 
-timer = time.time
 WINDOWS = False
 if sys.platform == 'win32':
     WINDOWS = True
-    # `time.clock()` has higher precison on Windows than `time.time()`
-    timer = time.clock
+
+
+timer = time.time
+if hasattr(time, 'perf_counter'):
+    timer = time.perf_counter
 
 
 def main():
