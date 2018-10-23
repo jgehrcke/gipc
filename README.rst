@@ -9,7 +9,7 @@ Travis CI status (master branch): |traviscibadge|
     :align: middle
 
 From 2012 to 2018 gipc's home was at `bitbucket.org/jgehrcke/gipc
-<https://bitbucket.org/jgehrcke/gipc>`_. Since 2018 developmen continues on
+<https://bitbucket.org/jgehrcke/gipc>`_. Since 2018 development continues on
 GitHub.
 
 
@@ -30,6 +30,7 @@ created anywhere within your gevent-powered application. The API of
 Also, gipc provides a pipe-based transport layer for gevent-cooperative
 inter-greenlet and inter-process communication. gipc is lightweight and easy to
 integrate.
+
 
 Code examples
 =============

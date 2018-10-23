@@ -36,12 +36,9 @@ to hear: please :ref:`drop me a line <contact>`!
 Platform support
 ================
 
-The current version of gipc works on CPython 2.7/3.4/3.5/3.6. It requires gevent
-1.2 and supports both, Unix-like systems as well as Windows. On Unix-like
-systems, gipc also works with PyPy2.7 and PyPy3.
-
-Tests are not automatically run for the Windows and Darwin platforms and
-corresponding community feedback is greatly appreciated.
+The current version of gipc works on CPython 2.7/3.4/3.5/3.6. It requires at
+least gevent 1.2 and supports both, Unix-like systems as well as Windows. On
+Unix-like systems, gipc also works with PyPy2.7 and PyPy3.
 
 
 .. _installation:

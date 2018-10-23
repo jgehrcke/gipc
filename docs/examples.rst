@@ -7,6 +7,11 @@ This section shows three example programs using gipc. These examples have been
 created mainly for educational purposes and might therefore lack real-world
 purpose :-). I hope they are useful!
 
+The latest version of these examples can be found `on GitHub
+<https://github.com/jgehrcke/gipc>`_ (that code there is also run as part of CI
+and contains a few consolidations for platforms like Windows and mac OS which
+are left out in the snippets below).
+
 - :ref:`exampleipc`
 - :ref:`exampleserverclient`
 - :ref:`examplesync`
