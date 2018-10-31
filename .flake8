@@ -8,7 +8,8 @@
 #   -> Disable flake8 forcing us to decide on both PEP8-compliant styles on
 #      putting the closing bracket. If I had to choose, I'd probaby set
 #      `hang-closing` to True.
-ignore = E123,E133,E402,E731
+#   W503: either W504 or W503 must be ignored since flake8 3.6.0
+ignore = E123,E133,E402,E731,W503
 
 exclude = .git
 
