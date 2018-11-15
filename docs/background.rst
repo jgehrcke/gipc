@@ -39,7 +39,7 @@ In an ideal world the process of waiting for an event means literally doing
 execution unit waits for an event to arrive it does not need to consume CPU
 time. However, surely, the execution unit would like to proceed executing
 *immediately* once the event it waited for has arrived. No unnecessary delays,
-please, right!
+please!
 
 The kinds of events referred to above are generally provided by the operating
 system to the program through one of many operating system-specific event

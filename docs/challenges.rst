@@ -79,8 +79,8 @@ kill greenlets or watchers one by one. Is that a memory leak? This indeed
 accumulates a little bit of uncollectable garbage for every newly generated
 process generation in the hierarchy. However, this should only be a problem when
 the application grows the process hierarchy arbitrarily deep over time, i.e.
-when a child process starts a child process which starts a child proces, ..., in
-an unbounded fashion. If you don't do that it's fine.
+when a child process starts a child process which starts a child process, ...,
+in an unbounded fashion. If you don't do that it's fine.
 
 On POSIX-compliant systems gipc entirely avoids multiprocessing's child
 monitoring implementation (which is based on the class of ``wait`` system calls)

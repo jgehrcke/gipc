@@ -8,15 +8,15 @@ Travis CI status (master branch): |traviscibadge|
     :target: https://travis-ci.org/jgehrcke/gipc
     :align: middle
 
-From 2012 to 2018 gipc was developed on `bitbucket.org/jgehrcke/gipc
-<https://bitbucket.org/jgehrcke/gipc>`_. Since 2018, gipc's new home is on
+From 2012 to 2018 gipc's home was at `bitbucket.org/jgehrcke/gipc
+<https://bitbucket.org/jgehrcke/gipc>`_. Since 2018 development continues on
 GitHub.
 
 
 Overview
 ========
 gipc (pronunciation as in “gipsy”) provides reliable child process management
-and inter-process communication in the context of `gevent
+and non-blocking inter-process communication in the context of `gevent
 <https://github.com/gevent/gevent>`_.
 
 Direct usage of Python's `multiprocessing package
@@ -32,6 +32,14 @@ inter-greenlet and inter-process communication. gipc is lightweight and easy to
 integrate.
 
 
+Code examples
+=============
+
+Have a look at the individual programs in the `examples
+<https://github.com/jgehrcke/gipc/blob/master/examples>`_ directory.
+
+
+
 Documentation
 =============
 Visit https://gehrcke.de/gipc for installation instructions, API docs, code
@@ -40,37 +48,41 @@ examples, and in-depth information.
 
 Platform support
 ================
-The current version of gipc works on CPython 2.7/3.4/3.5/3.6. It requires gevent
-1.2 and supports both, Unix-like systems as well as Windows. On Unix-like
-systems, gipc also works with PyPy2.7 and PyPy3. Tests are not yet automatically
-run for the Windows and Darwin platforms and corresponding community feedback is
-greatly appreciated.
-
+The current version of gipc works on CPython 2.7/3.4/3.5/3.6. It requires at
+least gevent 1.2 and supports both, Unix-like systems as well as Windows. On
+Unix-like systems, gipc also works with PyPy2.7 and PyPy3. gipc's test suite is
+automatically executed on Linux, Darwin (macOS), and Windows.
 
 Who uses it?
 ============
 
+    - `pyethapp <https://github.com/ethereum/pyethapp>`_
+    - `disco <https://github.com/b1naryth1ef/disco>`_ (Discord Python library)
+    - `bliss <https://bliss.gitlab-pages.esrf.fr/bliss/index.html>`_
+    - `esdocs <https://github.com/jaddison/esdocs>`_
     - `Wishbone <https://wishbone.readthedocs.io>`_
     - `Quantopian’s remote Python debugger <https://github.com/quantopian/qdb>`_
     - `Ajenti <http://ajenti.org/>`_
-    - `PokeAlarm <https://github.com/PokeAlarm/PokeAlarm>`_
+    - `HoneyBadgerBFT <https://github.com/initc3/HoneyBadgerBFT-Python>`_
+    - `iDigBio <https://github.com/iDigBio/idb-backend>`_
     - `Chronology <http://chronology.github.io>`_
     - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_
     - `NetCall <https://github.com/aglyzov/netcall>`_
+    - `SiteScan <https://github.com/jasonsheh/SiteScan>`_
+    - `PokeAlarm <https://github.com/PokeAlarm/PokeAlarm>`_
     - `gipcrpc <https://github.com/studio-ousia/gipcrpc>`_
-
+    - `etcd-gevent <https://github.com/wjsi/etcd-gevent>`_
 
 Are you successfully using gipc in your project? Please drop me a line!
 
 
-How to run tests and code audit?
-================================
+How to run the tests?
+=====================
 gipc's tests are written for `pytest <http://pytest.org>`_. With the
-repository's root directory being the current working directory, run tests and
-audit like this::
+repository's root directory being the current working directory you can run the
+tests like this::
 
     $ pip install -r requirements-tests.txt
-    $ ./audit.sh
     $ cd test && pytest -vv --cov-report term --cov-report html --cov gipc
 
 
