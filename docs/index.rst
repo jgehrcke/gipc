@@ -1,5 +1,5 @@
 .. gipc documentation master file
-   Copyright 2012-2017 Jan-Philip Gehrcke. See LICENSE file for details.
+   Copyright 2012-2018 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
 
 
 ########################################
