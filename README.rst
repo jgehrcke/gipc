@@ -48,30 +48,30 @@ examples, and in-depth information.
 
 Platform support
 ================
-The current version of gipc works on CPython 2.7/3.4/3.5/3.6. It requires at
-least gevent 1.2 and supports both, Unix-like systems as well as Windows. On
+The current version of gipc works on CPython 2.7/3.4/3.5/3.6/3.7. It requires at
+gevent 1.2 or 1.3 and supports both, Unix-like systems as well as Windows. On
 Unix-like systems, gipc also works with PyPy2.7 and PyPy3. gipc's test suite is
 automatically executed on Linux, Darwin (macOS), and Windows.
 
 Who uses it?
 ============
 
-    - `pyethapp <https://github.com/ethereum/pyethapp>`_
-    - `disco <https://github.com/b1naryth1ef/disco>`_ (Discord Python library)
-    - `bliss <https://bliss.gitlab-pages.esrf.fr/bliss/index.html>`_
-    - `esdocs <https://github.com/jaddison/esdocs>`_
-    - `Wishbone <https://wishbone.readthedocs.io>`_
-    - `Quantopian’s remote Python debugger <https://github.com/quantopian/qdb>`_
-    - `Ajenti <http://ajenti.org/>`_
-    - `HoneyBadgerBFT <https://github.com/initc3/HoneyBadgerBFT-Python>`_
-    - `iDigBio <https://github.com/iDigBio/idb-backend>`_
-    - `Chronology <http://chronology.github.io>`_
-    - `GDriveFS <https://github.com/dsoprea/GDriveFS>`_
-    - `NetCall <https://github.com/aglyzov/netcall>`_
-    - `SiteScan <https://github.com/jasonsheh/SiteScan>`_
-    - `PokeAlarm <https://github.com/PokeAlarm/PokeAlarm>`_
-    - `gipcrpc <https://github.com/studio-ousia/gipcrpc>`_
-    - `etcd-gevent <https://github.com/wjsi/etcd-gevent>`_
+- `pyethapp <https://github.com/ethereum/pyethapp>`_
+- `disco <https://github.com/b1naryth1ef/disco>`_ (Discord Python library)
+- `bliss <https://bliss.gitlab-pages.esrf.fr/bliss/index.html>`_
+- `esdocs <https://github.com/jaddison/esdocs>`_
+- `Wishbone <https://wishbone.readthedocs.io>`_
+- `Quantopian’s remote Python debugger <https://github.com/quantopian/qdb>`_
+- `Ajenti <http://ajenti.org/>`_
+- `HoneyBadgerBFT <https://github.com/initc3/HoneyBadgerBFT-Python>`_
+- `iDigBio <https://github.com/iDigBio/idb-backend>`_
+- `Chronology <http://chronology.github.io>`_
+- `GDriveFS <https://github.com/dsoprea/GDriveFS>`_
+- `NetCall <https://github.com/aglyzov/netcall>`_
+- `SiteScan <https://github.com/jasonsheh/SiteScan>`_
+- `PokeAlarm <https://github.com/PokeAlarm/PokeAlarm>`_
+- `gipcrpc <https://github.com/studio-ousia/gipcrpc>`_
+- `etcd-gevent <https://github.com/wjsi/etcd-gevent>`_
 
 Are you successfully using gipc in your project? Please drop me a line!
 
@@ -95,5 +95,18 @@ at jgehrcke@googlemail.com or use the `GitHub issue tracker
 
 Author & license
 ================
-gipc is written and maintained by `Jan-Philip Gehrcke <http://gehrcke.de>`_.
+gipc is written and maintained by `Jan-Philip Gehrcke <https://gehrcke.de>`_.
 It is licensed under an MIT license (see LICENSE file).
+
+I am thankful for all contributions (bug reports, code, great questions) from:
+
+- Guy Rozendorn
+- John Ricklefs
+- Heungsub Lee
+- Alex Besogonov
+- Jonathan Kamens
+- Akhil Acharya
+- John Porter
+- James Addison
+- Oliver Margetts
+- ... and others
