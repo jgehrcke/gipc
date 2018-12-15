@@ -1,5 +1,5 @@
 .. gipc documentation master file
-   Copyright 2012-2017 Jan-Philip Gehrcke. See LICENSE file for details.
+   Copyright 2012-2018 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
 
 
 ########################################
@@ -18,6 +18,7 @@ This documentation applies to gipc |release|. It was built on |today|.
 
 - `gipc on GitHub <https://github.com/jgehrcke/gipc>`_
 - `gipc on PyPI <https://pypi.python.org/pypi/gipc>`_
+- `Changelog <https://github.com/jgehrcke/gipc/blob/master/CHANGELOG.rst>`_
 - `gipc on Bitbucket <https://bitbucket.org/jgehrcke/gipc>`_ (legacy)
 
 

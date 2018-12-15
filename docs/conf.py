@@ -46,7 +46,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = 'gipc'
-copyright = '2012 - 2017, Jan-Philip Gehrcke'
+copyright = '2012 - 2018, Dr. Jan-Philip Gehrcke'
 
 # The version info for the project you're documenting, acts as replacement for
 # |version| and |release|, also used in various other places throughout the
