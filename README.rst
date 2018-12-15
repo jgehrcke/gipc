@@ -96,7 +96,7 @@ at jgehrcke@googlemail.com or use the `GitHub issue tracker
 Author & license
 ================
 gipc is written and maintained by `Jan-Philip Gehrcke <https://gehrcke.de>`_.
-It is licensed under an MIT license (see LICENSE file).
+It is licensed under the MIT license (see LICENSE file).
 
 I am thankful for all contributions (bug reports, code, great questions) from:
 
