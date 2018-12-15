@@ -1,6 +1,6 @@
-pytest==3.8.1
+pytest==4.0.2
 pytest-cov==2.6.0
-sphinx==1.8.1
-sphinx-rtd-theme==0.4.1
+sphinx==1.8.2
+sphinx-rtd-theme==0.4.2
 rst2html5
 flake8==3.6.0
