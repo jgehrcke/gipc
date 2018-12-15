@@ -1,5 +1,5 @@
-master (in development)
------------------------
+Version 1.0.0 (Dec 15, 2018)
+----------------------------
 
 New platform support:
 
