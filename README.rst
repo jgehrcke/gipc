@@ -105,5 +105,8 @@ I am thankful for all contributions (bug reports, code, great questions) from:
 - Heungsub Lee
 - Alex Besogonov
 - Jonathan Kamens
+- Akhil Acharya
 - John Porter
+- James Addison
+- Oliver Margetts
 - ... and others
