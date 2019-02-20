@@ -6,7 +6,8 @@ if [[ -z "${PYENV_VERSION}" ]]; then
     echo "Use Travis-provided Python"
 else
     echo "Use praekelt.org's setup-pyenv."
-    export PYENV_RELEASE="v1.2.7"
+    # export PYENV_RELEASE="v1.2.7"
+    # Use head of master for most recent PyPy releases.
     wget https://raw.githubusercontent.com/jgehrcke/travis-pyenv/develop/setup-pyenv.sh
 
     # This sets up the pyenv-provided Python in the _current_ shell. Do not exit
