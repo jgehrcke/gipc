@@ -1164,7 +1164,7 @@ class TestComplexUseCases(object):
         t = h.threadpool
         r = h.resolver
         p = start_process(target=complchild_test_threadpool_resolver_mp)
-        p.join(timeout=1)
+        p.join(timeout=2)
         assert p.exitcode == 0
 
     def test_wsgi_scenario(self):
