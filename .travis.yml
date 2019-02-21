@@ -1,35 +1,38 @@
-# Instruct Travis to build PRs as well as merges
-# to master. See https://stackoverflow.com/a/31882307/145400.
+# Instruct Travis to build PRs as well as merges to master.
+# See https://stackoverflow.com/a/31882307/145400.
 branches:
   only:
     - master
 
 language: python
 
-
-# Try to work around Travis' lack of Python support on OS X.
+# Work around Travis' lack of Python support on OS X.
 # https://github.com/travis-ci/travis-ci/issues/2312#issuecomment-289140791
-# The Travis CI build matrix is a thing mean for two dimensions. It's not a
-# thing that is doing the right combinatorics for us. So, we have to those
-# combinatorics ourselves.
+
+# The Travis CI build matrix is meant for two dimensions, not more. That is, it
+# is not doing the right combinatorics for us. Take care of the combinatorics
+# manually:
 
 # Two dimensions for Linux:
-#   - gevent version: default, gevent>=1.2,<1.3
+#   - gevent version: default (currently 1.4), gevent>=1.2,<1.3 (1.2)
 #   - python version: 2.7, 3.4, 3.5, pypy, pypy3
 
 # Two dimensions for MacOS:
-#   - gevent version: default, gevent>=1.2,<1.3
+#   - gevent version: default (currently 1.4), gevent>=1.2,<1.3 (1.2)
 #   - python version: 2.7, 3.6
-
 
 matrix:
   include:
+    # Linux tests with Travis' CPython.
     - os: linux
       python: 2.7
       env: GEVENT_VERSION="default"
     - os: linux
       python: 2.7
       env: GEVENT_VERSION="gevent>=1.2,<1.3"
+    - os: linux
+      python: 2.7
+      env: GEVENT_VERSION="gevent>=1.3,<1.4"
 
     - os: linux
       python: 3.4
@@ -37,6 +40,9 @@ matrix:
     - os: linux
       python: 3.4
       env: GEVENT_VERSION="gevent>=1.2,<1.3"
+    - os: linux
+      python: 3.4
+      env: GEVENT_VERSION="gevent>=1.3,<1.4"
 
     - os: linux
       python: 3.5
@@ -44,6 +50,9 @@ matrix:
     - os: linux
       python: 3.5
       env: GEVENT_VERSION="gevent>=1.2,<1.3"
+    - os: linux
+      python: 3.5
+      env: GEVENT_VERSION="gevent>=1.3,<1.4"
 
     - os: linux
       python: 3.6
@@ -51,20 +60,23 @@ matrix:
     - os: linux
       python: 3.6
       env: GEVENT_VERSION="gevent>=1.2,<1.3"
-
     - os: linux
       python: 3.6
-      env: GEVENT_VERSION="default"
-    - os: linux
-      python: 3.6
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+      env: GEVENT_VERSION="gevent>=1.3,<1.4"
 
-    # For CPython 3.7 support gevent >=1.3.x is required
+    # For supporting CPython 3.7 gevent >=1.3.x is required. Test default
+    # (currently 1.4.x) and with 1.3.x.
     - os: linux
       dist: xenial
       python: 3.7
-      env: GEVENT_VERSION="default""
+      env: GEVENT_VERSION="default"
+    - os: linux
+      dist: xenial
+      python: 3.7
+      env: GEVENT_VERSION="gevent>=1.3,<1.4"
 
+    # Linux tests with Travis' PyPy. Test default gevent (currently 1.4.x) and
+    # gevent 1.2.x.
     - os: linux
       python: pypy
       env: GEVENT_VERSION="default"
@@ -79,7 +91,7 @@ matrix:
       python: pypy3
       env: GEVENT_VERSION="gevent>=1.2,<1.3"
 
-    # Linux, but pyenv Python builds. Only test current gevent.
+    # Linux, but pyenv Python/PyPy builds. Only test current gevent.
     - os: linux
       language: generic
       env:
@@ -89,7 +101,17 @@ matrix:
       language: generic
       env:
         - GEVENT_VERSION="default"
+        - PYENV_VERSION=pypy3.5-7.0.0
+    - os: linux
+      language: generic
+      env:
+        - GEVENT_VERSION="default"
         - PYENV_VERSION=pypy2.7-6.0.0
+    - os: linux
+      language: generic
+      env:
+        - GEVENT_VERSION="default"
+        - PYENV_VERSION=pypy2.7-7.0.0
 
     # Darwin tests.
     # Do not test with old gevent (1.2.x).
@@ -108,6 +130,11 @@ matrix:
       language: generic
       env:
         - PYENV_VERSION=pypy3.5-6.0.0
+        - GEVENT_VERSION="default"
+    - os: osx
+      language: generic
+      env:
+        - PYENV_VERSION=pypy3.5-7.0.0
         - GEVENT_VERSION="default"
     # Test with system Python.
     - os: osx

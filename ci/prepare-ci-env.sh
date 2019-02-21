@@ -6,7 +6,13 @@ if [[ -z "${PYENV_VERSION}" ]]; then
     echo "Use Travis-provided Python"
 else
     echo "Use praekelt.org's setup-pyenv."
-    export PYENV_RELEASE="v1.2.7"
+    # Travis seems to set PYENV_ROOT to /opt/pyenv which holds an old pyenv
+    # release. As of the time of writing this comment we need cutting edge. Use
+    # head of master for most recent PyPy releases. Unset PYENV_RELEASE in case
+    # Travis tries to set it for us.
+    unset PYENV_RELEASE
+    # export PYENV_RELEASE="v1.2.7"
+    export PYENV_ROOT="$HOME/.travis-pyenv"
     wget https://raw.githubusercontent.com/jgehrcke/travis-pyenv/develop/setup-pyenv.sh
 
     # This sets up the pyenv-provided Python in the _current_ shell. Do not exit
