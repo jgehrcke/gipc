@@ -1,4 +1,4 @@
-Version 1.0.1 (Feb 14, 2019)
+Version 1.0.1 (Feb 21, 2019)
 ----------------------------
 
 This release adds support for gevent 1.4.
@@ -8,7 +8,7 @@ Test / continuous integration changes:
 - The Linux main test matrix now covers gevent 1.2.x, gevent 1.3.x, and gevent
   1.4.x.
 
-- The PyPy tests now cover pypy3.5-7.0.0 and pypy2.7-7.0.0
+- The PyPy tests now additionally cover pypy3.5-7.0.0 and pypy2.7-7.0.0.
 
 
 Version 1.0.0 (Dec 15, 2018)
