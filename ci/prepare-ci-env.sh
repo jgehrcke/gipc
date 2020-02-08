@@ -20,7 +20,7 @@ else
     curl -fsSL --retry 10 "https://github.com/pyenv/pyenv/archive/$PYENV_RELEASE.tar.gz" \
         | tar -xz -C "$PYENV_ROOT" --strip-components 1
     export PATH="$PYENV_ROOT/bin:$PATH"
-    pyenv install "$PYENV_PYTHON_VERSION"
+    pyenv install -v "$PYENV_PYTHON_VERSION"
     pyenv global "$PYENV_PYTHON_VERSION"
     pyenv versions
     git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
