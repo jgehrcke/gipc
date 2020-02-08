@@ -20,10 +20,13 @@ else
     curl -fsSL --retry 10 "https://github.com/pyenv/pyenv/archive/$PYENV_RELEASE.tar.gz" \
         | tar -xz -C "$PYENV_ROOT" --strip-components 1
     export PATH="$PYENV_ROOT/bin:$PATH"
-    eval "$(pyenv init -)"
     pyenv install "$PYENV_PYTHON_VERSION"
     pyenv global "$PYENV_PYTHON_VERSION"
     pyenv versions
+
+    eval "$(pyenv init -)"
+    command -v python
+    python --version
     pip install -U virtualenv
     VIRTUAL_ENV="$HOME/ve-pyenv-$PYENV_PYTHON_VERSION"
     virtualenv -p "$(which python)" ${VIRTUALENV_EXTRA_ARGS:-} "$VIRTUAL_ENV"
