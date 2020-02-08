@@ -5,7 +5,7 @@ set -o pipefail
 set -o xtrace
 
 
-if [[ -z "${PYENV_VERSION}" ]]; then
+if [[ -z "${PYENV_PYTHON_VERSION}" ]]; then
     echo "Use Travis-provided Python"
 else
     # Travis seems to set PYENV_ROOT to /opt/pyenv which holds an old pyenv
@@ -21,11 +21,11 @@ else
         | tar -xz -C "$PYENV_ROOT" --strip-components 1
     export PATH="$PYENV_ROOT/bin:$PATH"
     eval "$(pyenv init -)"
-    pyenv install "$PYENV_VERSION"
-    pyenv global "$PYENV_VERSION"
+    pyenv install "$PYENV_PYTHON_VERSION"
+    pyenv global "$PYENV_PYTHON_VERSION"
     pyenv versions
     pip install -U virtualenv
-    VIRTUAL_ENV="$HOME/ve-pyenv-$PYENV_VERSION"
+    VIRTUAL_ENV="$HOME/ve-pyenv-$PYENV_PYTHON_VERSION"
     virtualenv -p "$(which python)" ${VIRTUALENV_EXTRA_ARGS:-} "$VIRTUAL_ENV"
     source "$VIRTUAL_ENV/bin/activate"
     command -v python
