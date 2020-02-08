@@ -8,20 +8,28 @@ set -o xtrace
 if [[ -z "${PYENV_VERSION}" ]]; then
     echo "Use Travis-provided Python"
 else
-    echo "Use praekelt.org's setup-pyenv."
     # Travis seems to set PYENV_ROOT to /opt/pyenv which holds an old pyenv
-    # release. As of the time of writing this comment we need cutting edge. Use
-    # head of master for most recent PyPy releases. Unset PYENV_RELEASE in case
-    # Travis tries to set it for us.
-    unset PYENV_RELEASE
+    # release. Use a more recent release. Note that PYENV_RELEASE might
+    # misleadingly be set from the outside if we don't set it here.
     export PYENV_RELEASE="v1.2.16"
     export PYENV_ROOT="$HOME/.travis-pyenv"
-    wget https://raw.githubusercontent.com/jgehrcke/travis-pyenv/develop/setup-pyenv.sh
 
-    # This sets up the pyenv-provided Python in the _current_ shell. Do not exit
-    # this shell, so that the `script` part in .travis.yml executes in the same
-    # shell.
-    source setup-pyenv.sh
+    # Note(JP): based on praekeltfoundation/travis-pyenv/blob/develop/setup-pyenv.sh
+    # but w/o caching. See https://github.com/jgehrcke/gipc/issues/92.
+    mkdir "$PYENV_ROOT"
+    curl -fsSL --retry 10 "https://github.com/pyenv/pyenv/archive/$PYENV_RELEASE.tar.gz" \
+        | tar -xz -C "$PYENV_ROOT" --strip-components 1
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    eval "$(pyenv init -)"
+    pyenv install "$PYENV_VERSION"
+    eval "$(pyenv init -)"
+    pyenv global "$PYENV_VERSION"
+    pip install -U virtualenv
+    VIRTUAL_ENV="$HOME/ve-pyenv-$PYENV_VERSION"
+    virtualenv -p "$(which python)" ${VIRTUALENV_EXTRA_ARGS:-} "$VIRTUAL_ENV"
+    source "$VIRTUAL_ENV/bin/activate"
+    command -v python
+    python --version
 fi
 
 
