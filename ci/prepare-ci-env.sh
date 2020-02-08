@@ -43,8 +43,8 @@ fi
 # Install newer pip and setuptools (newer than bundles with certain Python
 # releases and newer than what Travis brings) -- but still pin the versions so
 # that there are no moving dependencies.
-pip install 'pip==19.1.1' --upgrade
-pip install 'setuptools==41.4.0' --upgrade
+pip install 'pip==19.3.1' --upgrade
+pip install 'setuptools==42.0.2' --upgrade
 
 # Install gipc dependencies from its `setup.py`.
 pip install .
