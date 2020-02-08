@@ -1,5 +1,9 @@
 #!/bin/bash
-set -x
+set -o errexit
+set -o errtrace
+set -o nounset
+set -o pipefail
+set -o xtrace
 
 
 if [[ -z "${PYENV_VERSION}" ]]; then
@@ -11,7 +15,7 @@ else
     # head of master for most recent PyPy releases. Unset PYENV_RELEASE in case
     # Travis tries to set it for us.
     unset PYENV_RELEASE
-    # export PYENV_RELEASE="v1.2.7"
+    export PYENV_RELEASE="v1.2.16"
     export PYENV_ROOT="$HOME/.travis-pyenv"
     wget https://raw.githubusercontent.com/jgehrcke/travis-pyenv/develop/setup-pyenv.sh
 
