@@ -22,8 +22,8 @@ else
     export PATH="$PYENV_ROOT/bin:$PATH"
     eval "$(pyenv init -)"
     pyenv install "$PYENV_VERSION"
-    eval "$(pyenv init -)"
     pyenv global "$PYENV_VERSION"
+    pyenv versions
     pip install -U virtualenv
     VIRTUAL_ENV="$HOME/ve-pyenv-$PYENV_VERSION"
     virtualenv -p "$(which python)" ${VIRTUALENV_EXTRA_ARGS:-} "$VIRTUAL_ENV"
