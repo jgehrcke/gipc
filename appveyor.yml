@@ -40,8 +40,8 @@ install:
   # Install newer pip and setuptools (newer than bundles with certain Python
   # releases and newer than what Travis brings) -- but still pin the versions so
   # that there are no moving dependencies.
-  - "python -m pip install pip==18.0 --upgrade"
-  - "python -m pip install setuptools==40.4.3 --upgrade"
+  - "python -m pip install pip==19.1.1 --upgrade"
+  - "python -m pip install setuptools==42.0.2 --upgrade"
 
   # Simulate case where a normal user sets up gevent and gipc (install gevent
   # and greenlet binaries via wheel files).

@@ -1,24 +1,40 @@
 #!/bin/bash
-set -x
+set -o errexit
+set -o errtrace
+set -o pipefail
+set -o xtrace
 
 
-if [[ -z "${PYENV_VERSION}" ]]; then
+if [[ -z "${PYENV_PYTHON_VERSION}" ]]; then
     echo "Use Travis-provided Python"
 else
-    echo "Use praekelt.org's setup-pyenv."
     # Travis seems to set PYENV_ROOT to /opt/pyenv which holds an old pyenv
-    # release. As of the time of writing this comment we need cutting edge. Use
-    # head of master for most recent PyPy releases. Unset PYENV_RELEASE in case
-    # Travis tries to set it for us.
-    unset PYENV_RELEASE
-    # export PYENV_RELEASE="v1.2.7"
+    # release. Use a more recent release. Note that PYENV_RELEASE might
+    # misleadingly be set from the outside if we don't set it here.
+    export PYENV_RELEASE="v1.2.16"
     export PYENV_ROOT="$HOME/.travis-pyenv"
-    wget https://raw.githubusercontent.com/jgehrcke/travis-pyenv/develop/setup-pyenv.sh
 
-    # This sets up the pyenv-provided Python in the _current_ shell. Do not exit
-    # this shell, so that the `script` part in .travis.yml executes in the same
-    # shell.
-    source setup-pyenv.sh
+    # Note(JP): based on praekeltfoundation/travis-pyenv/blob/develop/setup-pyenv.sh
+    # but w/o caching. See https://github.com/jgehrcke/gipc/issues/92.
+    mkdir "$PYENV_ROOT"
+    curl -fsSL --retry 10 "https://github.com/pyenv/pyenv/archive/$PYENV_RELEASE.tar.gz" \
+        | tar -xz -C "$PYENV_ROOT" --strip-components 1
+    export PATH="$PYENV_ROOT/bin:$PATH"
+    pyenv install -v "$PYENV_PYTHON_VERSION"
+    pyenv global "$PYENV_PYTHON_VERSION"
+    pyenv versions
+    git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
+
+    eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
+    command -v python
+    python --version
+
+    VENV_NAME="ve-pyenv-${PYENV_PYTHON_VERSION}"
+    pyenv virtualenv "$PYENV_PYTHON_VERSION" "$VENV_NAME"
+    pyenv activate "$VENV_NAME"
+    command -v python
+    python --version
 fi
 
 
@@ -40,7 +56,7 @@ fi
 # releases and newer than what Travis brings) -- but still pin the versions so
 # that there are no moving dependencies.
 pip install 'pip==19.1.1' --upgrade
-pip install 'setuptools==41.4.0' --upgrade
+pip install 'setuptools==42.0.2' --upgrade
 
 # Install gipc dependencies from its `setup.py`.
 pip install .
