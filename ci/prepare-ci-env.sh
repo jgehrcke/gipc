@@ -23,14 +23,16 @@ else
     pyenv install "$PYENV_PYTHON_VERSION"
     pyenv global "$PYENV_PYTHON_VERSION"
     pyenv versions
+    git clone https://github.com/pyenv/pyenv-virtualenv.git $(pyenv root)/plugins/pyenv-virtualenv
 
     eval "$(pyenv init -)"
+    eval "$(pyenv virtualenv-init -)"
     command -v python
     python --version
-    pip install -U virtualenv
-    VIRTUAL_ENV="$HOME/ve-pyenv-$PYENV_PYTHON_VERSION"
-    virtualenv -p "$(which python)" ${VIRTUALENV_EXTRA_ARGS:-} "$VIRTUAL_ENV"
-    source "$VIRTUAL_ENV/bin/activate"
+
+    VENV_NAME="ve-pyenv-${PYENV_PYTHON_VERSION}"
+    pyenv virtualenv "$PYENV_PYTHON_VERSION" "$VENV_NAME"
+    pyenv activate "$VENV_NAME"
     command -v python
     python --version
 fi
