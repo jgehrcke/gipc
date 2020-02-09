@@ -383,7 +383,7 @@ def _child(target, args, kwargs):
             pass
 
 
-def cooperative_process_close(self):
+def _cooperative_process_close_unix(self):
     """
     For compatibility with CPython 3.7+ where this method was introduced.
     Also see https://bugs.python.org/issue30596 for the discussion that
@@ -461,6 +461,12 @@ class _GProcess(multiprocessing.Process):
     #  any pending SIGCHLD signal associated with the process ID of the child
     #  process shall be discarded."
 
+    # `is_alive()`, `join()`, `exitcode()` below call `self._checked_closed()`
+    # for compatibility with CPython 3.7 and newer. For older Python versions
+    # make this a noop.
+    if not hasattr(multiprocessing.Process, '_check_closed'):
+        _check_closed = lambda *a, **b: None
+
     # On Windows, cooperative `join()` is realized via polling (non-blocking
     # calls to `Process.is_alive()`) and the original `join()` method.
     if not WINDOWS:
@@ -483,15 +489,10 @@ class _GProcess(multiprocessing.Process):
         mp_Popen.poll = lambda *a, **b: None
         del mp_Popen
 
-        # CPython 3.7 introduced a non-ccoperative close() method. Replace it.
+        # CPython 3.7 introduced a non-cooperative close() method. Replace it.
+        # This replacement is not required on Windows.
         if hasattr(multiprocessing.Process, 'close'):
-            multiprocessing.Process.close = cooperative_process_close
-
-        # `is_alive()` and `join()` below call `self._checked_closed()` for
-        # compatibility with CPython 3.7 and newer. For older Python versions
-        # make this a noop.
-        if not hasattr(multiprocessing.Process, '_check_closed'):
-            _check_closed = lambda *a, **b: None
+            multiprocessing.Process.close = _cooperative_process_close_unix
 
         def start(self):
             # Start grabbing SIGCHLD within libev event loop.
