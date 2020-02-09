@@ -13,9 +13,6 @@ environment:
 
     # AppVeyor-provided CPython. Can move to a newer point release at any point
     # in time (desirable).
-    - PYTHON: "C:\\Python38-x64"
-      PYTHON_ARCH: "64"
-
     - PYTHON: "C:\\Python37-x64"
       PYTHON_ARCH: "64"
 
