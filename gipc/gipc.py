@@ -383,6 +383,41 @@ def _child(target, args, kwargs):
             pass
 
 
+def cooperative_process_close(self):
+    """
+    For compatibility with CPython 3.7+ where this method was introduced.
+    Also see https://bugs.python.org/issue30596 for the discussion that
+    led to introducing this method.
+
+    The main motivation of this method is to release a tiny amount of resources
+    _now_ instead of later through GC, and to then set a few properties
+    indicating that the process object cannot be used for managing an actual
+    process anymore.
+
+    The original implementation uses `self._popen.poll() is None` to check if
+    the underlying process is still running (and raises a ValueError in that
+    case). That is a synchronous check for the question whether the process is
+    still running or not. In the context of gipc it is not allowed to call
+    `self._popen.poll()` (as of a waitpid() race against libev, see above). That
+    is why this method is re-implemented cooperatively here.
+    """
+    if self._popen is not None:
+
+        if self._popen.returncode is None:
+            # The error message is copied verbatim from stdlib (3.7).
+            raise ValueError(
+                "Cannot close a process while it is still running. "
+                "You should first call join() or terminate().")
+
+        self._popen.close()
+        self._popen = None
+
+        del self._sentinel
+        multiprocessing.process._children.discard(self)
+
+    self._closed = True
+
+
 class _GProcess(multiprocessing.Process):
     """
     Compatible with the ``multiprocessing.Process`` API.
@@ -448,6 +483,16 @@ class _GProcess(multiprocessing.Process):
         mp_Popen.poll = lambda *a, **b: None
         del mp_Popen
 
+        # CPython 3.7 introduced a non-ccoperative close() method. Replace it.
+        if hasattr(multiprocessing.Process, 'close'):
+            multiprocessing.Process.close = cooperative_process_close
+
+        # `is_alive()` and `join()` below call `self._checked_closed()` for
+        # compatibility with CPython 3.7 and newer. For older Python versions
+        # make this a noop.
+        if not hasattr(multiprocessing.Process, '_check_closed'):
+            _check_closed = lambda *a, **b: None
+
         def start(self):
             # Start grabbing SIGCHLD within libev event loop.
             gevent.get_hub().loop.install_sigchld()
@@ -478,6 +523,8 @@ class _GProcess(multiprocessing.Process):
                       "stored: %s", self.pid, self._popen.returncode)
 
         def is_alive(self):
+            self._check_closed()
+
             assert self._popen is not None, "Process not yet started."
             if self._popen.returncode is None:
                 return True
@@ -485,6 +532,7 @@ class _GProcess(multiprocessing.Process):
 
         @property
         def exitcode(self):
+            self._check_closed()
             if self._popen is None:
                 return None
             return self._popen.returncode
@@ -531,6 +579,7 @@ class _GProcess(multiprocessing.Process):
             simply returns upon timeout expiration. The state of the process
             has to be identified via ``is_alive()``.
         """
+        self._check_closed()
         assert self._parent_pid == os.getpid(), "I'm not parent of this child."
         assert self._popen is not None, 'Can only join a started process.'
         if not WINDOWS:
@@ -540,7 +589,7 @@ class _GProcess(multiprocessing.Process):
             self._returnevent.wait(timeout)
             if self._popen.returncode is not None:
                 if hasattr(multiprocessing.process, '_children'):
-                    # This is for Python 3.4.
+                    # This is for Python 3.4 and beyond.
                     kids = multiprocessing.process._children
                 else:
                     # For Python 2.6, 2.7, 3.3.
