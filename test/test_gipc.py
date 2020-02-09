@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2018 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2020 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
 
 
 """
