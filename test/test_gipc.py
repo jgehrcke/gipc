@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2018 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2020 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
 
 
 """
@@ -28,7 +28,7 @@ from gipc.gipc import _set_all_handles as set_all_handles
 from gipc.gipc import _signals_to_reset as signals_to_reset
 
 
-from py.test import raises, mark
+from pytest import raises, mark
 
 
 logging.basicConfig(
@@ -43,6 +43,7 @@ LONG = 999999
 SHORTTIME = 0.01
 ALMOSTZERO = 0.00001
 LONGERTHANBUFFER = "A" * 9999999
+PROCESS_HAS_CLOSE_METHOD = hasattr(multiprocessing.Process, 'close')
 
 
 def check_for_handles_left_open():
@@ -219,6 +220,11 @@ class TestClose(object):
             self.rh.get()
         self.rh.close()
 
+# CPython 3.7 introduced a non-cooperative close() method.
+# gipc replaces it with a cooperative implementation. Call it.
+def _call_close_method_if_exists(p):
+    if PROCESS_HAS_CLOSE_METHOD:
+        p.close()
 
 class TestProcess(object):
     """Test child process behavior and `_GProcess` API.
@@ -228,17 +234,20 @@ class TestProcess(object):
         assert p.is_alive()
         p.join()
         assert p.exitcode == 0
+        _call_close_method_if_exists(p)
 
     def test_is_alive_false(self):
         p = start_process(p_child_a)
         p.join()
         assert not p.is_alive()
         assert p.exitcode == 0
+        _call_close_method_if_exists(p)
 
     def test_exitcode_0(self):
         p = start_process(p_child_a)
         p.join()
         assert p.exitcode == 0
+        _call_close_method_if_exists(p)
 
     def test_exitcode_sigkill(self):
         p = start_process(p_child_b)
@@ -247,6 +256,7 @@ class TestProcess(object):
             assert p.exitcode == -signal.SIGKILL
         else:
             assert p.exitcode == 1
+        _call_close_method_if_exists(p)
 
     def test_exitcode_1(self):
         p = start_process(p_child_c)
@@ -258,6 +268,7 @@ class TestProcess(object):
         p.join()
         assert p.pid is not None
         assert p.exitcode == 0
+        _call_close_method_if_exists(p)
 
     def test_terminate(self):
         p = start_process(gevent.sleep, args=(1,))
@@ -267,10 +278,12 @@ class TestProcess(object):
         p.join()
         p.__repr__()
         assert p.exitcode == -signal.SIGTERM
+        _call_close_method_if_exists(p)
 
     def test_child_in_child_in_child(self):
         p = start_process(p_child_e)
         p.join()
+        _call_close_method_if_exists(p)
 
     def test_join_timeout(self):
         p = start_process(gevent.sleep, args=(0.1, ))
@@ -278,6 +291,49 @@ class TestProcess(object):
         assert p.is_alive()
         p.join()
         assert p.exitcode == 0
+        _call_close_method_if_exists(p)
+
+    def test_close_method_only_present_if_required(self):
+        p = start_process(p_child_a)
+
+        if not hasattr(multiprocessing.Process, 'close'):
+            with raises(AttributeError, match="has no attribute 'close'"):
+                p.close()
+            return
+
+        else:
+            p.terminate()
+            p.join()
+            p.close()
+
+    @mark.skipif('not PROCESS_HAS_CLOSE_METHOD')
+    def test_close_raises_if_called_prematurely(self):
+        p = start_process(p_child_a)
+        assert p.is_alive()
+        with raises(ValueError, match="while it is still running"):
+            p.close()
+        p.terminate()
+        p.join()
+        p.close()
+
+    @mark.skipif('not PROCESS_HAS_CLOSE_METHOD')
+    def test_things_error_out_after_closed(self):
+        p = start_process(p_child_a)
+        assert p.is_alive()
+        p.terminate()
+        p.join()
+        p.close()
+
+        with raises(ValueError, match="process object is closed"):
+            p.is_alive()
+
+        with raises(ValueError, match="process object is closed"):
+            p.join()
+
+        with raises(ValueError, match="process object is closed"):
+            p.exitcode
+
+
 
     def test_typecheck_args(self):
         with raises(TypeError):
