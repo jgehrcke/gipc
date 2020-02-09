@@ -109,9 +109,12 @@ matrix:
         - GEVENT_VERSION="default"
         - PYENV_PYTHON_VERSION=pypy2.7-7.3.0
 
-    # Darwin tests.
-    # Do not test with old gevent (1.2.x).
-    # Test primarily with pyenv Python builds.
+    # Darwin tests. Test primarily with pyenv Python builds.
+    - os: osx
+      language: generic
+      env:
+        - PYENV_PYTHON_VERSION=3.8.1
+        - GEVENT_VERSION="gevent==1.5a3"
     - os: osx
       language: generic
       env:
