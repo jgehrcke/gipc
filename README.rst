@@ -23,8 +23,7 @@ Using Python's `multiprocessing package
 <https://docs.python.org/3/library/multiprocessing.html>`_ in the context of a
 code base that also uses gevent is error-prone and may break the application in
 various `subtle ways
-<https://gehrcke.de/gipc/#what-are-the-challenges-and-what-is-gipc-s-solution>`_
-.
+<https://gehrcke.de/gipc/#what-are-the-challenges-and-what-is-gipc-s-solution>`_.
 
 With gipc, ``multiprocessing.Process``-based child processes can safely be
 created anywhere within your gevent-powered application. The API of
@@ -37,7 +36,7 @@ integrate.
 Code examples
 =============
 
-Have a look at the individual programs in the `examples
+Individual example programs can be found in the `examples
 <https://github.com/jgehrcke/gipc/blob/master/examples>`_ directory.
 
 
