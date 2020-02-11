@@ -9,7 +9,7 @@ Travis CI status (master branch): |traviscibadge|
     :align: middle
 
 From 2012 to 2018 gipc's home was at `bitbucket.org/jgehrcke/gipc
-<https://bitbucket.org/jgehrcke/gipc>`_. Since 2018 development continues on
+<https://bitbucket.org/jgehrcke/gipc>`_. Since 2018 development has continued on
 GitHub.
 
 
@@ -19,14 +19,15 @@ gipc (pronunciation as in “gipsy”) provides reliable child process managemen
 and non-blocking inter-process communication in the context of `gevent
 <https://github.com/gevent/gevent>`_.
 
-Direct usage of Python's `multiprocessing package
+Using Python's `multiprocessing package
 <https://docs.python.org/3/library/multiprocessing.html>`_ in the context of a
-gevent-powered application is error-prone and may break the application in
+code base that also uses gevent is error-prone and may break the application in
 various `subtle ways
-<https://gehrcke.de/gipc/#what-are-the-challenges-and-what-is-gipc-s-solution>`_
-. With gipc, ``multiprocessing.Process``-based child processes can safely be
+<https://gehrcke.de/gipc/#what-are-the-challenges-and-what-is-gipc-s-solution>`_.
+
+With gipc, ``multiprocessing.Process``-based child processes can safely be
 created anywhere within your gevent-powered application. The API of
-``multiprocessing.Process`` objects is provided in a gevent-cooperative fashion.
+``multiprocessing.Process`` objects is provided in a gevent-cooperative way.
 Also, gipc provides a pipe-based transport layer for gevent-cooperative
 inter-greenlet and inter-process communication. gipc is lightweight and easy to
 integrate.
@@ -35,7 +36,7 @@ integrate.
 Code examples
 =============
 
-Have a look at the individual programs in the `examples
+Individual example programs can be found in the `examples
 <https://github.com/jgehrcke/gipc/blob/master/examples>`_ directory.
 
 
@@ -48,10 +49,15 @@ examples, and in-depth information.
 
 Platform support
 ================
-The current version of gipc works on CPython 2.7/3.4/3.5/3.6/3.7. It requires
-gevent 1.2 or 1.3 and supports both, Unix-like systems as well as Windows. On
-Unix-like systems, gipc also works with PyPy2.7 and PyPy3. gipc's test suite is
-automatically executed on Linux, Darwin (macOS), and Windows.
+The current version of gipc works on CPython 2.7/3.4/3.5/3.6/3.7/3.8. It
+supports gevent 1.2 through 1.5 and supports both, Unix-like systems as well as
+Windows. On Unix-like systems, gipc also works with PyPy2.7 and PyPy3.
+
+Note: currently, gevent 1.5 is supported only for Linux.
+
+gipc's test suite is automatically executed on Linux, Darwin (macOS), and
+Windows.
+
 
 Who uses it?
 ============
