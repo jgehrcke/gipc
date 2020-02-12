@@ -423,8 +423,8 @@ class _GProcess(multiprocessing.Process):
     Compatible with the ``multiprocessing.Process`` API.
 
     For cooperativeness with gevent and compatibility with libev, it currently
-    re-implements ``start()``, ``is_alive()``, ``exitcode`` on Unix and
-    ``join()`` on Windows as well as on Unix.
+    re-implements ``start()``, ``is_alive()``, ``close()``, ``exitcode`` on Unix
+    and ``join()`` on Windows as well as on Unix.
 
     .. note::
 
