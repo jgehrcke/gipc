@@ -13,3 +13,8 @@ flake8 gipc/
 
 # Build documentation.
 cd docs && make html
+
+# See if this would be good to release.
+rm -rf dist
+python setup.py sdist
+twine check dist/*
