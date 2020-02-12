@@ -6,7 +6,7 @@
 gipc: child processes and IPC for gevent
 ########################################
 
-gipc (pronunciation as in “gipsy”) is an open source Python library created by
+gipc (pronunciation as in “gipsy”) is an open-source Python library created by
 `Jan-Philip Gehrcke <https://gehrcke.de>`_. It provides reliable child
 process management and inter-process communication (IPC) in the context of
 `gevent <https://github.com/gevent/gevent>`_.
