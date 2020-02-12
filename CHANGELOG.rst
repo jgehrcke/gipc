@@ -4,9 +4,6 @@ Version 1.1.0 (Feb 12, 2020)
 This release adds compatibility with the
 ``multiprocessing.Process.close()`` method that was introduced with CPython 3.7.
 
-gipc now supports CPython 3.8 and gevent 1.5 on Linux (tested with gevent 1.5a3,
-no Windows and Darwin support yet).
-
 Platform support / continuous integration changes:
 
 - The Linux test matrix now covers gevent 1.2.2, gevent 1.3.7, gevent 1.4.0, and
@@ -22,6 +19,12 @@ Platform support / continuous integration changes:
 
 - On Darwin, gipc is now tested with CPython 3.7, too (previously only tested up
   to 3.6).
+
+Note that gipc seems to work fine with CPython 3.8 and gevent 1.5 on Linux. This
+has been tested with the gevent 1.5a3 pre-release (which you will have to
+install explicitly before installing gipc to try out gipc and gevent with
+CPython 3.8). Another gipc release will come once gevent 1.5 has been properly
+released.
 
 
 Version 1.0.1 (Feb 21, 2019)
