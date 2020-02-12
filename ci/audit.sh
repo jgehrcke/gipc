@@ -12,7 +12,7 @@ flake8 gipc/
 # pylint --reports=n --disable=C0103,W0212,W0511,W0142,R0903 gipc/gipc.py
 
 # Build documentation.
-cd docs && make html
+cd docs && make html && cd ..
 
 # See if this would be good to release.
 rm -rf dist
