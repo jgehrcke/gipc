@@ -20,6 +20,9 @@ else
     curl -fsSL --retry 10 "https://github.com/pyenv/pyenv/archive/$PYENV_RELEASE.tar.gz" \
         | tar -xz -C "$PYENV_ROOT" --strip-components 1
     export PATH="$PYENV_ROOT/bin:$PATH"
+
+    export PYTHON_BUILD_CURL_OPTS="--retry 10 --connect-timeout 10 --max-time 60"
+
     pyenv install -v "$PYENV_PYTHON_VERSION"
     pyenv global "$PYENV_PYTHON_VERSION"
     pyenv versions
