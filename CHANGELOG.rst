@@ -1,4 +1,4 @@
-Version 1.1.0 (Feb 12, 2020)
+Version 1.1.0 (Feb 17, 2020)
 ----------------------------
 
 This release adds compatibility with the
