@@ -9,7 +9,7 @@ Travis CI status (master branch): |traviscibadge|
     :align: middle
 
 From 2012 to 2018 gipc's home was at `bitbucket.org/jgehrcke/gipc
-<https://bitbucket.org/jgehrcke/gipc>`_. Since 2018 development has continued on
+<https://bitbucket.org/jgehrcke/gipc>`_. Since then development has continued on
 GitHub.
 
 
@@ -21,7 +21,7 @@ and non-blocking inter-process communication in the context of `gevent
 
 Using Python's `multiprocessing package
 <https://docs.python.org/3/library/multiprocessing.html>`_ in the context of a
-code base that also uses gevent is error-prone and may break the application in
+codebase that also uses gevent is error-prone and may break the application in
 various `subtle ways
 <https://gehrcke.de/gipc/#what-are-the-challenges-and-what-is-gipc-s-solution>`_.
 
