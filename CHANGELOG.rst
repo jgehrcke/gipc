@@ -1,15 +1,21 @@
 Version 1.1.1 (May XX, 2020)
 ----------------------------
 
-This release adds support for gevent 1.5 and CPython 3.8 on Linux, Windows,
-and Darwin.
+This release
+
+- adds support for gevent 1.5 on Linux, macOS, and Windows.
+
+- adds CPython 3.8 support for Linux and Windows.
+
+The combination of gevent 1.5, CPython 3.8 and Darwin (macOS) will be
+supported in a future release of gipc (see
+  `issue #100 <https://github.com/jgehrcke/gipc/issues/100>`_).
+
 
 Continuous integration changes:
 
 - Do not cover gevent 1.2.x and 1.3.x anymore.
 - Cover current CPython and PyPy releases.
--
-
 
 
 Version 1.1.0 (Feb 18, 2020)
