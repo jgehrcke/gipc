@@ -93,8 +93,8 @@ matrix:
 
     # Darwin tests. Test primarily with pyenv Python builds.
     - os: osx
-     language: generic
-     env:
+      language: generic
+      env:
        - PYENV_PYTHON_VERSION=3.8.3
        - GEVENT_VERSION="gevent==1.5"
     - os: osx
