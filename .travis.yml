@@ -101,6 +101,11 @@ matrix:
       language: generic
       env:
         - PYENV_PYTHON_VERSION=3.7.7
+        - GEVENT_VERSION="gevent==1.5.0"
+    - os: osx
+      language: generic
+      env:
+        - PYENV_PYTHON_VERSION=3.7.7
         - GEVENT_VERSION="gevent==1.4.0"
     - os: osx
       language: generic
