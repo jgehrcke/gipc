@@ -1,3 +1,14 @@
+Version 1.1.1 (May XX, 2020)
+----------------------------
+
+This release adds support for gevent 1.5.
+
+Continuous integration changes:
+
+- Do not test with gevent 1.2.x and 1.3.x anymore.
+
+
+
 Version 1.1.0 (Feb 18, 2020)
 ----------------------------
 
