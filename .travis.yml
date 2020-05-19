@@ -21,43 +21,33 @@ matrix:
       env: GEVENT_VERSION="default"
     - os: linux
       python: 2.7
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
-    - os: linux
-      python: 2.7
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
+
 
     - os: linux
       python: 3.4
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.4
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
-    - os: linux
-      python: 3.4
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
+
 
     - os: linux
       python: 3.5
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.5
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
-    - os: linux
-      python: 3.5
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
 
     - os: linux
       python: 3.6
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.6
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
-    - os: linux
-      python: 3.6
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
 
     # For supporting CPython 3.7 gevent >=1.3.x is required. Test default
-    # (currently 1.4.x) and with 1.3.x.
+    # (currently 1.5.x) and with 1.4.0.
     - os: linux
       dist: xenial
       python: 3.7
@@ -65,7 +55,7 @@ matrix:
     - os: linux
       dist: xenial
       python: 3.7
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
 
     # For supporting CPython 3.8 gevent >=1.5.x is required.
     - os: linux
@@ -73,21 +63,21 @@ matrix:
       python: 3.8
       env: GEVENT_VERSION="gevent==1.5a3"
 
-    # Linux tests with Travis' PyPy. Test default gevent (currently 1.4.x) and
-    # gevent 1.2.x.
+    # Linux tests with Travis' PyPy. Test default gevent (currently 1.5.x) and
+    # gevent 1.4.0.
     - os: linux
       python: pypy
       env: GEVENT_VERSION="default"
     - os: linux
       python: pypy
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+      env: GEVENT_VERSION="gevent==1.4"
 
     - os: linux
       python: pypy3
       env: GEVENT_VERSION="default"
     - os: linux
       python: pypy3
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+      env: GEVENT_VERSION="gevent==1.4"
 
     # Linux, but pyenv Python/PyPy builds. Only test current gevent.
     - os: linux
