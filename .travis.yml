@@ -84,12 +84,12 @@ matrix:
       language: generic
       env:
         - GEVENT_VERSION="default"
-        - PYENV_PYTHON_VERSION=pypy3.6-7.3.0
+        - PYENV_PYTHON_VERSION=pypy3.6-7.3.1
     - os: linux
       language: generic
       env:
         - GEVENT_VERSION="default"
-        - PYENV_PYTHON_VERSION=pypy2.7-7.3.0
+        - PYENV_PYTHON_VERSION=pypy2.7-7.3.1
 
     # Darwin tests. Test primarily with pyenv Python builds.
     # - os: osx
@@ -100,22 +100,22 @@ matrix:
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=3.7.6
+        - PYENV_PYTHON_VERSION=3.7.7
         - GEVENT_VERSION="gevent==1.4.0"
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=3.6.9
+        - PYENV_PYTHON_VERSION=3.6.10
         - GEVENT_VERSION="gevent==1.4.0"
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=2.7.15
+        - PYENV_PYTHON_VERSION=2.7.17
         - GEVENT_VERSION="gevent==1.4.0"
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=pypy3.6-7.3.0
+        - PYENV_PYTHON_VERSION=pypy3.6-7.3.1
         - GEVENT_VERSION="gevent==1.4.0"
     # Test with system Python.
     - os: osx
