@@ -61,7 +61,7 @@ matrix:
     - os: linux
       dist: xenial
       python: 3.8
-      env: GEVENT_VERSION="gevent==1.5a3"
+      env: GEVENT_VERSION="gevent==1.5"
 
     # Linux tests with Travis' PyPy. Test default gevent (currently 1.5.x) and
     # gevent 1.4.0.
