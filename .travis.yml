@@ -13,14 +13,6 @@ language: python
 # is not doing the right combinatorics for us. Take care of the combinatorics
 # manually:
 
-# Two dimensions for Linux:
-#   - gevent version: default (currently 1.4), gevent>=1.2,<1.3 (1.2)
-#   - python version: 2.7, 3.4, 3.5, pypy, pypy3
-
-# Two dimensions for MacOS:
-#   - gevent version: default (currently 1.4), gevent>=1.2,<1.3 (1.2)
-#   - python version: 2.7, 3.6
-
 matrix:
   include:
     # Linux tests with Travis' CPython.
@@ -29,43 +21,33 @@ matrix:
       env: GEVENT_VERSION="default"
     - os: linux
       python: 2.7
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
-    - os: linux
-      python: 2.7
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
+
 
     - os: linux
       python: 3.4
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.4
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
-    - os: linux
-      python: 3.4
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
+
 
     - os: linux
       python: 3.5
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.5
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
-    - os: linux
-      python: 3.5
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
 
     - os: linux
       python: 3.6
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.6
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
-    - os: linux
-      python: 3.6
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
 
     # For supporting CPython 3.7 gevent >=1.3.x is required. Test default
-    # (currently 1.4.x) and with 1.3.x.
+    # (currently 1.5.x) and with 1.4.0.
     - os: linux
       dist: xenial
       python: 3.7
@@ -73,67 +55,72 @@ matrix:
     - os: linux
       dist: xenial
       python: 3.7
-      env: GEVENT_VERSION="gevent>=1.3,<1.4"
+      env: GEVENT_VERSION="gevent==1.4"
 
     # For supporting CPython 3.8 gevent >=1.5.x is required.
     - os: linux
       dist: xenial
       python: 3.8
-      env: GEVENT_VERSION="gevent==1.5a3"
+      env: GEVENT_VERSION="gevent==1.5"
 
-    # Linux tests with Travis' PyPy. Test default gevent (currently 1.4.x) and
-    # gevent 1.2.x.
+    # Linux tests with Travis' PyPy. Test default gevent (currently 1.5.x) and
+    # gevent 1.4.0.
     - os: linux
       python: pypy
       env: GEVENT_VERSION="default"
     - os: linux
       python: pypy
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+      env: GEVENT_VERSION="gevent==1.4"
 
     - os: linux
       python: pypy3
       env: GEVENT_VERSION="default"
     - os: linux
       python: pypy3
-      env: GEVENT_VERSION="gevent>=1.2,<1.3"
+      env: GEVENT_VERSION="gevent==1.4"
 
     # Linux, but pyenv Python/PyPy builds. Only test current gevent.
     - os: linux
       language: generic
       env:
         - GEVENT_VERSION="default"
-        - PYENV_PYTHON_VERSION=pypy3.6-7.3.0
+        - PYENV_PYTHON_VERSION=pypy3.6-7.3.1
     - os: linux
       language: generic
       env:
         - GEVENT_VERSION="default"
-        - PYENV_PYTHON_VERSION=pypy2.7-7.3.0
+        - PYENV_PYTHON_VERSION=pypy2.7-7.3.1
 
     # Darwin tests. Test primarily with pyenv Python builds.
     # - os: osx
-    #  language: generic
-    #  env:
-    #    - PYENV_PYTHON_VERSION=3.8.1
-    #    - GEVENT_VERSION="gevent==1.5a3"
+    #   language: generic
+    #   env:
+    #    - PYENV_PYTHON_VERSION=3.8.3
+    #    - GEVENT_VERSION="gevent==1.5"
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=3.7.6
+        - PYENV_PYTHON_VERSION=3.7.7
+        - GEVENT_VERSION="gevent==1.5.0"
+    - os: osx
+      language: generic
+      env:
+        - PYENV_PYTHON_VERSION=3.7.7
         - GEVENT_VERSION="gevent==1.4.0"
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=3.6.9
+        - PYENV_PYTHON_VERSION=3.6.10
         - GEVENT_VERSION="gevent==1.4.0"
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=2.7.15
+        - PYENV_PYTHON_VERSION=2.7.17
         - GEVENT_VERSION="gevent==1.4.0"
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=pypy3.6-7.3.0
+        - PYENV_PYTHON_VERSION=pypy3.6-7.3.1
         - GEVENT_VERSION="gevent==1.4.0"
     # Test with system Python.
     - os: osx

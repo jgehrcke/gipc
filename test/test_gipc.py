@@ -1332,7 +1332,11 @@ class TestSignals(object):
 
     def test_orphaned_signal_watcher(self):
         # Install libev-based signal watcher.
-        s = gevent.signal(signal.SIGTERM, signals_test_sigterm_handler)
+        try:
+            s = gevent.signal(signal.SIGTERM, signals_test_sigterm_handler)
+        except AttributeError:
+            # This function got renamed in gevent 1.5
+            s = gevent.signal_handler(signal.SIGTERM, signals_test_sigterm_handler)
         # Normal behavior: signal handlers become inherited by children.
         # Bogus behavior of libev-based signal watchers in child process:
         # They should not be active anymore when 'orphaned' (when their
