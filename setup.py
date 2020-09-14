@@ -44,5 +44,5 @@ setup(
         "Topic :: System :: Hardware :: Symmetric Multi-processing",
         "Intended Audience :: Developers",
         ],
-    install_requires=("gevent>=1.2,<1.6"),
+    install_requires=("gevent>=1.2,<=20.6"),
     )
