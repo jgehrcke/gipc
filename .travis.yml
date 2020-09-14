@@ -24,20 +24,6 @@ matrix:
       env: GEVENT_VERSION="gevent==1.5"
 
     - os: linux
-      python: 3.4
-      env: GEVENT_VERSION="default"
-    - os: linux
-      python: 3.4
-      env: GEVENT_VERSION="gevent==1.5"
-
-    - os: linux
-      python: 3.5
-      env: GEVENT_VERSION="default"
-    - os: linux
-      python: 3.5
-      env: GEVENT_VERSION="gevent==1.5"
-
-    - os: linux
       python: 3.6
       env: GEVENT_VERSION="default"
     - os: linux
