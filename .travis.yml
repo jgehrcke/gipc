@@ -21,33 +21,31 @@ matrix:
       env: GEVENT_VERSION="default"
     - os: linux
       python: 2.7
-      env: GEVENT_VERSION="gevent==1.4"
-
+      env: GEVENT_VERSION="gevent==1.5"
 
     - os: linux
       python: 3.4
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.4
-      env: GEVENT_VERSION="gevent==1.4"
-
+      env: GEVENT_VERSION="gevent==1.5"
 
     - os: linux
       python: 3.5
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.5
-      env: GEVENT_VERSION="gevent==1.4"
+      env: GEVENT_VERSION="gevent==1.5"
 
     - os: linux
       python: 3.6
       env: GEVENT_VERSION="default"
     - os: linux
       python: 3.6
-      env: GEVENT_VERSION="gevent==1.4"
+      env: GEVENT_VERSION="gevent==1.5"
 
-    # For supporting CPython 3.7 gevent >=1.3.x is required. Test default
-    # (currently 1.5.x) and with 1.4.0.
+    # For supporting CPython 3.7 gevent >=1.3.x is required.
+    # Test default (currently 20.6.x) and with 1.5.0.
     - os: linux
       dist: xenial
       python: 3.7
@@ -55,7 +53,7 @@ matrix:
     - os: linux
       dist: xenial
       python: 3.7
-      env: GEVENT_VERSION="gevent==1.4"
+      env: GEVENT_VERSION="gevent==1.5"
 
     # For supporting CPython 3.8 gevent >=1.5.x is required.
     - os: linux
@@ -63,21 +61,21 @@ matrix:
       python: 3.8
       env: GEVENT_VERSION="gevent==1.5"
 
-    # Linux tests with Travis' PyPy. Test default gevent (currently 1.5.x) and
-    # gevent 1.4.0.
+    # Linux tests with Travis' PyPy. Test default gevent (currently 20.6.x) and
+    # gevent 1.5.0.
     - os: linux
       python: pypy
       env: GEVENT_VERSION="default"
     - os: linux
       python: pypy
-      env: GEVENT_VERSION="gevent==1.4"
+      env: GEVENT_VERSION="gevent==1.5"
 
     - os: linux
       python: pypy3
       env: GEVENT_VERSION="default"
     - os: linux
       python: pypy3
-      env: GEVENT_VERSION="gevent==1.4"
+      env: GEVENT_VERSION="gevent==1.5"
 
     # Linux, but pyenv Python/PyPy builds. Only test current gevent.
     - os: linux
@@ -100,12 +98,12 @@ matrix:
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=3.7.7
+        - PYENV_PYTHON_VERSION=3.7.9
         - GEVENT_VERSION="gevent==1.5.0"
     - os: osx
       language: generic
       env:
-        - PYENV_PYTHON_VERSION=3.7.7
+        - PYENV_PYTHON_VERSION=3.7.9
         - GEVENT_VERSION="gevent==1.4.0"
     - os: osx
       language: generic
@@ -126,22 +124,14 @@ matrix:
     - os: osx
       language: generic
       env:
-        - GEVENT_VERSION="gevent==1.4.0"
-
-
-cache:
-  # Follow recommendation from praekeltfoundation/travis-pyenv
-  - directories:
-    - $HOME/.pyenv_cache
-
+        - GEVENT_VERSION="gevent==1.5.0"
 
 install:
   - source ./ci/prepare-ci-env.sh
 
-
 script:
-    - python --version && uname -a
-    - pip list
-    - pytest -vv test/
-    - bash examples/run-all.sh
-    - bash ci/audit.sh
+  - python --version && uname -a
+  - pip list
+  - pytest -vv test/
+  - bash examples/run-all.sh
+  - bash ci/audit.sh
