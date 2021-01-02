@@ -25,7 +25,7 @@ jobs:
           pip list
       - name: pytest
         run: |
-          pytest -vv test/
+          pytest -vv -s test/
       - name: examples
         run: |
           bash examples/run-all.sh
