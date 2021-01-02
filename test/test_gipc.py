@@ -1356,6 +1356,7 @@ class TestSignals(object):
         except AttributeError:
             # This function got renamed in gevent 1.5
             s = gevent.signal_handler(signal.SIGTERM, signals_test_sigterm_handler)
+
         # Normal behavior: signal handlers become inherited by children.
         # Bogus behavior of libev-based signal watchers in child process:
         # They should not be active anymore when 'orphaned' (when their
@@ -1376,14 +1377,22 @@ class TestSignals(object):
         # Returncode 0 would mean that the child finished normally after that
         # short time interval.
         with pipe() as (r, w):
+
+            log.debug("start process")
             p = start_process(signals_test_child_a, (w,))
             assert r.get() == p.pid
+
+            log.debug("send signal to child")
             os.kill(p.pid, signal.SIGTERM)
+            log.debug("wait for child to terminate")
             p.join()
+
             if not WINDOWS:
                 assert p.exitcode == -signal.SIGTERM
             else:
                 assert p.exitcode == signal.SIGTERM
+
+        log.debug("cancel signal handler/watcher")
         s.cancel()
 
     @mark.skipif("WINDOWS")
