@@ -21,7 +21,8 @@ import multiprocessing
 
 import gevent
 import gevent.queue
-sys.path.insert(0, os.path.abspath('..'))
+
+sys.path.insert(0, os.path.abspath(".."))
 from gipc import start_process, pipe, GIPCError, GIPCClosed, GIPCLocked
 from gipc.gipc import _get_all_handles as get_all_handles
 from gipc.gipc import _set_all_handles as set_all_handles
@@ -32,8 +33,9 @@ from pytest import raises, mark
 
 
 logging.basicConfig(
-    format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
-    datefmt='%H:%M:%S')
+    format="%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s",
+    datefmt="%H:%M:%S",
+)
 log = logging.getLogger()
 log.setLevel(logging.DEBUG)
 
@@ -43,7 +45,7 @@ LONG = 999999
 SHORTTIME = 0.01
 ALMOSTZERO = 0.00001
 LONGERTHANBUFFER = "A" * 9999999
-PROCESS_HAS_CLOSE_METHOD = hasattr(multiprocessing.Process, 'close')
+PROCESS_HAS_CLOSE_METHOD = hasattr(multiprocessing.Process, "close")
 
 
 def check_for_handles_left_open():
@@ -77,6 +79,7 @@ class TestComm(object):
         finally:
             o.teardown()
     """
+
     def setup(self):
         # Create one pipe & two handles for each test case.
         self.rh, self.wh = pipe()
@@ -123,10 +126,13 @@ class TestComm(object):
 
     def test_singlemsg_between_greenlets(self):
         m = [1] * LONG
+
         def gwrite(writer, m):
             writer.put(m)
+
         def gread(reader):
             return reader.get()
+
         gw = gevent.spawn(gwrite, self.wh, m)
         gr = gevent.spawn(gread, self.rh)
         assert m == gr.get()
@@ -134,11 +140,14 @@ class TestComm(object):
 
     def test_onewriter_two_readers(self):
         m = [1] * LONG
+
         def gwrite(writer, m):
             writer.put(m)
             writer.put(m)
+
         def gread(reader):
             return reader.get()
+
         gw = gevent.spawn(gwrite, self.wh, m)
         gr1 = gevent.spawn(gread, self.rh)
         gr2 = gevent.spawn(gread, self.rh)
@@ -147,10 +156,13 @@ class TestComm(object):
 
     def test_twowriters_one_reader(self):
         m = [1] * LONG
+
         def gwrite(writer, m):
             writer.put(m)
+
         def gread(reader):
             return [reader.get() for _ in range(2)]
+
         gw1 = gevent.spawn(gwrite, self.wh, m)
         gw2 = gevent.spawn(gwrite, self.wh, m)
         gr = gevent.spawn(gread, self.rh)
@@ -166,6 +178,7 @@ class TestClose(object):
     """Test `_GIPCHandle`s close behavior and read/write behavior in context of
     closing.
     """
+
     def setup(self):
         self.rh, self.wh = pipe()
 
@@ -182,7 +195,7 @@ class TestClose(object):
     def test_closewrite(self):
         self.wh.close()
         with raises(GIPCClosed):
-            self.wh.put('')
+            self.wh.put("")
         self.rh.close()
 
     def test_closeread(self):
@@ -209,7 +222,7 @@ class TestClose(object):
     def test_closeread_write(self):
         self.rh.close()
         with raises(OSError):
-            self.wh.put('')
+            self.wh.put("")
         self.wh.close()
 
     def test_write_closewrite_read(self):
@@ -220,15 +233,17 @@ class TestClose(object):
             self.rh.get()
         self.rh.close()
 
+
 # CPython 3.7 introduced a non-cooperative close() method.
 # gipc replaces it with a cooperative implementation. Call it.
 def _call_close_method_if_exists(p):
     if PROCESS_HAS_CLOSE_METHOD:
         p.close()
 
+
 class TestProcess(object):
-    """Test child process behavior and `_GProcess` API.
-    """
+    """Test child process behavior and `_GProcess` API."""
+
     def test_is_alive_true(self):
         p = start_process(p_child_a)
         assert p.is_alive()
@@ -286,7 +301,7 @@ class TestProcess(object):
         _call_close_method_if_exists(p)
 
     def test_join_timeout(self):
-        p = start_process(gevent.sleep, args=(0.1, ))
+        p = start_process(gevent.sleep, args=(0.1,))
         p.join(ALMOSTZERO)
         assert p.is_alive()
         p.join()
@@ -296,7 +311,7 @@ class TestProcess(object):
     def test_close_method_only_present_if_required(self):
         p = start_process(p_child_a)
 
-        if not hasattr(multiprocessing.Process, 'close'):
+        if not hasattr(multiprocessing.Process, "close"):
             with raises(AttributeError, match="has no attribute 'close'"):
                 p.close()
             return
@@ -306,7 +321,7 @@ class TestProcess(object):
             p.join()
             p.close()
 
-    @mark.skipif('not PROCESS_HAS_CLOSE_METHOD')
+    @mark.skipif("not PROCESS_HAS_CLOSE_METHOD")
     def test_close_raises_if_called_prematurely(self):
         p = start_process(p_child_a)
         assert p.is_alive()
@@ -316,7 +331,7 @@ class TestProcess(object):
         p.join()
         p.close()
 
-    @mark.skipif('not PROCESS_HAS_CLOSE_METHOD')
+    @mark.skipif("not PROCESS_HAS_CLOSE_METHOD")
     def test_things_error_out_after_closed(self):
         p = start_process(p_child_a)
         assert p.is_alive()
@@ -333,8 +348,6 @@ class TestProcess(object):
         with raises(ValueError, match="process object is closed"):
             p.exitcode
 
-
-
     def test_typecheck_args(self):
         with raises(TypeError):
             start_process(gevent.sleep, args="peter")
@@ -343,7 +356,7 @@ class TestProcess(object):
         with raises(TypeError):
             start_process(gevent.sleep, kwargs="peter")
 
-    @mark.skipif('WINDOWS')
+    @mark.skipif("WINDOWS")
     def test_exitcode_previous_to_join(self):
         p = start_process(lambda: gevent.sleep(SHORTTIME))
         # Assume that the child process is still alive when the next
@@ -367,7 +380,7 @@ class TestProcess(object):
                 p.join()
                 return
             gevent.sleep(ALMOSTZERO)
-        raise Exception('Child termination not detected')
+        raise Exception("Child termination not detected")
 
 
 def p_child_a():
@@ -403,6 +416,7 @@ class TestIPC(object):
     """Test file descriptor passing and inter-process communication based on
     unidirectional message transfer channels.
     """
+
     def setup(self):
         self.rh, self.wh = pipe()
         self.rh2, self.wh2 = pipe()
@@ -446,8 +460,7 @@ class TestIPC(object):
     def test_childparentcomm_withinchildcomm(self):
         m1 = "OK"
         m2 = "FOO"
-        p = start_process(
-            target=ipc_child_c, args=(self.rh, self.rh2, m1, m2))
+        p = start_process(target=ipc_child_c, args=(self.rh, self.rh2, m1, m2))
         self.wh.put(m1)
         self.wh2.put(m2)
         p.join()
@@ -459,8 +472,10 @@ class TestIPC(object):
         m = {("KLADUSCH",): "foo"}
         pr = start_process(ipc_readchild, args=(self.rh, m))
         pw = start_process(ipc_writechild, args=(self.wh, m))
+        log.info("prejoin")
         pr.join()
         pw.join()
+        log.info("done")
         assert pr.exitcode == 0
         assert pw.exitcode == 0
         self.rh2.close()
@@ -477,7 +492,7 @@ class TestIPC(object):
         self.wh2.close()
 
     def test_handler_in_nonregistered_process(self):
-        p = multiprocessing.Process(target=ipc_child_d, args=(self.rh, ))
+        p = multiprocessing.Process(target=ipc_child_d, args=(self.rh,))
         p.start()
         p.join()
         if not WINDOWS:
@@ -617,8 +632,8 @@ def ipc_child_f3(w, m):
 
 
 class TestContextManager(object):
-    """Test context manager behavior regarding unidirectional transport.
-    """
+    """Test context manager behavior regarding unidirectional transport."""
+
     def teardown(self):
         check_for_handles_left_open()
 
@@ -655,7 +670,7 @@ class TestContextManager(object):
 
     def test_close_in_context(self):
         with pipe() as (r, w):
-            w.put('')
+            w.put("")
             r.get()
             r.close()
             w.close()
@@ -704,10 +719,10 @@ class TestContextManager(object):
         r.close()
 
 
-@mark.skipif('WINDOWS')
+@mark.skipif("WINDOWS")
 class TestGetTimeout(object):
-    """Test timeout feature of `_GIPCReader` on POSIX-compliant systems.
-    """
+    """Test timeout feature of `_GIPCReader` on POSIX-compliant systems."""
+
     def teardown(self):
         check_for_handles_left_open()
 
@@ -730,15 +745,15 @@ class TestGetTimeout(object):
     def test_simpletimeout_doesnt_expire(self):
         with pipe() as (r, w):
             with gevent.Timeout(SHORTTIME, False) as t:
-                w.put('')
+                w.put("")
                 r.get(timeout=t)
                 return
         assert False
 
 
 class TestDuplexHandleBasic(object):
-    """Test duplex handle behavior in single process.
-    """
+    """Test duplex handle behavior in single process."""
+
     def teardown(self):
         check_for_handles_left_open()
 
@@ -787,7 +802,7 @@ class TestDuplexHandleBasic(object):
 
     def test_close_in_context(self):
         with pipe(duplex=True) as (h1, h2):
-            h1.put('')
+            h1.put("")
             h2.get()
             h1.close()
             h2.close()
@@ -898,21 +913,21 @@ class TestDuplexHandleBasic(object):
 
 
 class TestDuplexHandleIPC(object):
-    """Test duplex handles for inter-process communication.
-    """
+    """Test duplex handles for inter-process communication."""
+
     def teardown(self):
         check_for_handles_left_open()
 
     def test_simple_echo(self):
         with pipe(True) as (hchild, hparent):
-            p = start_process(duplchild_simple_echo, (hchild, ))
+            p = start_process(duplchild_simple_echo, (hchild,))
             hparent.put("MSG")
             assert hparent.get() == "MSG"
             p.join()
 
     def test_time_sync(self):
         with pipe(duplex=True) as (cend, pend):
-            p = start_process(duplchild_time_sync, args=(cend, ))
+            p = start_process(duplchild_time_sync, args=(cend,))
             pend.put("SYN")
             assert pend.get() == "ACK"
             ptime = time.time()
@@ -928,10 +943,8 @@ class TestDuplexHandleIPC(object):
             with pipe(True) as (p21, p22):
                 with pipe(True) as (p31, p32):
                     # Spawn two forwarders.
-                    forwarder1 = start_process(
-                        duplchild_circular_forward, (p12, p21))
-                    forwarder2 = start_process(
-                        duplchild_circular_forward, (p22, p31))
+                    forwarder1 = start_process(duplchild_circular_forward, (p12, p21))
+                    forwarder2 = start_process(duplchild_circular_forward, (p22, p31))
                     # Make sure that only 2 of 6 handles are usable.
                     for h in (p12, p21, p22, p31):
                         with raises(GIPCClosed):
@@ -969,6 +982,7 @@ class TestPipeCodecs(object):
     """Test pipe encoding/decoding API. The default behavior
     is tested thoroughly in all other tests involving pipe().
     """
+
     @staticmethod
     def readlet(r):
         return r.get()
@@ -982,7 +996,7 @@ class TestPipeCodecs(object):
 
     def test_default(self):
         data = [10]
-        with pipe(encoder='default', decoder='default') as (r, w):
+        with pipe(encoder="default", decoder="default") as (r, w):
             gw = gevent.spawn(self.writelet, w, data)
             gr = gevent.spawn(self.readlet, r)
             assert data == gr.get()
@@ -1006,6 +1020,7 @@ class TestPipeCodecs(object):
 
     def test_json(self):
         import json
+
         data = {"a": 100}
         enc = lambda o: json.dumps(o).encode("ascii")
         dec = lambda b: json.loads(b.decode("ascii"))
@@ -1017,6 +1032,7 @@ class TestPipeCodecs(object):
 
     def test_zlib(self):
         import zlib
+
         data = os.urandom(10000)
         with pipe(encoder=zlib.compress, decoder=zlib.decompress) as (r, w):
             gw = gevent.spawn(self.writelet, w, data)
@@ -1025,35 +1041,33 @@ class TestPipeCodecs(object):
             gw.join()
 
     def test_not_callable_encoder(self):
-        data = os.urandom(10000)
         with raises(GIPCError):
             with pipe(encoder=1, decoder=lambda x: x) as (r, w):
                 pass
 
     def test_not_callable_decoder(self):
-        data = os.urandom(10000)
         with raises(GIPCError):
             with pipe(encoder=lambda x: x, decoder=1) as (r, w):
                 pass
 
     def test_raw_pipe_across_processes(self):
-        data = b'abc'
+        data = b"abc"
 
         with pipe(encoder=None, decoder=None) as (r, w):
-            start_process(child_test_raw_pipe_across_processes, (r, ))
+            start_process(child_test_raw_pipe_across_processes, (r,))
 
 
 def child_test_raw_pipe_across_processes(r):
-    assert r.get() == b'abc'
+    assert r.get() == b"abc"
 
 
 class TestSimpleUseCases(object):
-    """Test very basic usage scenarios of gipc (pure gipc+gevent).
-    """
+    """Test very basic usage scenarios of gipc (pure gipc+gevent)."""
+
     def teardown(self):
         check_for_handles_left_open()
 
-    @mark.skipif('WINDOWS')
+    @mark.skipif("WINDOWS")
     def test_whatever_1(self):
         """
         From a writing child, fire into the pipe. In a greenlet in the parent,
@@ -1062,11 +1076,13 @@ class TestSimpleUseCases(object):
         timeout interval. Terminate the child process after retrieval.
         """
         with pipe() as (r, w):
+
             def readgreenlet(reader):
                 with gevent.Timeout(SHORTTIME * 5, False) as t:
                     m = reader.get(timeout=t)
                     return m
-            p = start_process(usecase_child_a, args=(w, ))
+
+            p = start_process(usecase_child_a, args=(w,))
             # Wait for process to send first message:
             r.get()
             # Second message must be available immediately now.
@@ -1077,7 +1093,7 @@ class TestSimpleUseCases(object):
             p.join()
             assert p.exitcode == -signal.SIGTERM
 
-    @mark.skipif('WINDOWS')
+    @mark.skipif("WINDOWS")
     def test_whatever_2(self):
         """
         Time-synchronize two child processes via two unidirectional channels.
@@ -1106,9 +1122,10 @@ class TestSimpleUseCases(object):
         backpipe -> recvlist (greenlet, parent)
         assert sendlist == recvlist
         """
-        sendlist = [random.choice('UFTATA') for x in range(100)]
+        sendlist = [random.choice("UFTATA") for x in range(100)]
         sendlist.append("STOP")
         sendqueue = gevent.queue.Queue()
+
         def g_from_list_to_sendq():
             for item in sendlist:
                 sendqueue.put(item)
@@ -1144,6 +1161,7 @@ class TestSimpleUseCases(object):
 
 def usecase_child_d(forthreader, backwriter):
     recvqueue = gevent.queue.Queue()
+
     def g_from_forthpipe_to_q(forthreader):
         while True:
             m = forthreader.get()
@@ -1174,8 +1192,8 @@ def usecase_child_a(writer):
 def usecase_child_b(writer, syncreader):
     with syncreader:
         # Wait for partner process to start up.
-        assert syncreader.get() == 'SYN'
-        writer.put('SYNACK')
+        assert syncreader.get() == "SYN"
+        writer.put("SYNACK")
     with writer:
         writer.put("CHICKEN")
 
@@ -1185,7 +1203,7 @@ def usecase_child_c(reader, syncwriter):
         # Tell partner process that we are up and running!
         syncwriter.put("SYN")
         # Wait for confirmation.
-        assert reader.get() == 'SYNACK'
+        assert reader.get() == "SYNACK"
     with reader:
         # Processes are synchronized. CHICKEN must be incoming within no time.
         with gevent.Timeout(SHORTTIME, False) as t:
@@ -1201,6 +1219,7 @@ class TestComplexUseCases(object):
     """Tests with increased complexity, also involving server components of
     gevent. Reproduction of common usage scenarios.
     """
+
     def teardown(self):
         check_for_handles_left_open()
 
@@ -1210,6 +1229,7 @@ class TestComplexUseCases(object):
         threadpool even harder.
         """
         import gevent.socket as socket
+
         socket.getaddrinfo("localhost", 21)
         p = start_process(target=complchild_test_getaddrinfo_mp)
         p.join(timeout=1)
@@ -1233,10 +1253,10 @@ class TestComplexUseCases(object):
         def hello_world(environ, start_response):
             # Generate response in child process.
             with pipe() as (reader, writer):
-                start_response('200 OK', [('Content-Type', 'text/html')])
+                start_response("200 OK", [("Content-Type", "text/html")])
                 rg = start_process(
-                    target=complchild_test_wsgi_scenario_respgen,
-                    args=(writer, ))
+                    target=complchild_test_wsgi_scenario_respgen, args=(writer,)
+                )
                 response = reader.get()
                 rg.join()
                 assert rg.exitcode == 0
@@ -1255,7 +1275,7 @@ class TestComplexUseCases(object):
         except AttributeError:
             pass
 
-        http_server = WSGIServer(('localhost', 0), hello_world)
+        http_server = WSGIServer(("localhost", 0), hello_world)
         servelet = gevent.spawn(serve, http_server)
         # Wait for server being bound to socket.
         while True:
@@ -1263,8 +1283,8 @@ class TestComplexUseCases(object):
                 break
             gevent.sleep(0.05)
         client = start_process(
-            target=complchild_test_wsgi_scenario_client,
-            args=(http_server.address, ))
+            target=complchild_test_wsgi_scenario_client, args=(http_server.address,)
+        )
         client.join()
         assert client.exitcode == 0
         servelet.kill()
@@ -1319,8 +1339,7 @@ def complchild_test_getaddrinfo_mp():
 
 
 class TestSignals(object):
-    """Tests involving signal handling.
-    """
+    """Tests involving signal handling."""
 
     def teardown(self):
         check_for_handles_left_open()
@@ -1367,7 +1386,7 @@ class TestSignals(object):
                 assert p.exitcode == signal.SIGTERM
         s.cancel()
 
-    @mark.skipif('WINDOWS')
+    @mark.skipif("WINDOWS")
     def test_signal_handlers_default(self):
         p = start_process(signals_test_child_defaulthandlers)
         p.join()
