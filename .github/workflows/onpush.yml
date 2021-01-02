@@ -21,6 +21,11 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install dependencies on macOS
+        if: startsWith(matrix.os, 'macos')
+        # For the `gtimeout` command
+        run: |
+          brew install coreutils
       - name: Prepare CI environment
         env:
           GEVENT_VERSION: ${{ matrix.gevent-version-spec }}
