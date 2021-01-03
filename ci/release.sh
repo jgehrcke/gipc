@@ -1,12 +1,9 @@
 #!/usr/bin/env bash
 
-# Note: run this from the root directory
-# of the repository, as in `bash ci/release.sh`
-# This is not actually doing a release, but
-# runs most of the requires steps and performs or
-# documents most of the final testing.
-# Comments at the bottom indicate fruther steps to
-# be run manually.
+# Note: run this from the root directory of the repository, as in `bash
+# ci/release.sh` This is not actually doing a release, but runs most of the
+# requires steps and performs or documents most of the final testing. Comments
+# at the bottom indicate further steps to be run manually.
 
 set -o errexit
 set -o errtrace
@@ -67,7 +64,7 @@ echo "Test release looks good, might want to actually release"
 #
 #   twine upload dist/gipc-xxx.tar.gz
 #
-#   git tag -a 1.0.1 -m 'Release 1.0.1'
+#   git tag -a 1.1.1 -m 'Release 1.1.1'
 #   git push --tags
 
 
