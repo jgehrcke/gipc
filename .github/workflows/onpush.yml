@@ -3,12 +3,17 @@ name: CI
 on: [push]
 
 jobs:
-  build:
-    runs-on: ubuntu-latest
+  posix:
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: [3.6, 3.8]
-        gevent-version-spec: ["gevent==1.4.0"]
+        python-version: [3.6, 3.7, 3.8, pypy-3.6-v7.3.3]
+        os: [ubuntu-18.04, macos-10.15]
+        gevent-version-spec: ["gevent==1.5.0"]
+        exclude:
+          # see https://github.com/jgehrcke/gipc/issues/100
+          - os: macos-10.15
+            python-version: 3.8
 
     steps:
       - uses: actions/checkout@v2
@@ -16,6 +21,11 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
+      - name: Install dependencies on macOS
+        if: startsWith(matrix.os, 'macos')
+        # For the `gtimeout` command
+        run: |
+          brew install coreutils
       - name: Prepare CI environment
         env:
           GEVENT_VERSION: ${{ matrix.gevent-version-spec }}
@@ -32,3 +42,33 @@ jobs:
       - name: audit
         run: |
           bash ci/audit.sh
+
+  win32:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      # On win, simplify test coveragee: do not take control of gevent version
+      # other than what's defined in gipc's setup.py.
+      - name: pip install deps
+        run: |
+          python --version && uname -a
+          pip install .
+          pip install -r requirements-tests.txt
+          pip list
+      - name: pytest
+        run: |
+          pytest -vv test/
+      - name: examples
+        run: |
+          python examples/synchronization.py
+          python examples/raw_largemsg_bench.py
+          python examples/gipc_benchmark.py
+          python examples/serverclient.py

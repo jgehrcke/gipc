@@ -17,6 +17,7 @@ python wsgimultiprocessing.py
 # exit status of the program. When `timeout` has
 # to SIGKILL the program then it will exit
 # non-zero in any case.
+alias timeout=gtimeout # macos: brew install coreutils
 timeout --preserve-status \
     --signal=INT \
     --kill-after=7 \

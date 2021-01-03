@@ -66,12 +66,13 @@ pip install 'pip==20.3.3' --upgrade
 pip install 'setuptools==51.1.1' --upgrade
 
 # Install gipc dependencies from its `setup.py`.
-pip install .
+pip install . #--no-binary :all:
 
 # Install gipc test/CI dependencies.
 pip install -r requirements-tests.txt
 
 if [[ "$GEVENT_VERSION" != "default" ]]; then
     echo "Override gevent version to $GEVENT_VERSION"
-    pip install "$GEVENT_VERSION" --upgrade
+    # Force building from source (for testing purposes)
+    pip install "$GEVENT_VERSION" --upgrade #--no-binary :all:
 fi
