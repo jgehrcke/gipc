@@ -7,7 +7,7 @@ This release
 
 - adds CPython 3.8 support for Linux and Windows.
 
-The combination of gevent 1.5, CPython 3.8 and Darwin (macOS) will be
+The combination of gevent newer than 1.4.x, CPython 3.8 and Darwin (macOS) will be
 supported in a future release of gipc (see `issue #100 <https://github.com/jgehrcke/gipc/issues/100>`_).
 
 
