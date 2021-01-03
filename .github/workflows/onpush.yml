@@ -3,12 +3,12 @@ name: CI
 on: [push]
 
 jobs:
-  build:
+  posix:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
         python-version: [3.6, 3.7, 3.8]
-        os: [ubuntu-18.04, macos-10.15, windows-latest]
+        os: [ubuntu-18.04, macos-10.15]
         gevent-version-spec: ["gevent==1.5.0"]
         exclude:
           # see https://github.com/jgehrcke/gipc/issues/100
@@ -42,3 +42,33 @@ jobs:
       - name: audit
         run: |
           bash ci/audit.sh
+
+  win32:
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        python-version: [3.6, 3.7, 3.8]
+
+    steps:
+      - uses: actions/checkout@v2
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v2
+        with:
+          python-version: ${{ matrix.python-version }}
+      # On win, simplify test coveragee: do not take control of gevent version
+      # other than what's defined in gipc's setup.py.
+      - name: pip install deps
+        run: |
+          python --version && uname -a
+          pip install .
+          pip install -r requirements-tests.txt
+          pip list
+      - name: pytest
+        run: |
+          pytest -vv test/
+      - name: examples
+        run: |
+          python examples/synchronization.py
+          python examples/raw_largemsg_bench.py
+          python examples/gipc_benchmark.py
+          python examples/serverclient.py
