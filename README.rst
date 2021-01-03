@@ -2,10 +2,10 @@
 `gipc @ PyPI <https://pypi.python.org/pypi/gipc>`_ |
 `gipc @ GitHub <https://github.com/jgehrcke/gipc>`_
 
-Travis CI status (master branch): |traviscibadge|
+CI status (master branch): |traviscibadge|
 
-.. |TRAVISCIBADGE| image:: https://travis-ci.org/jgehrcke/gipc.svg?branch=master
-    :target: https://travis-ci.org/jgehrcke/gipc
+.. |TRAVISCIBADGE| image:: https://github.com/jgehrcke/gipc/workflows/CI/badge.svg?branch=master
+    :target: https://github.com/jgehrcke/gipc/actions?query=workflow%3ACI+branch%3Amaster
     :align: middle
 
 From 2012 to 2018 gipc's home was at `bitbucket.org/jgehrcke/gipc
@@ -49,11 +49,10 @@ examples, and in-depth information.
 
 Platform support
 ================
-The current version of gipc works on CPython 2.7/3.4/3.5/3.6/3.7/3.8. It
-supports gevent 1.2 through 1.5 and supports both, Unix-like systems as well as
-Windows. On Unix-like systems, gipc also works with PyPy2.7 and PyPy3.
 
-Note: currently, gevent 1.5 is supported only for Linux.
+The current version of gipc works on CPython 2.7/3.6/3.7/3.8. It supports
+gevent versions 1.4 and 1.5 and supports both, Unix-like systems as well as
+Windows. On Unix-like systems, gipc also works with PyPy2.7 and PyPy3.
 
 gipc's test suite is automatically executed on Linux, Darwin (macOS), and
 Windows.
