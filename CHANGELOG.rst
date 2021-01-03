@@ -18,17 +18,17 @@ Continuous integration changes:
 
 - gevent 1.2.x, 1.3.x, 1.4.x are not covered anymore by CI (1.4.x still works, though).
 
-- CPython 2.7 and PyPy 2.7 are not covered anymore (should still work with this release though).
+- CPython 2.7 and PyPy 2.7 are not covered anymore (should still work with this release, though).
 
-- Newer CPython and PyPy releases aree covered by automatic testing now.
+- Newer CPython and PyPy releases are covered by automatic testing now.
 
 Note: the next version of gipc is likely to
 
-- only support gevent 20.x and larger
+- only support gevent 20.x and newer
 
-- to not support CPython 2.7 anymore
+- not support CPython 2.7 anymore
 
-As these are significat compatibility changes, the next gipc release will most likely be a 2.0.
+As these are significat compatibility changes, the next gipc release will most likely have version 2.0.
 
 
 Version 1.1.0 (Feb 18, 2020)
