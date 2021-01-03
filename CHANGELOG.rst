@@ -13,7 +13,7 @@ not supported. Adding support is tracked in `issue #100 <https://github.com/jgeh
 
 Continuous integration changes:
 
-- Moved from Travis CI to GitHub Actions, in view of `sadness <https://news.ycombinator.com/item?id=18978251>`_
+- Moved from Travis CI (and AppVeyor) to GitHub Actions, in view of `sadness <https://news.ycombinator.com/item?id=18978251>`_
   affecting so many open source projects.
 
 - gevent 1.2.x, 1.3.x, 1.4.x are not covered anymore by CI (1.4.x still works, though).

@@ -2,7 +2,7 @@
 `gipc @ PyPI <https://pypi.python.org/pypi/gipc>`_ |
 `gipc @ GitHub <https://github.com/jgehrcke/gipc>`_
 
-Travis CI status (master branch): |traviscibadge|
+CI status (master branch): |traviscibadge|
 
 .. |TRAVISCIBADGE| image:: https://github.com/jgehrcke/gipc/workflows/CI/badge.svg?branch=master
     :target: https://github.com/jgehrcke/gipc/actions?query=workflow%3ACI+branch%3Amaster
