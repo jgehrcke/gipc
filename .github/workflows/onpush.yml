@@ -9,7 +9,7 @@ jobs:
       matrix:
         python-version: [3.6, 3.7, 3.8, pypy-3.6-v7.3.3]
         os: [ubuntu-18.04, macos-10.15]
-        gevent-version-spec: ["gevent==1.5.0"]
+        gevent-version-spec: ["default"]
         exclude:
           # see https://github.com/jgehrcke/gipc/issues/100
           - os: macos-10.15
@@ -55,7 +55,7 @@ jobs:
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      # On win, simplify test coveragee: do not take control of gevent version
+      # On win, simplify test coverage: do not take control of gevent version
       # other than what's defined in gipc's setup.py.
       - name: pip install deps
         run: |
