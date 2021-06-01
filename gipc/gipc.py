@@ -26,6 +26,7 @@ import codecs
 import logging
 import multiprocessing
 import multiprocessing.process
+import multiprocessing.reduction
 from itertools import chain
 
 try:
@@ -35,8 +36,9 @@ except ImportError:
 
 WINDOWS = sys.platform == "win32"
 
+FORK_MODE = multiprocessing.get_start_method()
+
 if WINDOWS:
-    import multiprocessing.reduction
     import msvcrt
 
 import gevent
@@ -328,6 +330,7 @@ def _child(target, args, kwargs):
         # could even reset sigprocmask (Python 2.x does not have API for it, but
         # it could be done via ctypes).
         _reset_signal_handlers()
+
         # `gevent.reinit` calls `libev.ev_loop_fork()`, which reinitialises
         # the kernel state for backends that have one. Must be called in the
         # child before using further libev API.
@@ -1056,6 +1059,37 @@ class _GIPCWriter(_GIPCHandle):
         with self._lock:
             bindata = self._encoder(o)
             self._write(struct.pack("!i", len(bindata)) + bindata)
+
+
+if not WINDOWS and FORK_MODE == 'spawn':
+    # When running in spawn mode on OSX multiprocessing uses
+    # spawnv_passfds to spawn the new process.
+    # Because of this, we need to explicitly pass our file
+    # descriptors. multiprocessing.reduction keeps track
+    # of what needs to be serialized by registering classes
+    # with functions to perform the serialization.
+    # See the register method in the python multiprocessing
+    # module for an example of how this is done.
+
+    def reduce_GIPCReader(reader):
+        df = multiprocessing.reduction.DupFd(reader._fd)
+        return (rebuild_GIPCReader, (df, reader._decoder))
+
+    def rebuild_GIPCReader(df, decoder):
+        fd = df.detach()
+        return _GIPCReader(fd, decoder)
+
+    multiprocessing.reduction.register(_GIPCReader, reduce_GIPCReader)
+
+    def reduce_GIPCWriter(writer):
+        df = multiprocessing.reduction.DupFd(writer._fd)
+        return (rebuild_GIPCWriter, (df, writer._encoder))
+
+    def rebuild_GIPCWriter(df, _encoder):
+        fd = df.detach()
+        return _GIPCWriter(fd, _encoder)
+
+    multiprocessing.reduction.register(_GIPCWriter, reduce_GIPCWriter)
 
 
 class _PairContext(tuple):
