@@ -1251,7 +1251,7 @@ class TestComplexUseCases(object):
         except ImportError:
             import urllib2 as request
         try:
-            result = request.urlopen(None)
+            request.urlopen(None)
         except AttributeError:
             pass
 
