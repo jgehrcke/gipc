@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2020 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2021 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
 
 
 """
@@ -1251,7 +1251,7 @@ class TestComplexUseCases(object):
         except ImportError:
             import urllib2 as request
         try:
-            result = request.urlopen(None)
+            request.urlopen(None)
         except AttributeError:
             pass
 

@@ -35,10 +35,13 @@ fi
 twine upload --repository-url https://test.pypi.org/legacy/ "${EXPECTED_DIST_PATH}" || true
 
 set -x
+# Use `--no-dependencies` because even after installing gevent from regular PyPI,
+# the installation of gipc from TestPyPi then cannot resolve its dependencies
+# because gevent is not on TestPyPi.
 docker run -it --rm -v $(pwd)/examples:/gipc_examples python:3.6-slim-buster /bin/bash -c \
 "
     pip install gevent && \
-    pip install --index-url https://test.pypi.org/simple/ gipc==${EXPECTED_VERSION_NUMBER} --upgrade && \
+    pip install --index-url https://test.pypi.org/simple/ gipc==${EXPECTED_VERSION_NUMBER} --upgrade --no-dependencies && \
     python -c 'import gipc; print(gipc.__file__); print(gipc.__version__)' && \
     python /gipc_examples/gipc_benchmark.py
 "

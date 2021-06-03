@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2020 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2021 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
 
 import re
 
@@ -9,7 +9,7 @@ except ImportError:
     from distutils.core import setup
 
 gipcversion = re.search(
-    "^__version__\s*=\s*'(.*)'", open("gipc/__init__.py").read(), re.M
+    '^__version__\s*=\s*"(.*)"', open("gipc/__init__.py").read(), re.M
 ).group(1)
 assert gipcversion
 

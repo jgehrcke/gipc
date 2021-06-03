@@ -1,7 +1,10 @@
-Version 1.2.0 (in development)
+Version 1.2.0 (Jun 3, 2021)
 ------------------------------
 
+This release adds support for gevent 21.x on Linux and Windows, tested with
+CPython 3.6, 3.7, 3.8, and 3.9.
 
+For macOS, this gipc release still does not support CPython 3.8 and newer.
 
 Version 1.1.1 (Jan 03, 2021)
 ----------------------------
