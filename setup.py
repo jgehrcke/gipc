@@ -9,7 +9,7 @@ except ImportError:
     from distutils.core import setup
 
 gipcversion = re.search(
-    "^__version__\s*=\s*'(.*)'", open("gipc/__init__.py").read(), re.M
+    '^__version__\s*=\s*"(.*)"', open("gipc/__init__.py").read(), re.M
 ).group(1)
 assert gipcversion
 
