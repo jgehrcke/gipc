@@ -43,6 +43,7 @@ import gevent
 import gevent.os
 import gevent.lock
 import gevent.event
+import gevent.hub
 
 
 # Decide which method to use for transferring WinAPI pipe handles to children.
@@ -331,17 +332,34 @@ def _child(target, args, kwargs):
         # the kernel state for backends that have one. Must be called in the
         # child before using further libev API.
         gevent.reinit()
+
         log.debug("Delete current hub's threadpool.")
         hub = gevent.get_hub()
         # Delete threadpool before hub destruction, otherwise `hub.destroy()`
         # might block forever upon `ThreadPool.kill()` as of gevent 1.0rc2.
         del hub.threadpool
         hub._threadpool = None
+
         # Destroy default event loop via `libev.ev_loop_destroy()` and delete
         # hub. This orphans all registered events and greenlets that have been
         # duplicated from the parent via fork().
         log.debug("Destroy hub and default loop.")
-        hub.destroy(destroy_loop=True)
+
+        # Ideally we would use `hub.destroy(destroy_loop=True)`, its internal
+        # sanity-checking is valuable. But seems to crash the child and I do
+        # not completely understand why -- are we really in a bad state or
+        # could this sanity-checking be more robust? There is no error thrown
+        # visible to the CPython interpreter -- the crash is more subtle; the
+        # child process just 'goes away'. I did not really debug this though
+        # (with for example strace):
+        # https://github.com/jgehrcke/gipc/issues/103#issuecomment-832885473
+        # Use `hub.loop.destroy()` instead. This is more brutal, pulls the
+        # libev event loop away _underneath_ the hub). To try to make this
+        # maybe a little less risky, use `gevent.hub.set_hub(None)` before loop
+        # destruction, so that gevent (hopefully) stops "using" the hub.
+        gevent.hub.set_hub(None)
+        hub.loop.destroy()
+
         # Create a new hub and a new default event loop via
         # `libev.gevent_ev_default_loop`.
         h = gevent.get_hub(default=True)
