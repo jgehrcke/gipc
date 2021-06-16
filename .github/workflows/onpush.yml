@@ -1,6 +1,14 @@
 name: CI
 
-on: [push]
+on:
+  # kudos to https://github.community/t/how-to-trigger-an-action-on-push-or-pull-request-but-not-both/16662/13
+  # workflow_dispatch adds a manual trigger button in the github UI that allows
+  # you to trigger builds on specific branches when you are in the page for
+  # this workflow.
+  workflow_dispatch:
+  # pull_request triggers this workflow on both internal and forked pull
+  # requests.
+  pull_request:
 
 jobs:
   posix:
