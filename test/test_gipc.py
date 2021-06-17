@@ -18,18 +18,16 @@ import random
 import logging
 import multiprocessing
 
-
 import gevent
 import gevent.queue
+
 sys.path.insert(0, os.path.abspath('..'))
 from gipc import start_process, pipe, GIPCError, GIPCClosed, GIPCLocked
 from gipc.gipc import _get_all_handles as get_all_handles
 from gipc.gipc import _set_all_handles as set_all_handles
 from gipc.gipc import _signals_to_reset as signals_to_reset
 
-
 from pytest import raises, mark
-
 
 logging.basicConfig(
     format='%(asctime)s,%(msecs)-6.1f [%(process)-5d]%(funcName)s# %(message)s',
@@ -271,7 +269,8 @@ class TestProcess(object):
         _call_close_method_if_exists(p)
 
     def test_terminate(self):
-        p = start_process(gevent.sleep, args=(1,))
+        # 1s is too long, and the process is killed on python 3.8.6
+        p = start_process(gevent.sleep, args=(0.5,))
         # Test __repr__ and __str__
         p.__repr__()
         p.terminate()
@@ -345,7 +344,13 @@ class TestProcess(object):
 
     @mark.skipif('WINDOWS')
     def test_exitcode_previous_to_join(self):
-        p = start_process(lambda: gevent.sleep(SHORTTIME))
+        p = None
+        if multiprocessing.get_start_method() == 'spawn':
+            # Spawn cannot pass lambdas to subprocesses
+            # as the process space is not copied
+            p = start_process(gevent.sleep, (SHORTTIME,))
+        else:
+            p = start_process(lambda: gevent.sleep(SHORTTIME))
         # Assume that the child process is still alive when the next
         # line is executed by the interpreter (there is no guarantee
         # for that, but it's rather likely).
@@ -1386,6 +1391,7 @@ def signals_test_sigterm_handler():
 
 def signals_test_child_a(w):
     w.put(os.getpid())
+    w.close()
     gevent.sleep(SHORTTIME)
     sys.exit(0)
 
