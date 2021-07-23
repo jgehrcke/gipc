@@ -50,8 +50,8 @@ examples, and in-depth information.
 Platform support
 ================
 
-The current version of gipc works on CPython 2.7/3.6/3.7/3.8. It supports
-gevent versions 1.4 and 1.5 and supports both, Unix-like systems as well as
+The current version of gipc works on CPython 3.6/3.7/3.8/3.9. It supports
+gevent versions 1.5 and newer and supports both, Unix-like systems as well as
 Windows. On Unix-like systems, gipc also works with PyPy2.7 and PyPy3.
 
 gipc's test suite is automatically executed on Linux, Darwin (macOS), and
