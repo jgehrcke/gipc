@@ -1,5 +1,18 @@
+Version 1.3.0 (July 23, 2021)
+-----------------------------
+
+This release adds support for gevent 21.x and CPython 3.8+ on macOS (thanks to
+Tyler Willey for crunching through this).
+
+On macOS with CPython 3.8 and newer, gipc now supports the new default
+``multiprocessing`` process invocation method which is based on ``spawn()``, similar
+to ``CreateProcess()`` on win32. Depending on the needs of your application, you
+may want to explore setting the process invocation method back to ``fork()`` via
+``multiprocessing.set_start_method('fork')``.
+
+
 Version 1.2.0 (Jun 3, 2021)
-------------------------------
+---------------------------
 
 This release adds support for gevent 21.x on Linux and Windows, tested with
 CPython 3.6, 3.7, 3.8, and 3.9.
