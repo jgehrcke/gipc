@@ -138,7 +138,7 @@ def child_client_runner(server_address):
     clients = [gevent.spawn(get) for _ in range(N_HTTP_CLIENTS)]
 
     # Wait until all `get()` greenlet instances have completed.
-    gevent.joinall(clients)
+    gevent.joinall(clients, raise_error=True)
     duration = time.time() - t0
     print('%s HTTP clients served within %.2f s.' % (N_HTTP_CLIENTS, duration))
 
