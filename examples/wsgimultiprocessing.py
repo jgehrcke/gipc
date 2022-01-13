@@ -45,25 +45,25 @@ DUMMY_PAYLOAD = b"YO"
 N_HTTP_CLIENTS = 100
 
 
+def child_msg_generator(pipewriter):
+    """I am executed in a child process.
+
+    I write some dummy payload to the write end of the pipe through which I
+    am connected to my parent process. I terminate immediately after writing
+    the message.
+    """
+    pipewriter.put(DUMMY_PAYLOAD)
+
+def invoke_server_forever(http_server):
+    """I am executed in a greenlet.
+
+    It is my job to hang in the cooperatively blocking `serve_forever()`
+    call to accept incoming connections. I only terminate when I am
+    explicitly killed from the outside.
+    """
+    http_server.serve_forever()
+
 def main():
-
-    def servelet(http_server):
-        """I am executed in a greenlet.
-
-        It is my job to hang in the cooperatively blocking `serve_forever()`
-        call to accept incoming connections. I only terminate when I am
-        explicitly killed from the outside.
-        """
-        http_server.serve_forever()
-
-    def child_msg_generator(pipewriter):
-        """I am executed in a child process.
-
-        I write some dummy payload to the write end of the pipe through which I
-        am connected to my parent process. I terminate immediately after writing
-        the message.
-        """
-        pipewriter.put(DUMMY_PAYLOAD)
 
     def handle_http_request(_, start_response):
         """I am executed in a greenlet whenever an HTTP request came in."""
@@ -86,12 +86,13 @@ def main():
             body = r.get()
             # Reap child (call wait(), remove it from process table).
             p.join()
+            assert p.exitcode == 0
 
         # Write HTTP response body.
         return [body]
 
     server = WSGIServer(('127.0.0.1', 0), handle_http_request, log=None)
-    servelet = gevent.spawn(servelet, server)
+    servelet = gevent.spawn(invoke_server_forever, server)
 
     # Wait for server to be bound to socket.
     while True:
@@ -109,6 +110,8 @@ def main():
     # only after all the HTTP clients it spawned concurrently have received HTTP
     # responses.
     p.join()
+    print('Child process terminated. Exit code: %s' % (p.exitcode, ))
+    assert p.exitcode == 0
 
     # All clients have been served. Terminate the greenlet which runs the HTTP
     # server (it currently blocks, cooperatively, in the `server_forerver()`
@@ -128,6 +131,7 @@ def child_client_runner(server_address):
     """
 
     def get():
+        # Expected to throw an HTTPError when the response code is not 200.
         body = request.urlopen('http://%s:%s/' % server_address).read()
         assert body == DUMMY_PAYLOAD
 
@@ -135,7 +139,7 @@ def child_client_runner(server_address):
     clients = [gevent.spawn(get) for _ in range(N_HTTP_CLIENTS)]
 
     # Wait until all `get()` greenlet instances have completed.
-    gevent.joinall(clients)
+    gevent.joinall(clients, raise_error=True)
     duration = time.time() - t0
     print('%s HTTP clients served within %.2f s.' % (N_HTTP_CLIENTS, duration))
 
