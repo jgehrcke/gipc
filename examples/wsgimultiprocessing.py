@@ -45,25 +45,25 @@ DUMMY_PAYLOAD = b"YO"
 N_HTTP_CLIENTS = 100
 
 
+def child_msg_generator(pipewriter):
+    """I am executed in a child process.
+
+    I write some dummy payload to the write end of the pipe through which I
+    am connected to my parent process. I terminate immediately after writing
+    the message.
+    """
+    pipewriter.put(DUMMY_PAYLOAD)
+
+def invoke_server_forever(http_server):
+    """I am executed in a greenlet.
+
+    It is my job to hang in the cooperatively blocking `serve_forever()`
+    call to accept incoming connections. I only terminate when I am
+    explicitly killed from the outside.
+    """
+    http_server.serve_forever()
+
 def main():
-
-    def servelet(http_server):
-        """I am executed in a greenlet.
-
-        It is my job to hang in the cooperatively blocking `serve_forever()`
-        call to accept incoming connections. I only terminate when I am
-        explicitly killed from the outside.
-        """
-        http_server.serve_forever()
-
-    def child_msg_generator(pipewriter):
-        """I am executed in a child process.
-
-        I write some dummy payload to the write end of the pipe through which I
-        am connected to my parent process. I terminate immediately after writing
-        the message.
-        """
-        pipewriter.put(DUMMY_PAYLOAD)
 
     def handle_http_request(_, start_response):
         """I am executed in a greenlet whenever an HTTP request came in."""
@@ -92,7 +92,7 @@ def main():
         return [body]
 
     server = WSGIServer(('127.0.0.1', 0), handle_http_request, log=None)
-    servelet = gevent.spawn(servelet, server)
+    servelet = gevent.spawn(invoke_server_forever, server)
 
     # Wait for server to be bound to socket.
     while True:
@@ -131,6 +131,7 @@ def child_client_runner(server_address):
     """
 
     def get():
+        # Expected to throw an HTTPError when the response code is not 200.
         body = request.urlopen('http://%s:%s/' % server_address).read()
         assert body == DUMMY_PAYLOAD
 
