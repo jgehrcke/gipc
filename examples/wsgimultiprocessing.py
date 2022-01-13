@@ -109,6 +109,8 @@ def main():
     # only after all the HTTP clients it spawned concurrently have received HTTP
     # responses.
     p.join()
+    print('Child process terminated. Exit code: %s' % (p.exitcode, ))
+    assert p.exitcode == 0
 
     # All clients have been served. Terminate the greenlet which runs the HTTP
     # server (it currently blocks, cooperatively, in the `server_forerver()`
