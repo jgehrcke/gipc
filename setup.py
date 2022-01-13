@@ -34,6 +34,7 @@ setup(
         "Programming Language :: Python :: 3.6",
         "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
+        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: Implementation :: CPython",
         "Programming Language :: Python :: Implementation :: PyPy",
         "Operating System :: MacOS :: MacOS X",
@@ -43,5 +44,5 @@ setup(
         "Topic :: System :: Hardware :: Symmetric Multi-processing",
         "Intended Audience :: Developers",
     ],
-    install_requires=("gevent>=1.5,<=21.8.0"),
+    install_requires=("gevent>=1.5,<=21.12.0"),
 )
