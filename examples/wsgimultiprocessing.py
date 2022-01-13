@@ -86,6 +86,7 @@ def main():
             body = r.get()
             # Reap child (call wait(), remove it from process table).
             p.join()
+            assert p.exitcode == 0
 
         # Write HTTP response body.
         return [body]
