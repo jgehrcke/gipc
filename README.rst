@@ -2,22 +2,11 @@
 `gipc @ PyPI <https://pypi.python.org/pypi/gipc>`_ |
 `gipc @ GitHub <https://github.com/jgehrcke/gipc>`_
 
-CI status (master branch): |traviscibadge|
-
-.. |TRAVISCIBADGE| image:: https://github.com/jgehrcke/gipc/workflows/CI/badge.svg?branch=master
-    :target: https://github.com/jgehrcke/gipc/actions?query=workflow%3ACI+branch%3Amaster
-    :align: middle
-
-From 2012 to 2018 gipc's home was at `bitbucket.org/jgehrcke/gipc
-<https://bitbucket.org/jgehrcke/gipc>`_. Since then development has continued on
-GitHub.
-
-
 Overview
 ========
-gipc (pronunciation as in “gipsy”) provides reliable child process management
-and non-blocking inter-process communication in the context of `gevent
-<https://github.com/gevent/gevent>`_.
+gipc (pronunciation as in “gipsy”) enables reliable child process management
+and non-blocking inter-process communication `gevent
+<https://github.com/gevent/gevent>`_-driven software projects.
 
 Using Python's `multiprocessing package
 <https://docs.python.org/3/library/multiprocessing.html>`_ in the context of a
@@ -32,6 +21,9 @@ Also, gipc provides a pipe-based transport layer for gevent-cooperative
 inter-greenlet and inter-process communication. gipc is lightweight and easy to
 integrate.
 
+From 2012 to 2018 gipc's home was at `bitbucket.org/jgehrcke/gipc
+<https://bitbucket.org/jgehrcke/gipc>`_. Since then development has continued on
+GitHub.
 
 Code examples
 =============
@@ -50,12 +42,12 @@ examples, and in-depth information.
 Platform support
 ================
 
-The current version of gipc works on CPython 3.6/3.7/3.8/3.9. It supports
+The current version of gipc works on CPython 3.6 through 3.10. It supports
 gevent versions 1.5 and newer and supports both, Unix-like systems as well as
-Windows. On Unix-like systems, gipc also works with PyPy2.7 and PyPy3.
+Windows. On Linux and macOS, gipc also works with PyPy.
 
-gipc's test suite is automatically executed on Linux, Darwin (macOS), and
-Windows.
+gipc's continuous integration (CI) pipeline automatically executes a wide range
+of tests on Linux, Darwin (macOS), and Windows.
 
 
 Who uses it?
@@ -78,7 +70,7 @@ Who uses it?
 - `gipcrpc <https://github.com/studio-ousia/gipcrpc>`_
 - `etcd-gevent <https://github.com/wjsi/etcd-gevent>`_
 
-Are you successfully using gipc in your project? Please drop me a line!
+Are you using gipc in your project? Please drop me a line!
 
 
 How to run the tests?
