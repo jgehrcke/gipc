@@ -1,3 +1,14 @@
+Version 1.4.0 (Feb 08, 2022)
+----------------------------
+
+This release adds support for gevent 21.12.0 and for Python 3.10.
+
+Continuous integration changes:
+
+- Cover CPython 3.10 (Linux, Windows, macOS)
+- Cover PyPy 3.8 instead of PyPy 3.6 (Linux, macOS)
+
+
 Version 1.3.0 (July 23, 2021)
 -----------------------------
 
