@@ -20,7 +20,7 @@ echo "Running ci/audit.sh"
 # Expect this to run (among others)
 #  python setup.py sdist
 #  twine check dist/*
-chronic bash ci/audit.sh
+chronic bash ci/audit.sh # chronic is in moreutils
 
 EXPECTED_DIST_PATH="dist/gipc-${EXPECTED_VERSION_NUMBER}.tar.gz"
 
@@ -38,7 +38,7 @@ set -x
 # Use `--no-dependencies` because even after installing gevent from regular PyPI,
 # the installation of gipc from TestPyPi then cannot resolve its dependencies
 # because gevent is not on TestPyPi.
-docker run -it --rm -v $(pwd)/examples:/gipc_examples python:3.6-slim-buster /bin/bash -c \
+docker run -it --rm -v $(pwd)/examples:/gipc_examples python:3.8-slim-buster /bin/bash -c \
 "
     pip install gevent && \
     pip install --index-url https://test.pypi.org/simple/ gipc==${EXPECTED_VERSION_NUMBER} --upgrade --no-dependencies && \
