@@ -5,7 +5,7 @@
 Overview
 ========
 gipc (pronunciation as in “gipsy”) enables reliable child process management
-and non-blocking inter-process communication `gevent
+and non-blocking inter-process communication in `gevent
 <https://github.com/gevent/gevent>`_-driven software projects.
 
 Using Python's `multiprocessing package
@@ -13,7 +13,6 @@ Using Python's `multiprocessing package
 codebase that also uses gevent is error-prone and may break the application in
 various `subtle ways
 <https://gehrcke.de/gipc/#what-are-the-challenges-and-what-is-gipc-s-solution>`_.
-
 With gipc, ``multiprocessing.Process``-based child processes can safely be
 created anywhere within your gevent-powered application. The API of
 ``multiprocessing.Process`` objects is provided in a gevent-cooperative way.
