@@ -1,3 +1,5 @@
+name: github-repo-stats
+
 on:
   schedule:
     # Run this once per day, towards the end of the day for keeping the most
@@ -11,5 +13,5 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: run-ghrs
-        uses: jgehrcke/github-repo-stats@v1.4.0
+        uses: jgehrcke/github-repo-stats@HEAD
 
