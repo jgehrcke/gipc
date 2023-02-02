@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/jgehrcke/gipc,13,9
+/jgehrcke/gipc/tree/master/examples,9,6
+/jgehrcke/gipc/blob/master/gipc/gipc.py,4,4
+/jgehrcke/gipc/tree/master/gipc,4,4
+/jgehrcke/gipc/blob/master/examples/serverclient.py,3,3
+/jgehrcke/gipc/blob/master/examples/gipc_benchmark.py,3,2
+/jgehrcke/gipc/blob/master/examples/synchronization.py,3,2
+/jgehrcke/gipc/issues/8,2,2
+/jgehrcke/gipc/blob/master/examples/infinite_send_to_child.py,2,1
+/jgehrcke/gipc/issues/36,2,1
