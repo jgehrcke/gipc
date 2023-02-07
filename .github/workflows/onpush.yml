@@ -16,7 +16,7 @@ jobs:
     strategy:
       matrix:
         python-version: ["3.7", "3.8", "3.9", "3.10", "pypy-3.8-v7.3.7"]
-        os: [ubuntu-18.04, macos-10.15]
+        os: [ubuntu-22.04, macos-10.15]
         gevent-version-spec: ["default"]
 
 
