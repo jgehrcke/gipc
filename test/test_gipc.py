@@ -269,13 +269,19 @@ class TestProcess(object):
         _call_close_method_if_exists(p)
 
     def test_terminate(self):
-        # 1s is too long, and the process is killed on python 3.8.6
-        p = start_process(gevent.sleep, args=(0.5,))
+        p = start_process(gevent.sleep, args=(1.5,))
         # Test __repr__ and __str__
         p.__repr__()
         p.terminate()
         p.join()
         p.__repr__()
+        # If this fails with `assert -9 == -15` then the process exited as of
+        # SIGKILL instead of SIGTERM. From the top of my head I do not
+        # understand why that is. I was able to dig up this conversation:
+        # https://github.com/jgehrcke/gipc/pull/110/files#r644652376 The goal
+        # above is that the child process hangs a while within gevent.sleep(),
+        # and during that time it receives a SIGTERM and cleanly terminates,
+        # with the corresponding exit status -15.
         assert p.exitcode == -signal.SIGTERM
         _call_close_method_if_exists(p)
 
