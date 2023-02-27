@@ -272,6 +272,12 @@ class TestProcess(object):
         p = start_process(gevent.sleep, args=(1.5,))
         # Test __repr__ and __str__
         p.__repr__()
+
+        # Give child process a bit of time to potentially change signal
+        # handlers. This is an attempt to address the flakiness described
+        # below.
+        gevent.sleep(0.1)
+
         p.terminate()
         p.join()
         p.__repr__()
