@@ -1,3 +1,14 @@
+Version 1.5.0 (Feb 27, 2023)
+----------------------------
+
+This release adds support for gevent 22.12.2 and for Python 3.11.
+
+Continuous integration changes:
+
+- Cover CPython 3.11 (Linux, Windows, macOS).
+- Cover PyPy 3.9.
+- Do not test with Python 3.6 anymore.
+
 Version 1.4.0 (Feb 08, 2022)
 ----------------------------
 
