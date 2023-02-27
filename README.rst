@@ -41,7 +41,7 @@ examples, and in-depth information.
 Platform support
 ================
 
-The current version of gipc works on CPython 3.6 through 3.10. It supports
+The current version of gipc works on CPython 3.7 through 3.11. It supports
 gevent versions 1.5 and newer and supports both, Unix-like systems as well as
 Windows. On Linux and macOS, gipc also works with PyPy.
 
@@ -52,6 +52,8 @@ of tests on Linux, Darwin (macOS), and Windows.
 Who uses it?
 ============
 
+- `MXCuBE <https://mxcube.github.io/mxcube/>`_ (Macromolecular Xtallography Customized Beamline Environment)
+- `AIT-Core <https://github.com/NASA-AMMOS/AIT-Core>`_ (AMMOS Instrument Toolkit, developed for a number of ISS missions)
 - `pyethapp <https://github.com/ethereum/pyethapp>`_
 - `disco <https://github.com/b1naryth1ef/disco>`_ (Discord Python library)
 - `bliss <https://bliss.gitlab-pages.esrf.fr/bliss/index.html>`_
