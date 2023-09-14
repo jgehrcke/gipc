@@ -7,8 +7,8 @@ set -o xtrace
 # Install newer pip and setuptools (newer than bundles with certain Python
 # releases and newer than what Travis brings) -- but still pin the versions so
 # that there are no moving dependencies.
-pip install 'pip==21.3.1' --upgrade
-pip install 'setuptools==59.6.0' --upgrade
+pip install 'pip==23.2.1' --upgrade
+pip install 'setuptools==68.2.2' --upgrade
 
 # Install gipc dependencies from its `setup.py`. Also: "DEPRECATION: A future
 # pip version will change local packages to be built in-place without first
