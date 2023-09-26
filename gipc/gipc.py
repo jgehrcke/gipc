@@ -363,11 +363,10 @@ def _child(target, args, kwargs):
         gevent.hub.set_hub(None)
         hub.loop.destroy()
 
-        # Create a new hub and a new default event loop via
-        # `libev.gevent_ev_default_loop`.
-        h = gevent.get_hub(default=True)
-        log.debug("Created new hub and default event loop.")
-        assert h.loop.default, 'Could not create libev default event loop.'
+        # Create a new hub and a new event loop
+        h = gevent.get_hub()
+        log.debug("Created new hub and event loop.")
+        assert h.loop.default, "Could not create libev default event loop."
         # On Unix, file descriptors are inherited by default. Also, the global
         # `_all_handles` is inherited from the parent. Close dispensable gipc-
         # related file descriptors in child.

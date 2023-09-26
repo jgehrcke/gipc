@@ -4,23 +4,23 @@
 
 Overview
 ========
-gipc (pronunciation as in “gipsy”) enables reliable child process management
-and non-blocking inter-process communication in `gevent
-<https://github.com/gevent/gevent>`_-driven software projects.
+gipc enables reliable child process management
+and non-blocking inter-process communication in software that uses `gevent
+<https://github.com/gevent/gevent>`_.
 
 Using Python's `multiprocessing package
 <https://docs.python.org/3/library/multiprocessing.html>`_ in the context of a
 codebase that also uses gevent is error-prone and may break the application in
 various `subtle ways
 <https://gehrcke.de/gipc/#what-are-the-challenges-and-what-is-gipc-s-solution>`_.
-With gipc, ``multiprocessing.Process``-based child processes can safely be
-created anywhere within your gevent-powered application. The API of
+With gipc, ``multiprocessing.Process``-based child processes can again safely be
+created in your gevent-powered application. The API of
 ``multiprocessing.Process`` objects is provided in a gevent-cooperative way.
 Also, gipc provides a pipe-based transport layer for gevent-cooperative
 inter-greenlet and inter-process communication. gipc is lightweight and easy to
 integrate.
 
-From 2012 to 2018 gipc's home was at `bitbucket.org/jgehrcke/gipc
+From 2012 to 2018, gipc's home was at `bitbucket.org/jgehrcke/gipc
 <https://bitbucket.org/jgehrcke/gipc>`_. Since then development has continued on
 GitHub.
 
@@ -41,7 +41,7 @@ examples, and in-depth information.
 Platform support
 ================
 
-The current version of gipc works on CPython 3.7 through 3.11. It supports
+The current version of gipc works on CPython 3.8 through 3.12. It supports
 gevent versions 1.5 and newer and supports both, Unix-like systems as well as
 Windows. On Linux and macOS, gipc also works with PyPy.
 
