@@ -42,5 +42,8 @@ setup(
         "Topic :: System :: Hardware :: Symmetric Multi-processing",
         "Intended Audience :: Developers",
     ],
-    install_requires=("gevent>=1.5,<=23.9.1"),
+    # Greenlet 3.0.1 results in segfaults
+    # https://github.com/python-greenlet/greenlet/issues/382
+    # https://github.com/jgehrcke/gipc/pull/131
+    install_requires=("gevent>=1.5,<=23.9.1", "greenlet<=2.0.2;python_version<'3.12'"),
 )
