@@ -1,5 +1,5 @@
 # -*- coding: utf-8 -*-
-# Copyright 2012-2021 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
+# Copyright 2012-2023 Dr. Jan-Philip Gehrcke. See LICENSE file for details.
 
 import re
 
@@ -42,5 +42,5 @@ setup(
         "Topic :: System :: Hardware :: Symmetric Multi-processing",
         "Intended Audience :: Developers",
     ],
-    install_requires=("gevent>=1.5,<=23.9"),
+    install_requires=("gevent>=1.5,<=23.9.1"),
 )
