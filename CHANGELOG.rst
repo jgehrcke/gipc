@@ -1,4 +1,4 @@
-Version 1.6.0 (Nov 01, 2023)
+Version 1.6.0 (soon)
 ----------------------------
 
 - Add support for gevent 23.9.1.
