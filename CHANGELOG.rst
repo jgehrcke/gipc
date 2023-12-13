@@ -1,11 +1,11 @@
-next (unreleased)
------------------
+Version 1.6.0 (Nov 01, 2023)
+----------------------------
 
 - Add support for gevent 23.9.1.
 
 Continuous integration changes:
 
-- Cover CPython 3.12-rc2 (Linux, Windows, macOS).
+- Cover CPython 3.12 (Linux, Windows, macOS).
 - Switch from testing on macOS 10 to macOS 11.
 - Do not test with Python 3.7 anymore.
 

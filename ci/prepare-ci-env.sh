@@ -10,12 +10,7 @@ set -o xtrace
 pip install 'pip==23.2.1' --upgrade
 pip install 'setuptools==68.2.2' --upgrade
 
-# The `--no-binary :all:` results in gevent and greenlet to be built freshly.
-# I added this to work around
-# https://github.com/python-greenlet/greenlet/issues/382
-# This is an overkill, and should maybe be reverted. In CI it might be smarter
-# to use the binary wheels that users will also mostly use.
-pip install --no-binary :all: .
+pip install .
 
 # Install gipc test/CI dependencies.
 pip install -r requirements-tests.txt
