@@ -1,7 +1,7 @@
-Version 1.6.0 (soon)
-----------------------------
+Version 1.6.0 (Dec 20)
+----------------------
 
-- Add support for gevent 23.9.1.
+This release adds support for gevent 23.9.1 and for Python 3.12.
 
 Continuous integration changes:
 
