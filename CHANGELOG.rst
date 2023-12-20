@@ -1,5 +1,5 @@
-Version 1.6.0 (Dec 20)
-----------------------
+Version 1.6.0 (Dec 20, 2023)
+----------------------------
 
 This release adds support for gevent 23.9.1 and for Python 3.12.
 
