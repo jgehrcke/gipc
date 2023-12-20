@@ -15,7 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12.0-rc.2", "pypy-3.9-v7.3.11"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy-3.10-v7.3.13"]
         os: [ubuntu-22.04, macos-11]
         # Here I previously chose to test with more than one gevent version,
         # but as this blows up the number of CI runs quite a bit and we don't
@@ -55,7 +55,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12.0-rc.2"]
+        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
 
     steps:
       - uses: actions/checkout@v2
