@@ -7,8 +7,8 @@ set -o xtrace
 # Install newer pip and setuptools (newer than bundles with certain Python
 # releases and newer than what Travis brings) -- but still pin the versions so
 # that there are no moving dependencies.
-pip install 'pip==23.2.1' --upgrade
-pip install 'setuptools==68.2.2' --upgrade
+pip install 'pip==23.3.2' --upgrade
+pip install 'setuptools==69.0.2' --upgrade
 
 pip install .
 
