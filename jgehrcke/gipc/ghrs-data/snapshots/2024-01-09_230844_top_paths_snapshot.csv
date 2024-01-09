@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/jgehrcke/gipc/tree/master/ci,6,1
+/jgehrcke/gipc/issues,5,1
+/jgehrcke/gipc/tree/master/examples,5,1
+/jgehrcke/gipc,4,3
+/jgehrcke/gipc/blob/master/ci/release.sh,4,1
+/jgehrcke/gipc/blob/master/examples/raw_largemsg_bench.py,4,1
+/jgehrcke/gipc/blob/master/examples/synchronization.py,3,1
+/jgehrcke/gipc/blob/master/ci/prepare-ci-env.sh,2,1
+/jgehrcke/gipc/blob/master/examples/wsgimultiprocessing.py,2,1
+/jgehrcke/gipc/issues/130,2,1
