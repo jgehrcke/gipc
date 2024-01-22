@@ -1,0 +1,8 @@
+url_path,views_total,views_unique
+/jgehrcke/gipc/tree/master/examples,9,3
+/jgehrcke/gipc,8,6
+/jgehrcke/gipc/blob/master/examples/raw_largemsg_bench.py,2,1
+/jgehrcke/gipc/blob/master/examples/serverclient.py,2,1
+/jgehrcke/gipc/blob/master/examples/wsgimultiprocessing.py,2,1
+/jgehrcke/gipc/blob/master/gipc/gipc.py,2,1
+/jgehrcke/gipc/issues/8,1,1
