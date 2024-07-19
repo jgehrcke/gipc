@@ -1,0 +1,11 @@
+url_path,views_total,views_unique
+/jgehrcke/gipc/tree/master/examples,16,4
+/jgehrcke/gipc,8,7
+/jgehrcke/gipc/blob/master/gipc/gipc.py,5,3
+/jgehrcke/gipc/issues/26,4,1
+/jgehrcke/gipc/issues/89,2,2
+/jgehrcke/gipc/blob/1.3.0/gipc/gipc.py,2,1
+/jgehrcke/gipc/blob/d9c67152b5c5409b36acd64abcd99975c88865b4/examples/infinite_send_to_child.py,2,1
+/jgehrcke/gipc/blob/master/CHANGELOG.rst,2,1
+/jgehrcke/gipc/blob/master/examples/gipc_benchmark.py,2,1
+/jgehrcke/gipc/blob/master/examples/raw_largemsg_bench.py,2,1
