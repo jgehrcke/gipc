@@ -15,8 +15,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12", "pypy-3.10-v7.3.13"]
-        os: [ubuntu-22.04, macos-11]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.10-v7.3.17"]
+        os: [ubuntu-22.04, macos-13]
         # Here I previously chose to test with more than one gevent version,
         # but as this blows up the number of CI runs quite a bit and we don't
         # pay for github actions this is not nicely feasible.
@@ -26,7 +26,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v2
+        uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies on macOS
@@ -55,7 +55,7 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        python-version: ["3.8", "3.9", "3.10", "3.11", "3.12"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
       - uses: actions/checkout@v2

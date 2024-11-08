@@ -1,3 +1,14 @@
+Version 1.7.0 (Nov 08, 2024)
+----------------------------
+
+This release adds support for gevent 24.10 and for Python 3.13.
+
+Continuous integration changes:
+
+- Cover CPython 3.13 (Linux, Windows, macOS).
+- Do not test Python 3.8 anymore.
+
+
 Version 1.6.0 (Dec 20, 2023)
 ----------------------------
 
