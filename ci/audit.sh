@@ -3,7 +3,7 @@ set -ex
 
 
 python setup.py check
-python setup.py --long-description | rst2html.py > /dev/null
+python setup.py --long-description | rst2html5 > /dev/null
 rst2html.py CHANGELOG.rst > /dev/null
 
 # Run flake8 on the gipc directory (do not yet
