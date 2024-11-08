@@ -1,16 +1,6 @@
 #!/bin/bash
 set -ex
 
-# Do not run audit.sh as part of every build.
-
-if [[ "$TRAVIS" == "true" ]]; then
-    if [[ "$TRAVIS_PYTHON_VERSION" == "3.6" && "$TRAVIS_OS_NAME" == "linux" ]]; then
-        echo "Linux and Python 3.6: run audit.sh"
-    else
-        echo "Do not run audit.sh: os: $TRAVIS_OS_NAME, python: $TRAVIS_PYTHON_VERSION"
-        exit 0
-    fi
-fi
 
 python setup.py check
 python setup.py --long-description | rst2html.py > /dev/null
@@ -27,7 +17,7 @@ flake8 gipc/
 cd docs && make html && cd ..
 
 # See if this would be good to release.
-pip install twine==4.0.2
+pip install twine==5.1.1
 rm -rf dist
 python setup.py sdist
 twine check dist/*
