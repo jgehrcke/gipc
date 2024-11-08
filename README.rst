@@ -41,7 +41,7 @@ examples, and in-depth information.
 Platform support
 ================
 
-The current version of gipc works on CPython 3.8 through 3.12. It supports
+The current version of gipc works on CPython 3.9 through 3.13. It supports
 gevent versions 1.5 and newer and supports both, Unix-like systems as well as
 Windows. On Linux and macOS, gipc also works with PyPy.
 
