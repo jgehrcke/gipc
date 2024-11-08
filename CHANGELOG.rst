@@ -6,6 +6,7 @@ This release adds support for gevent 24.10 and for Python 3.13.
 Continuous integration changes:
 
 - Cover CPython 3.13 (Linux, Windows, macOS).
+- Switch from testing on macOS 11 to macOS 13.
 - Do not test Python 3.8 anymore.
 
 
