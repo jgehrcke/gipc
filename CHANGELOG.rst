@@ -1,3 +1,9 @@
+Version 1.8.0 (May 22, 2024)
+----------------------------
+
+This release adds support for gevent 25.4
+
+
 Version 1.7.0 (Nov 08, 2024)
 ----------------------------
 
