@@ -59,13 +59,11 @@ jobs:
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13"]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-      # On win, simplify test coverage: do not take control of gevent version
-      # other than what's defined in gipc's setup.py.
       - name: pip install deps
         run: |
           python --version && uname -a
