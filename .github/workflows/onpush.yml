@@ -15,8 +15,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        # As of 25-06-07 pypy-3.11 is still in beta
-        # Back out of  for now.
+        # As of 25-06-07, pypy-3.11 is still in beta
         python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.10-v7.3.19"]
         os: [ubuntu-22.04, macos-13]
         # Here, I previously chose to test with more than one gevent version,
