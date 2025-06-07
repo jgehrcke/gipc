@@ -17,7 +17,7 @@ jobs:
       matrix:
         # As of 25-06-07 pypy-3.11 is still in beta
         # Back out of  for now.
-        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "3.14.0-beta.2", "pypy-3.10-v7.3.19"]
+        python-version: ["3.9", "3.10", "3.11", "3.12", "3.13", "pypy-3.10-v7.3.19"]
         os: [ubuntu-22.04, macos-13]
         # Here, I previously chose to test with more than one gevent version,
         # but as this blows up the number of CI runs quite a bit and we don't
