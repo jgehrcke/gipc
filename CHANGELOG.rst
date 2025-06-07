@@ -1,3 +1,32 @@
+Version 1.8.0 (Jun 07, 2025)
+----------------------------
+
+This release adds support for gevent 25.5.
+
+It removes the gevent version upper bound from setup.py (
+``install_requires=("gevent>=1.5,<=24.11")`` was changed to
+``install_requires=("gevent>=1.5")``)
+
+Use versions newer than gevent 25.5 only after careful testing and at
+your own risk.
+
+Historically, that constraint helped application developers to not accidentally
+install an untested combination of gipc and gevent versions. However, often
+times, it also made it difficult for application developers to simply try and
+test a new version of gevent in their environment.
+
+With that constraint removed,
+
+- the upside is that from now on, gipc can more easily be installed alongside
+  future gevent releases.
+- the downside is that there is a risk for bugs when application developers
+  adopt a new gevent version before gipc officially supports it.
+
+The upside outweighs the downside: application authors are encouraged to pin
+depdencies (including individual gipc and gevent versions), to specific versions
+that have been shown to work in context of their application.
+
+
 Version 1.7.0 (Nov 08, 2024)
 ----------------------------
 
@@ -64,6 +93,7 @@ This release adds support for gevent 21.x on Linux and Windows, tested with
 CPython 3.6, 3.7, 3.8, and 3.9.
 
 For macOS, this gipc release still does not support CPython 3.8 and newer.
+
 
 Version 1.1.1 (Jan 03, 2021)
 ----------------------------
