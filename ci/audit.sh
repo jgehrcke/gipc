@@ -17,7 +17,7 @@ flake8 gipc/
 cd docs && make html && cd ..
 
 # See if this would be good to release.
-pip install twine==5.1.1
+pip install twine==6.1.0
 rm -rf dist
 python setup.py sdist
 twine check dist/*
