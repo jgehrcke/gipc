@@ -1,5 +1,5 @@
-pytest==6.2.5
-pytest-cov==3.0.0
+pytest==7.4.4
+pytest-cov==6.1.1
 sphinx==7.4.7
 sphinx-rtd-theme==3.0.1
 rst2html5
