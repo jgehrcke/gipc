@@ -5,7 +5,7 @@ This release adds support for gevent 25.5.
 
 It removes the gevent version upper bound from setup.py (
 ``install_requires=("gevent>=1.5,<=24.11")`` was changed to
-``install_requires=("gevent>=1.5")``)
+``install_requires=("gevent>=1.5")``).
 
 Use versions newer than gevent 25.5 only after careful testing and at
 your own risk.
@@ -22,9 +22,8 @@ With that constraint removed,
 - the downside is that there is a risk for bugs when application developers
   adopt a new gevent version before gipc officially supports it.
 
-The upside outweighs the downside: application authors are encouraged to pin
-depdencies (including individual gipc and gevent versions), to specific versions
-that have been shown to work in context of their application.
+Generally, application authors are encouraged to pin depdencies to specific
+versions that have been shown to work in context of their application.
 
 
 Version 1.7.0 (Nov 08, 2024)
